@@ -1,0 +1,29 @@
+# [Day 1: Not Quite Lisp](https://adventofcode.com/2015/day/1)
+
+<!-- These are helper text to make formatting the yearly readme consistent and easier...
+
+[Day 1: Not Quite Lisp][rm1]
+[Go][g1]
+[Python][p1]
+
+[rm1]: 01-notQuiteLisp/README.md
+[g1]: 01-notQuiteLisp/go
+[p1]: 01-notQuiteLisp/py
+
+-->
+
+## Go
+
+```text
+    < section intentionally left blank >
+```
+
+## Python
+
+```text
+    < section intentionally left blank >
+```
+
+## 2015 Run Times
+
+![2015 exercise run-time graphs](../run-times.png)

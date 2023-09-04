@@ -1,0 +1,21 @@
+{
+    "inputFile": "test_input.txt",
+    "testCases": {
+        "one": [
+            {
+                "input": "fake-in1.0",
+                "expected": "fake-out1.0"
+            },
+            {
+                "input": "fake-in1.1",
+                "expected": "fake-out1.1"
+            }
+        ],
+        "two": [
+            {
+                "input": "fake-in2.0",
+                "expected": "fake-out2.0"
+            }
+        ]
+    }
+}
