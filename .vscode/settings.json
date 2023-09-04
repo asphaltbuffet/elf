@@ -1,0 +1,32 @@
+{
+    "[go]": {
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": true,
+        },
+    },
+    "[go.mod]": {
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": true,
+        },
+    },
+    // gopls
+    "go.useLanguageServer": true,
+    "gopls": {
+        "formatting.local": "github.com/asphaltbuffet/elf",
+        "formatting.gofumpt": true
+    },
+    // golangci-lint  
+    "go.lintTool": "golangci-lint",
+    "go.lintFlags": [
+        "--fast"
+    ],
+    "python.analysis.extraPaths": [
+        "./lib"
+    ],
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.black-formatter"
+    },
+    "python.formatting.provider": "black"
+}
