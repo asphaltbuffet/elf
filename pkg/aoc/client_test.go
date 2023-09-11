@@ -45,6 +45,7 @@ func newTestClient(t *testing.T) *AOCClient {
 
 	var err error
 
+	cfgDir = "test_config"
 	baseExercisesDir = "test_exercises"
 	fs, err = makeTestFs()
 	require.NoError(t, err)

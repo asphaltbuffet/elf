@@ -133,7 +133,7 @@ func discoverExercises() error {
 	return nil
 }
 
-func (ac *AOCClient) GetClient() (*AOCClient, error) {
+func GetClient() (*AOCClient, error) {
 	if client != nil {
 		return client, nil
 	}

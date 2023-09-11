@@ -13,6 +13,37 @@ import (
 	"github.com/asphaltbuffet/elf/pkg/exercise"
 )
 
+var (
+	inputDataString = "test input data\ntest input data\n"
+	inputDataBytes  = []byte("test input data\ntest input data")
+)
+
+func setupTestCase(t *testing.T) func(t *testing.T) {
+	t.Helper()
+
+	_ = newTestClient(t)
+	require.Equal(t, rClient.BaseURL, "https://test.fake")
+	httpmock.ActivateNonDefault(rClient.GetClient())
+
+	return func(t *testing.T) {
+		t.Helper()
+
+		httpmock.DeactivateAndReset()
+	}
+}
+
+func setupSubTest(t *testing.T) func(t *testing.T) {
+	t.Helper()
+
+	httpmock.Reset()
+
+	return func(t *testing.T) {
+		t.Helper()
+
+		t.Log("teardown sub-test")
+	}
+}
+
 func TestAOCClient_AddExercise(t *testing.T) {
 	type args struct {
 		year     int
@@ -28,7 +59,7 @@ func TestAOCClient_AddExercise(t *testing.T) {
 		errText   string
 	}{
 		{
-			name: "already exists, return error",
+			name: "all files exist",
 			args: args{2015, 1, "go"},
 			want: &exercise.Exercise{
 				Year:  2015,
@@ -40,43 +71,73 @@ func TestAOCClient_AddExercise(t *testing.T) {
 			assertion: assert.Error,
 			errText:   "exercise already exists",
 		},
-		// {
-		// 	name: "add go implementation",
-		// 	args: args{2019, 10, "go"},
-		// 	want: &exercise.Exercise{
-		// 		Year:  2019,
-		// 		Day:   10,
-		// 		Title: "Test Day Ten",
-		// 		Dir:   "10-testDayTen",
-		// 		Path:  filepath.Join("test_exercises", "2019", "10-testDayTen"),
-		// 	},
-		// 	assertion: assert.NoError,
-		// },
-		// {
-		// 	name: "missing py implementation",
-		// 	args: args{2016, 1, "py"},
-		// 	want: &exercise.Exercise{
-		// 		Day:  1,
-		// 		Name: "Test Day One",
-		// 		Dir:  filepath.Join("test_exercises", "2016", "01-testDayOne"),
-		// 	},
-		// 	assertion: assert.Error,
-		// },
+		{
+			name: "add new exercise",
+			args: args{2019, 10, "go"},
+			want: &exercise.Exercise{
+				Year:  2019,
+				Day:   10,
+				Title: "Test Day Ten",
+				Dir:   "10-testDayTen",
+				Path:  filepath.Join("test_exercises", "2019", "10-testDayTen"),
+			},
+			assertion: assert.NoError,
+		},
+		{
+			name: "missing py implementation",
+			args: args{2016, 1, "py"},
+			want: &exercise.Exercise{
+				Year:  2016,
+				Day:   1,
+				Title: "Test Day One",
+				Dir:   "01-testDayOne",
+				Path:  filepath.Join("test_exercises", "2016", "01-testDayOne"),
+			},
+			assertion: assert.NoError,
+		},
+		{
+			name: "missing year",
+			args: args{2020, 1, "py"},
+			want: &exercise.Exercise{
+				Year:  2020,
+				Day:   1,
+				Title: "Test Day One",
+				Dir:   "01-testDayOne",
+				Path:  filepath.Join("test_exercises", "2020", "01-testDayOne"),
+			},
+			assertion: assert.NoError,
+		},
 	}
+
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			teardownSubTest := setupSubTest(t)
+			defer teardownSubTest(t)
+
+			var err error
+
 			// recreate for each test to keep testing fs clean
-			ac := newTestClient(t)
+			fs, err = makeTestFs()
+			require.NoError(t, err)
+
+			ac, err := GetClient()
+			require.NoError(t, err)
 
 			got, err := ac.AddExercise(tt.args.year, tt.args.day, tt.args.language)
 
 			tt.assertion(t, err)
 			if err != nil {
 				assert.ErrorContains(t, err, tt.errText)
-			}
+			} else {
+				assert.Equal(t, tt.want, got)
 
-			assert.Equal(t, tt.want, got)
+				// make sure files are there
+				checkLanguageDirectoryFiles(t, tt.args.language, got)
+				checkExerciseDirectoryFiles(t, got)
+			}
 		})
 	}
 }
@@ -85,28 +146,22 @@ func TestAOCClient_AddExercise(t *testing.T) {
 var respBody2015d1 string
 
 func Test_downloadPuzzlePage(t *testing.T) {
-	_ = newTestClient(t)
-	require.Equal(t, rClient.BaseURL, "https://test.fake")
-	httpmock.ActivateNonDefault(rClient.GetClient())
-
-	defer httpmock.DeactivateAndReset()
-
 	type args struct {
 		year int
 		day  int
 	}
 
 	tests := []struct {
-		name      string
-		responder httpmock.Responder
-		args      args
-		golden    string
-		assertion assert.ErrorAssertionFunc
-		errText   string
+		name          string
+		pageResponder httpmock.Responder
+		args          args
+		golden        string
+		assertion     assert.ErrorAssertionFunc
+		errText       string
 	}{
 		{
-			name:      "good request for 2015-1",
-			responder: httpmock.NewStringResponder(200, respBody2015d1),
+			name:          "good request for 2015-1",
+			pageResponder: httpmock.NewStringResponder(http.StatusOK, respBody2015d1),
 			args: args{
 				year: 2015,
 				day:  1,
@@ -115,8 +170,8 @@ func Test_downloadPuzzlePage(t *testing.T) {
 			assertion: assert.NoError,
 		},
 		{
-			name:      "404 response",
-			responder: httpmock.NewStringResponder(404, "404 Not Found"),
+			name:          "404 response",
+			pageResponder: httpmock.NewStringResponder(http.StatusNotFound, "404 Not Found"),
 			args: args{
 				year: 2015,
 				day:  1,
@@ -127,10 +182,17 @@ func Test_downloadPuzzlePage(t *testing.T) {
 		},
 	}
 
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			httpmock.Reset()
-			httpmock.RegisterResponder("GET", `=~^/(201[5-9]|202[012])/day/([1-9]|1[0-9]|2[0-5])$`, tt.responder)
+			teardownSubTest := setupSubTest(t)
+			defer teardownSubTest(t)
+
+			httpmock.RegisterResponder("GET",
+				`=~^/(201[5-9]|202[012])/day/([1-9]|1[0-9]|2[0-5])$`,
+				tt.pageResponder)
 
 			got, err := downloadPuzzlePage(tt.args.year, tt.args.day)
 
@@ -170,10 +232,13 @@ func Test_getCachedPuzzlePage(t *testing.T) {
 		// TODO: add test cases.
 	}
 
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_ = newTestClient(t)
-			cfgDir = ".config/elf"
+			teardownSubTest := setupSubTest(t)
+			defer teardownSubTest(t)
 
 			got, err := getCachedPuzzlePage(tt.args.year, tt.args.day)
 
@@ -188,14 +253,6 @@ func Test_getCachedPuzzlePage(t *testing.T) {
 }
 
 func Test_addDay(t *testing.T) {
-	_ = newTestClient(t)
-	require.Equal(t, rClient.BaseURL, "https://test.fake")
-	httpmock.ActivateNonDefault(rClient.GetClient())
-
-	defer httpmock.DeactivateAndReset()
-
-	cfgDir = ".config/elf"
-
 	type args struct {
 		year int
 		day  int
@@ -232,9 +289,14 @@ func Test_addDay(t *testing.T) {
 		},
 	}
 
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			httpmock.Reset()
+			teardownSubTest := setupSubTest(t)
+			defer teardownSubTest(t)
+
 			httpmock.RegisterResponder("GET", `=~^/(201[5-9]|202[012])/day/([1-9]|1[0-9]|2[0-5])$`, tt.responder)
 
 			got, err := addDay(tt.args.year, tt.args.day)
@@ -244,19 +306,31 @@ func Test_addDay(t *testing.T) {
 				assert.ErrorContains(t, err, tt.errText)
 			} else {
 				assert.Equal(t, tt.want, got)
-				checkFiles(t, got)
 			}
 		})
 	}
 }
 
-// checkFiles verifies that info.json and README.md exist in the exercise's path
-func checkFiles(t *testing.T, e *exercise.Exercise) {
+// checkExerciseDirectoryFiles verifies presense of info.json and README.md
+func checkExerciseDirectoryFiles(t *testing.T, e *exercise.Exercise) {
 	t.Helper()
 
 	_, err := fs.Stat(filepath.Join(e.Path, "info.json"))
 	assert.NoError(t, err)
 
 	_, err = fs.Stat(filepath.Join(e.Path, "README.md"))
+	assert.NoError(t, err)
+}
+
+// checkExerciseDirectoryFiles verifies presense of info.json and README.md
+func checkLanguageDirectoryFiles(t *testing.T, lang string, e *exercise.Exercise) {
+	t.Helper()
+
+	implFiles := map[string]string{
+		"go": "exercise.go",
+		"py": "__init__.py",
+	}
+
+	_, err := fs.Stat(filepath.Join(e.Path, lang, implFiles[lang]))
 	assert.NoError(t, err)
 }
