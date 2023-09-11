@@ -10,40 +10,10 @@ import (
 
 func TestGetAddCmd(t *testing.T) {
 	got := GetAddCmd()
+
 	assert.NotNil(t, got)
 	assert.IsType(t, &cobra.Command{}, got)
 	assert.Equal(t, "add", got.Name())
-}
-
-func Test_runAdd(t *testing.T) {
-	type args struct {
-		args           []string
-		day            int
-		implementation string
-	}
-
-	tests := []struct {
-		name      string
-		args      args
-		assertion assert.ErrorAssertionFunc
-		errText   string
-	}{
-		// TODO: Add test cases.
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			dayArg = tt.args.day
-			langArg = tt.args.implementation
-
-			err := runAdd(tt.args.args)
-
-			tt.assertion(t, err)
-			if err != nil {
-				assert.ErrorContains(t, err, tt.errText)
-			}
-		})
-	}
 }
 
 func Test_validateInput(t *testing.T) {

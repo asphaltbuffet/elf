@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"path/filepath"
 	"regexp"
-	"strings"
 	"text/template"
 
 	"github.com/go-resty/resty/v2"
@@ -70,7 +69,12 @@ var readmeTemplate []byte
 
 func addDay(year int, day int) (*exercise.Exercise, error) {
 	yearDir := filepath.Join(baseExercisesDir, fmt.Sprintf("%d", year))
+
 	title := getTitle(year, day)
+	if title == "" {
+		return nil, fmt.Errorf("getting title for day %d", day)
+	}
+
 	exerciseDir := fmt.Sprintf("%02d-%s", day, strcase.ToLowerCamel(title))
 	exercisePath := filepath.Join(yearDir, exerciseDir)
 
@@ -122,13 +126,16 @@ func getTitle(year int, day int) string {
 	}
 
 	re := regexp.MustCompile(`--- Day \d{1,2}: (.*) ---`)
-	matches := re.FindStringSubmatch(puzzlePage)
-	title := matches[1]
 
-	return title
+	matches := re.FindSubmatch(puzzlePage)
+	if len(matches) != 2 {
+		return ""
+	}
+
+	return string(matches[1])
 }
 
-func getPuzzlePage(year int, day int) (string, error) {
+func getPuzzlePage(year int, day int) ([]byte, error) {
 	d, err := getCachedPuzzlePage(year, day)
 	if err == nil {
 		return d, nil
@@ -137,42 +144,56 @@ func getPuzzlePage(year int, day int) (string, error) {
 	return downloadPuzzlePage(year, day)
 }
 
-func getCachedPuzzlePage(year int, day int) (string, error) {
+func getCachedPuzzlePage(year int, day int) ([]byte, error) {
 	f, err := afero.ReadFile(fs, filepath.Join(cfgDir, "puzzle_pages", fmt.Sprintf("%d-%d.txt", year, day)))
 	if err != nil {
-		return "", fmt.Errorf("reading puzzle page: %w", err)
+		return nil, fmt.Errorf("reading puzzle page: %w", err)
 	}
 
-	return string(f), nil
+	return f, nil
 }
 
 var rClient = resty.New()
 
-func downloadPuzzlePage(year int, day int) (string, error) {
+func downloadPuzzlePage(year int, day int) ([]byte, error) {
 	// make sure we can write the cached file before we download it
 	err := fs.MkdirAll(filepath.Join(cfgDir, "puzzle_pages"), 0o755)
 	if err != nil {
-		return "", fmt.Errorf("creating cache directory: %w", err)
+		return nil, fmt.Errorf("creating cache directory: %w", err)
 	}
 
 	res, err := rClient.R().Get(fmt.Sprintf(adventPuzzleURL, year, day))
 	if err != nil {
-		return "", fmt.Errorf("getting puzzle page: %w", err)
+		return nil, fmt.Errorf("getting puzzle page: %w", err)
 	}
 
 	if res.StatusCode() != http.StatusOK {
-		return "", fmt.Errorf("getting puzzle page: %s", res.Status())
+		return nil, fmt.Errorf("getting puzzle page: %s", res.Status())
 	}
 
-	re := regexp.MustCompile(`<article.*?>(.*)</article>`)
-	matches := re.FindStringSubmatch(string(res.Body()))
-	data := strings.TrimSpace(matches[1])
+	re := regexp.MustCompile(`(?s)<article.*?>(.*)</article>`)
+
+	matches := re.FindSubmatch(res.Body())
+	if len(matches) != 2 {
+		// save the raw output to a file for debugging/error reporting
+		err = fs.MkdirAll(filepath.Join(cfgDir, "logs"), 0o755)
+		if err != nil {
+			return nil, fmt.Errorf("creating cache directory: %w", err)
+		}
+
+		dumpFile := filepath.Join(cfgDir, "puzzle_pages", fmt.Sprintf("%d-%d-ERROR.dump", year, day))
+		_ = afero.WriteFile(fs, dumpFile, res.Body(), 0o600)
+
+		return nil, fmt.Errorf("parsing puzzle page, raw output saved to: %s", dumpFile)
+	}
+
+	data := bytes.TrimSpace(matches[1])
 
 	cacheFile := filepath.Join(cfgDir, "puzzle_pages", fmt.Sprintf("%d-%d.txt", year, day))
 
-	err = afero.WriteFile(fs, cacheFile, []byte(data), 0o644)
+	err = afero.WriteFile(fs, cacheFile, data, 0o644)
 	if err != nil {
-		return "", fmt.Errorf("caching puzzle page to %s: %w", cacheFile, err)
+		return nil, fmt.Errorf("caching puzzle page to %s: %w", cacheFile, err)
 	}
 
 	return data, nil

@@ -145,13 +145,13 @@ func Test_downloadPuzzlePage(t *testing.T) {
 	}
 }
 
-func goldenValue(t *testing.T, goldenFile string) string {
+func goldenValue(t *testing.T, goldenFile string) []byte {
 	t.Helper()
 
 	content, err := os.ReadFile(filepath.Join("testdata", goldenFile)) //nolint:gosec // this is test code
 	require.NoError(t, err)
 
-	return string(content)
+	return content
 }
 
 func Test_getCachedPuzzlePage(t *testing.T) {
@@ -221,6 +221,14 @@ func Test_addDay(t *testing.T) {
 				Path:  filepath.Join("test_exercises", "2017", "01-notQuiteLisp"),
 			},
 			assertion: assert.NoError,
+		},
+		{
+			name:      "page data not parsable",
+			args:      args{year: 2020, day: 1},
+			responder: httpmock.NewStringResponder(http.StatusOK, "success getting fake data that isn't what we expect"),
+			want:      nil,
+			assertion: assert.Error,
+			errText:   "getting title for day",
 		},
 	}
 

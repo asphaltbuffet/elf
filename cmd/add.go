@@ -26,29 +26,22 @@ func GetAddCmd() *cobra.Command {
 			Args:              cobra.MatchAll(cobra.ExactArgs(1), validateAddInput),
 			Short:             "add a new exercise",
 			RunE: func(cmd *cobra.Command, args []string) error {
-				return runAdd(args)
+				if next {
+					return fmt.Errorf("not implemented")
+				}
+
+				year, _ := strconv.Atoi(args[0])
+
+				_, err := acc.AddExercise(year, dayArg, langArg)
+
+				return err
 			},
 		}
 	}
 
-	addCmd.Flags().BoolVar(&next, "next", false, "add next exercise for the given year")
-	// addCmd.Flags().IntVarP(&day, "day", "d", 0, "exercise day to use")
-	// addCmd.Flags().StringVarP(&implementation, "language", "l", "", "language implementation to use")
+	// addCmd.Flags().BoolVar(&next, "next", false, "add next exercise for the given year")
 
 	return addCmd
-}
-
-func runAdd(args []string) error {
-	// figure out which exercise we want
-	// check if exercise directory already exists (create if not):
-	// check if required files exist (create if not):
-	//     info.json
-	//     input.txt
-	//     README.md
-	// check if implementation directory exists (create if not)
-	// check if implementation file(s) exist (create if not)
-	// report results
-	return nil
 }
 
 func validateAddInput(cmd *cobra.Command, args []string) error {
