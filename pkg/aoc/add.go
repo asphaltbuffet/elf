@@ -48,6 +48,17 @@ func (ac *AOCClient) AddExercise(year int, day int, language string) (*exercise.
 		return nil, fmt.Errorf("creating %s implementation directory: %w", language, err)
 	}
 
+	// download puzzle input
+	inputFile, err := downloadOrGetCachedInput(year, day)
+	if err != nil {
+		return nil, fmt.Errorf("getting puzzle input: %w", err)
+	}
+
+	err = afero.WriteFile(fs, filepath.Join(e.Path, "input.txt"), inputFile, 0o600)
+	if err != nil {
+		return nil, fmt.Errorf("writing input file: %w", err)
+	}
+
 	var (
 		t *template.Template
 		b *bytes.Buffer
@@ -233,4 +244,53 @@ func downloadPuzzlePage(year int, day int) ([]byte, error) {
 	}
 
 	return data, nil
+}
+
+func downloadOrGetCachedInput(year int, day int) ([]byte, error) {
+	d, err := getCachedInput(year, day)
+	if err == nil {
+		return d, nil
+	}
+
+	return downloadInput(year, day)
+}
+
+func downloadInput(year, day int) ([]byte, error) {
+	// make sure we can write the cached file before we download it
+	err := fs.MkdirAll(filepath.Join(cfgDir, "inputs"), 0o755)
+	if err != nil {
+		return nil, fmt.Errorf("creating inputs directory: %w", err)
+	}
+
+	res, err := rClient.R().Get(fmt.Sprintf(adventInputURL, year, day))
+	if err != nil {
+		return nil, fmt.Errorf("accessing input site: %w", err)
+	}
+
+	if res.StatusCode() != http.StatusOK {
+		return nil, fmt.Errorf("getting input data: %s", res.Status())
+	}
+
+	err = appFs.MkdirAll(filepath.Join(cfgDir, "inputs"), 0o755)
+	if err != nil {
+		return nil, fmt.Errorf("creating inputs directory: %w", err)
+	}
+
+	inputPath := filepath.Join(cfgDir, "inputs", fmt.Sprintf("%d-%d.txt", year, day))
+
+	err = afero.WriteFile(fs, inputPath, res.Body(), 0o600)
+	if err != nil {
+		return nil, fmt.Errorf("caching puzzle page to %s: %w", inputPath, err)
+	}
+
+	return bytes.TrimSpace(res.Body()), nil
+}
+
+func getCachedInput(year, day int) ([]byte, error) {
+	f, err := afero.ReadFile(fs, filepath.Join(cfgDir, "inputs", fmt.Sprintf("%d-%d.txt", year, day)))
+	if err != nil {
+		return nil, fmt.Errorf("reading cached input: %w", err)
+	}
+
+	return f, nil
 }

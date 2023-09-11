@@ -43,14 +43,12 @@ func TestAOCClient_New(t *testing.T) {
 func newTestClient(t *testing.T) *AOCClient {
 	t.Helper()
 
-	var err error
+	tc, err := NewAOCClient()
+	require.NoError(t, err)
 
 	cfgDir = "test_config"
 	baseExercisesDir = "test_exercises"
 	fs, err = makeTestFs()
-	require.NoError(t, err)
-
-	tc, err := NewAOCClient()
 	require.NoError(t, err)
 
 	rClient = resty.New().SetBaseURL("https://test.fake")
@@ -60,6 +58,10 @@ func newTestClient(t *testing.T) *AOCClient {
 
 func makeTestFs() (afero.Fs, error) {
 	fs := afero.NewMemMapFs()
+
+	fs.MkdirAll(filepath.Join("test_config", "inputs"), 0o755)
+
+	afero.WriteFile(fs, "elf", []byte("token: 'abcd1234efgh5678'"), 0o644)
 
 	dirs := []string{
 		// these are intentionally out of order to test sorting

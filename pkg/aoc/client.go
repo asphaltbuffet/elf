@@ -30,6 +30,7 @@ var (
 
 	baseExercisesDir = "exercises"
 	adventPuzzleURL  = "%d/day/%d"
+	adventInputURL   = "%d/day/%d/input"
 )
 
 type RunMode int

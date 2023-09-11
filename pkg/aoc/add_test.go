@@ -2,6 +2,7 @@ package aoc
 
 import (
 	_ "embed"
+	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
@@ -77,9 +78,9 @@ func TestAOCClient_AddExercise(t *testing.T) {
 			want: &exercise.Exercise{
 				Year:  2019,
 				Day:   10,
-				Title: "Test Day Ten",
-				Dir:   "10-testDayTen",
-				Path:  filepath.Join("test_exercises", "2019", "10-testDayTen"),
+				Title: "Test Day One",
+				Dir:   "10-testDayOne",
+				Path:  filepath.Join("test_exercises", "2019", "10-testDayOne"), // reusing 2015-1 test data, should fix this later
 			},
 			assertion: assert.NoError,
 		},
@@ -116,6 +117,15 @@ func TestAOCClient_AddExercise(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			teardownSubTest := setupSubTest(t)
 			defer teardownSubTest(t)
+
+			httpmock.RegisterResponder("GET",
+				`=~^/(201[5-9]|202[012])/day/([1-9]|1[0-9]|2[0-5])$`,
+				httpmock.NewStringResponder(http.StatusOK, respBody2015d1),
+			)
+			httpmock.RegisterResponder("GET",
+				`=~^/(201[5-9]|202[012])/day/([1-9]|1[0-9]|2[0-5])/input$`,
+				httpmock.NewStringResponder(http.StatusOK, inputDataString),
+			)
 
 			var err error
 
@@ -225,11 +235,30 @@ func Test_getCachedPuzzlePage(t *testing.T) {
 	tests := []struct {
 		name      string
 		args      args
-		want      string
+		golden    string
 		assertion assert.ErrorAssertionFunc
 		errText   string
 	}{
-		// TODO: add test cases.
+		{
+			name: "cached data exists",
+			args: args{
+				year: 2015,
+				day:  1,
+			},
+			golden:    "2015-1PuzzleData.golden",
+			assertion: assert.NoError,
+			errText:   "",
+		},
+		{
+			name: "no cached data",
+			args: args{
+				year: 2016,
+				day:  1,
+			},
+			golden:    "",
+			assertion: assert.Error,
+			errText:   "reading puzzle page:",
+		},
 	}
 
 	teardownTestCase := setupTestCase(t)
@@ -246,7 +275,8 @@ func Test_getCachedPuzzlePage(t *testing.T) {
 			if err != nil {
 				assert.ErrorContains(t, err, tt.errText)
 			} else {
-				assert.Equal(t, tt.want, got)
+				want := goldenValue(t, tt.golden)
+				assert.Equal(t, want, got)
 			}
 		})
 	}
@@ -269,13 +299,13 @@ func Test_addDay(t *testing.T) {
 		{
 			name:      "create year, day, and exercise files",
 			args:      args{year: 2017, day: 1},
-			responder: httpmock.NewStringResponder(200, respBody2015d1),
+			responder: httpmock.NewStringResponder(http.StatusOK, respBody2015d1),
 			want: &exercise.Exercise{
 				Year:  2017,
 				Day:   1,
-				Title: "Not Quite Lisp",
-				Dir:   "01-notQuiteLisp",
-				Path:  filepath.Join("test_exercises", "2017", "01-notQuiteLisp"),
+				Title: "Test Day One",
+				Dir:   "01-testDayOne",
+				Path:  filepath.Join("test_exercises", "2017", "01-testDayOne"),
 			},
 			assertion: assert.NoError,
 		},
@@ -320,6 +350,9 @@ func checkExerciseDirectoryFiles(t *testing.T, e *exercise.Exercise) {
 
 	_, err = fs.Stat(filepath.Join(e.Path, "README.md"))
 	assert.NoError(t, err)
+
+	_, err = fs.Stat(filepath.Join(e.Path, "input.txt"))
+	assert.NoError(t, err)
 }
 
 // checkExerciseDirectoryFiles verifies presense of info.json and README.md
@@ -333,4 +366,102 @@ func checkLanguageDirectoryFiles(t *testing.T, lang string, e *exercise.Exercise
 
 	_, err := fs.Stat(filepath.Join(e.Path, lang, implFiles[lang]))
 	assert.NoError(t, err)
+}
+
+func Test_downloadInput(t *testing.T) {
+	type args struct {
+		year int
+		day  int
+	}
+
+	tests := []struct {
+		name      string
+		args      args
+		responder httpmock.Responder
+		want      []byte
+		assertion assert.ErrorAssertionFunc
+		errText   string
+	}{
+		{
+			name: "good response",
+			args: args{
+				year: 2015,
+				day:  1,
+			},
+			responder: httpmock.NewStringResponder(http.StatusOK, inputDataString),
+			want:      inputDataBytes,
+			assertion: assert.NoError,
+		},
+	}
+
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			httpmock.RegisterResponder("GET",
+				`=~^/(201[5-9]|202[012])/day/([1-9]|1[0-9]|2[0-5])/input$`,
+				tt.responder)
+
+			got, err := downloadInput(tt.args.year, tt.args.day)
+
+			tt.assertion(t, err)
+			if err != nil {
+				assert.ErrorContains(t, err, tt.errText)
+			} else {
+				assert.Equal(t, tt.want, got)
+			}
+		})
+	}
+}
+
+func Test_getCachedInput(t *testing.T) {
+	type args struct {
+		year int
+		day  int
+	}
+
+	tests := []struct {
+		name      string
+		args      args
+		want      []byte
+		assertion assert.ErrorAssertionFunc
+		errText   string
+	}{
+		{
+			name: "input file exists",
+			args: args{
+				year: 2015,
+				day:  1,
+			},
+			want:      inputDataBytes,
+			assertion: assert.NoError,
+		},
+		{
+			name: "input file not present",
+			args: args{
+				year: 2015,
+				day:  2,
+			},
+			want:      nil,
+			assertion: assert.Error,
+			errText:   "reading cached input",
+		},
+	}
+
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := getCachedInput(tt.args.year, tt.args.day)
+
+			tt.assertion(t, err)
+			if err != nil {
+				assert.ErrorContains(t, err, tt.errText)
+			} else {
+				assert.Equal(t, tt.want, got)
+			}
+		})
+	}
 }
