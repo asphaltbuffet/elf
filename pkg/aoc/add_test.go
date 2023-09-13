@@ -130,7 +130,7 @@ func TestAOCClient_AddExercise(t *testing.T) {
 			var err error
 
 			// recreate for each test to keep testing fs clean
-			fs, err = makeTestFs()
+			appFs, err = makeTestFs()
 			require.NoError(t, err)
 
 			ac, err := GetClient()
@@ -345,13 +345,13 @@ func Test_addDay(t *testing.T) {
 func checkExerciseDirectoryFiles(t *testing.T, e *exercise.Exercise) {
 	t.Helper()
 
-	_, err := fs.Stat(filepath.Join(e.Path, "info.json"))
+	_, err := appFs.Stat(filepath.Join(e.Path, "info.json"))
 	assert.NoError(t, err)
 
-	_, err = fs.Stat(filepath.Join(e.Path, "README.md"))
+	_, err = appFs.Stat(filepath.Join(e.Path, "README.md"))
 	assert.NoError(t, err)
 
-	_, err = fs.Stat(filepath.Join(e.Path, "input.txt"))
+	_, err = appFs.Stat(filepath.Join(e.Path, "input.txt"))
 	assert.NoError(t, err)
 }
 
@@ -364,7 +364,7 @@ func checkLanguageDirectoryFiles(t *testing.T, lang string, e *exercise.Exercise
 		"py": "__init__.py",
 	}
 
-	_, err := fs.Stat(filepath.Join(e.Path, lang, implFiles[lang]))
+	_, err := appFs.Stat(filepath.Join(e.Path, lang, implFiles[lang]))
 	assert.NoError(t, err)
 }
 

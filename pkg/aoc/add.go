@@ -39,12 +39,12 @@ func (ac *AOCClient) AddExercise(year int, day int, language string) (*exercise.
 
 	implPath := filepath.Join(e.Path, language)
 
-	info, err := fs.Stat(implPath)
+	info, err := appFs.Stat(implPath)
 	if err == nil {
 		return e, fmt.Errorf("exercise already exists: %s", info.Name())
 	}
 
-	if err = fs.MkdirAll(filepath.Join(e.Path, language), 0o755); err != nil {
+	if err = appFs.MkdirAll(filepath.Join(e.Path, language), 0o755); err != nil {
 		return nil, fmt.Errorf("creating %s implementation directory: %w", language, err)
 	}
 
@@ -54,7 +54,7 @@ func (ac *AOCClient) AddExercise(year int, day int, language string) (*exercise.
 		return nil, fmt.Errorf("getting puzzle input: %w", err)
 	}
 
-	err = afero.WriteFile(fs, filepath.Join(e.Path, "input.txt"), inputFile, 0o600)
+	err = afero.WriteFile(appFs, filepath.Join(e.Path, "input.txt"), inputFile, 0o600)
 	if err != nil {
 		return nil, fmt.Errorf("writing input file: %w", err)
 	}
@@ -83,7 +83,7 @@ func (ac *AOCClient) AddExercise(year int, day int, language string) (*exercise.
 		return nil, fmt.Errorf("executing %s template: %w", language, err)
 	}
 
-	err = afero.WriteFile(fs, implPath, b.Bytes(), 0o600)
+	err = afero.WriteFile(appFs, implPath, b.Bytes(), 0o600)
 	if err != nil {
 		return nil, fmt.Errorf("writing %s implementaton file: %w", language, err)
 	}
@@ -97,7 +97,7 @@ func (ac *AOCClient) AddExercise(year int, day int, language string) (*exercise.
 		return nil, fmt.Errorf("executing info template: %w", err)
 	}
 
-	err = afero.WriteFile(fs, filepath.Join(e.Path, "info.json"), b.Bytes(), 0o600)
+	err = afero.WriteFile(appFs, filepath.Join(e.Path, "info.json"), b.Bytes(), 0o600)
 	if err != nil {
 		return nil, fmt.Errorf("writing info file: %w", err)
 	}
@@ -111,7 +111,7 @@ func (ac *AOCClient) AddExercise(year int, day int, language string) (*exercise.
 		return nil, fmt.Errorf("executing readme template: %w", err)
 	}
 
-	err = afero.WriteFile(fs, filepath.Join(e.Path, "README.md"), b.Bytes(), 0o600)
+	err = afero.WriteFile(appFs, filepath.Join(e.Path, "README.md"), b.Bytes(), 0o600)
 	if err != nil {
 		return nil, fmt.Errorf("writing info file: %w", err)
 	}
@@ -121,7 +121,7 @@ func (ac *AOCClient) AddExercise(year int, day int, language string) (*exercise.
 
 func addYear(year int) (string, error) {
 	yearPath := filepath.Join(baseExercisesDir, fmt.Sprintf("%d", year))
-	if err := fs.MkdirAll(yearPath, 0o755); err != nil {
+	if err := appFs.MkdirAll(yearPath, 0o755); err != nil {
 		return "", fmt.Errorf("creating year directory: %w", err)
 	}
 
@@ -151,7 +151,7 @@ func addDay(year int, day int) (*exercise.Exercise, error) {
 	exerciseDir := fmt.Sprintf("%02d-%s", day, strcase.ToLowerCamel(title))
 	exercisePath := filepath.Join(yearDir, exerciseDir)
 
-	if err := fs.MkdirAll(exercisePath, 0o755); err != nil {
+	if err := appFs.MkdirAll(exercisePath, 0o755); err != nil {
 		return nil, fmt.Errorf("creating day directory: %w", err)
 	}
 
@@ -192,7 +192,7 @@ func getPuzzlePage(year int, day int) ([]byte, error) {
 }
 
 func getCachedPuzzlePage(year int, day int) ([]byte, error) {
-	f, err := afero.ReadFile(fs, filepath.Join(cfgDir, "puzzle_pages", fmt.Sprintf("%d-%d.txt", year, day)))
+	f, err := afero.ReadFile(appFs, filepath.Join(cfgDir, "puzzle_pages", fmt.Sprintf("%d-%d.txt", year, day)))
 	if err != nil {
 		return nil, fmt.Errorf("reading puzzle page: %w", err)
 	}
@@ -204,7 +204,7 @@ var rClient = resty.New()
 
 func downloadPuzzlePage(year int, day int) ([]byte, error) {
 	// make sure we can write the cached file before we download it
-	err := fs.MkdirAll(filepath.Join(cfgDir, "puzzle_pages"), 0o755)
+	err := appFs.MkdirAll(filepath.Join(cfgDir, "puzzle_pages"), 0o755)
 	if err != nil {
 		return nil, fmt.Errorf("creating cache directory: %w", err)
 	}
@@ -223,13 +223,13 @@ func downloadPuzzlePage(year int, day int) ([]byte, error) {
 	matches := re.FindSubmatch(res.Body())
 	if len(matches) != 2 {
 		// save the raw output to a file for debugging/error reporting
-		err = fs.MkdirAll(filepath.Join(cfgDir, "logs"), 0o755)
+		err = appFs.MkdirAll(filepath.Join(cfgDir, "logs"), 0o755)
 		if err != nil {
 			return nil, fmt.Errorf("creating cache directory: %w", err)
 		}
 
 		dumpFile := filepath.Join(cfgDir, "puzzle_pages", fmt.Sprintf("%d-%d-ERROR.dump", year, day))
-		_ = afero.WriteFile(fs, dumpFile, res.Body(), 0o600)
+		_ = afero.WriteFile(appFs, dumpFile, res.Body(), 0o600)
 
 		return nil, fmt.Errorf("parsing puzzle page, raw output saved to: %s", dumpFile)
 	}
@@ -238,7 +238,7 @@ func downloadPuzzlePage(year int, day int) ([]byte, error) {
 
 	cacheFile := filepath.Join(cfgDir, "puzzle_pages", fmt.Sprintf("%d-%d.txt", year, day))
 
-	err = afero.WriteFile(fs, cacheFile, data, 0o644)
+	err = afero.WriteFile(appFs, cacheFile, data, 0o644)
 	if err != nil {
 		return nil, fmt.Errorf("caching puzzle page to %s: %w", cacheFile, err)
 	}
@@ -256,12 +256,6 @@ func downloadOrGetCachedInput(year int, day int) ([]byte, error) {
 }
 
 func downloadInput(year, day int) ([]byte, error) {
-	// make sure we can write the cached file before we download it
-	err := fs.MkdirAll(filepath.Join(cfgDir, "inputs"), 0o755)
-	if err != nil {
-		return nil, fmt.Errorf("creating inputs directory: %w", err)
-	}
-
 	res, err := rClient.R().Get(fmt.Sprintf(adventInputURL, year, day))
 	if err != nil {
 		return nil, fmt.Errorf("accessing input site: %w", err)
@@ -278,7 +272,7 @@ func downloadInput(year, day int) ([]byte, error) {
 
 	inputPath := filepath.Join(cfgDir, "inputs", fmt.Sprintf("%d-%d.txt", year, day))
 
-	err = afero.WriteFile(fs, inputPath, res.Body(), 0o600)
+	err = afero.WriteFile(appFs, inputPath, res.Body(), 0o600)
 	if err != nil {
 		return nil, fmt.Errorf("caching puzzle page to %s: %w", inputPath, err)
 	}
@@ -287,7 +281,7 @@ func downloadInput(year, day int) ([]byte, error) {
 }
 
 func getCachedInput(year, day int) ([]byte, error) {
-	f, err := afero.ReadFile(fs, filepath.Join(cfgDir, "inputs", fmt.Sprintf("%d-%d.txt", year, day)))
+	f, err := afero.ReadFile(appFs, filepath.Join(cfgDir, "inputs", fmt.Sprintf("%d-%d.txt", year, day)))
 	if err != nil {
 		return nil, fmt.Errorf("reading cached input: %w", err)
 	}
