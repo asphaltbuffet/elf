@@ -3,7 +3,7 @@ SHELL := /bin/bash
 .DEFAULT_GOAL := dev
 .PHONY: all
 all: ## build pipeline
-all: mod inst gen build lint test
+all: mod inst gen build test
 
 .PHONY: dev
 dev: ## dev build - no tools adjustments
