@@ -23,7 +23,8 @@ builds:
         goarch: arm
       
 archives:
-  - name_template: >-
+  - format: tgz
+    name_template: >-
       {{ .ProjectName }}_
       {{- title .Os }}_
       {{- if eq .Arch "amd64" }}x86-64
