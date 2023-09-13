@@ -42,6 +42,8 @@ archives:
         dst: docs
       - src: README*
         dst: docs
+      - src: LICENSE*
+        dst: docs
 checksum:
   name_template: 'checksums.txt'
 snapshot:
