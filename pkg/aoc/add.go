@@ -17,13 +17,8 @@ import (
 )
 
 func (ac *AOCClient) AddExercise(year int, day int, language string) (*exercise.Exercise, error) {
-	err := isValidYear(year)
-	// we don't care about the error, just that it's not a valid year
-	if err != nil {
-		_, err = addYear(year)
-		if err != nil {
-			return nil, fmt.Errorf("adding year: %w", err)
-		}
+	if err := checkOrAddYear(year); err != nil {
+		return nil, fmt.Errorf("checking/adding year: %w", err)
 	}
 
 	// check for day/exercise
@@ -43,6 +38,20 @@ func (ac *AOCClient) AddExercise(year int, day int, language string) (*exercise.
 	}
 
 	return e, nil
+}
+
+func checkOrAddYear(year int) error {
+	if _, ok := exercises[year]; ok {
+		return nil
+	}
+
+	yearPath := filepath.Join(baseExercisesDir, fmt.Sprintf("%d", year))
+
+	if err := appFs.MkdirAll(yearPath, 0o755); err != nil {
+		return fmt.Errorf("creating year directory: %w", err)
+	}
+
+	return nil
 }
 
 func addMissingFiles(e *exercise.Exercise, language string, year int, day int) error {
@@ -126,15 +135,6 @@ func addMissingFiles(e *exercise.Exercise, language string, year int, day int) e
 	}
 
 	return nil
-}
-
-func addYear(year int) (string, error) {
-	yearPath := filepath.Join(baseExercisesDir, fmt.Sprintf("%d", year))
-	if err := appFs.MkdirAll(yearPath, 0o755); err != nil {
-		return "", fmt.Errorf("creating year directory: %w", err)
-	}
-
-	return yearPath, nil
 }
 
 //go:embed templates/info.tmpl
