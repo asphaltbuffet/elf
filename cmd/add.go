@@ -11,8 +11,6 @@ import (
 var (
 	addCmd *cobra.Command
 
-	next bool
-
 	MaxYear int = getMaxYear()
 )
 
@@ -22,7 +20,7 @@ func GetAddCmd() *cobra.Command {
 	if addCmd == nil {
 		addCmd = &cobra.Command{
 			Use:               "add year day [language]",
-			ValidArgsFunction: validYearCompletionArgs,
+			Args:  cobra.NoArgs,
 			Args:              cobra.MatchAll(cobra.ExactArgs(1), validateAddInput),
 			Short:             "add a new exercise",
 			RunE: func(cmd *cobra.Command, args []string) error {
@@ -38,8 +36,6 @@ func GetAddCmd() *cobra.Command {
 			},
 		}
 	}
-
-	// addCmd.Flags().BoolVar(&next, "next", false, "add next exercise for the given year")
 
 	return addCmd
 }

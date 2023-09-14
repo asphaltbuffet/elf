@@ -19,7 +19,7 @@ func GetRunCmd() *cobra.Command {
 	if runCmd == nil {
 		runCmd = &cobra.Command{
 			Use:               "run year day language [flags]",
-			ValidArgsFunction: validYearCompletionArgs,
+			Args:  cobra.NoArgs,
 			Args:              cobra.MatchAll(cobra.ExactArgs(3), validateRunInput),
 			Short:             "run an exercise",
 			RunE: func(cmd *cobra.Command, args []string) error {
