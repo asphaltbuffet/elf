@@ -341,7 +341,7 @@ func Test_addDay(t *testing.T) {
 	}
 }
 
-// checkExerciseDirectoryFiles verifies presense of info.json and README.md
+// checkExerciseDirectoryFiles verifies presence of info.json and README.md
 func checkExerciseDirectoryFiles(t *testing.T, e *exercise.Exercise) {
 	t.Helper()
 
@@ -355,7 +355,7 @@ func checkExerciseDirectoryFiles(t *testing.T, e *exercise.Exercise) {
 	assert.NoError(t, err)
 }
 
-// checkExerciseDirectoryFiles verifies presense of info.json and README.md
+// checkLanguageDirectoryFiles verifies presence of exercise.go or __init__.py
 func checkLanguageDirectoryFiles(t *testing.T, lang string, e *exercise.Exercise) {
 	t.Helper()
 
