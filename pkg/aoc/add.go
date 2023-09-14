@@ -37,26 +37,35 @@ func (ac *AOCClient) AddExercise(year int, day int, language string) (*exercise.
 		}
 	}
 
+	err = addMissingFiles(e, language, year, day)
+	if err != nil {
+		return nil, fmt.Errorf("adding missing files: %w", err)
+	}
+
+	return e, nil
+}
+
+func addMissingFiles(e *exercise.Exercise, language string, year int, day int) error {
 	implPath := filepath.Join(e.Path, language)
 
 	info, err := appFs.Stat(implPath)
 	if err == nil {
-		return e, fmt.Errorf("exercise already exists: %s", info.Name())
+		return fmt.Errorf("exercise already exists: %s", info.Name())
 	}
 
 	if err = appFs.MkdirAll(filepath.Join(e.Path, language), 0o755); err != nil {
-		return nil, fmt.Errorf("creating %s implementation directory: %w", language, err)
+		return fmt.Errorf("creating %s implementation directory: %w", language, err)
 	}
 
 	// download puzzle input
 	inputFile, err := downloadOrGetCachedInput(year, day)
 	if err != nil {
-		return nil, fmt.Errorf("getting puzzle input: %w", err)
+		return fmt.Errorf("getting puzzle input: %w", err)
 	}
 
 	err = afero.WriteFile(appFs, filepath.Join(e.Path, "input.txt"), inputFile, 0o600)
 	if err != nil {
-		return nil, fmt.Errorf("writing input file: %w", err)
+		return fmt.Errorf("writing input file: %w", err)
 	}
 
 	var (
@@ -73,19 +82,19 @@ func (ac *AOCClient) AddExercise(year int, day int, language string) (*exercise.
 		t = template.Must(template.New("implementation").Parse(string(pyTemplate)))
 		implPath = filepath.Join(implPath, "__init__.py")
 	default:
-		return nil, fmt.Errorf("language not supported: %s", language)
+		return fmt.Errorf("language not supported: %s", language)
 	}
 
 	b = new(bytes.Buffer)
 
 	err = t.Execute(b, e)
 	if err != nil {
-		return nil, fmt.Errorf("executing %s template: %w", language, err)
+		return fmt.Errorf("executing %s template: %w", language, err)
 	}
 
 	err = afero.WriteFile(appFs, implPath, b.Bytes(), 0o600)
 	if err != nil {
-		return nil, fmt.Errorf("writing %s implementaton file: %w", language, err)
+		return fmt.Errorf("writing %s implementaton file: %w", language, err)
 	}
 
 	// add templated info.json
@@ -94,12 +103,12 @@ func (ac *AOCClient) AddExercise(year int, day int, language string) (*exercise.
 
 	err = t.Execute(b, e)
 	if err != nil {
-		return nil, fmt.Errorf("executing info template: %w", err)
+		return fmt.Errorf("executing info template: %w", err)
 	}
 
 	err = afero.WriteFile(appFs, filepath.Join(e.Path, "info.json"), b.Bytes(), 0o600)
 	if err != nil {
-		return nil, fmt.Errorf("writing info file: %w", err)
+		return fmt.Errorf("writing info file: %w", err)
 	}
 
 	// add templated README.md
@@ -108,15 +117,15 @@ func (ac *AOCClient) AddExercise(year int, day int, language string) (*exercise.
 
 	err = t.Execute(b, e)
 	if err != nil {
-		return nil, fmt.Errorf("executing readme template: %w", err)
+		return fmt.Errorf("executing readme template: %w", err)
 	}
 
 	err = afero.WriteFile(appFs, filepath.Join(e.Path, "README.md"), b.Bytes(), 0o600)
 	if err != nil {
-		return nil, fmt.Errorf("writing info file: %w", err)
+		return fmt.Errorf("writing info file: %w", err)
 	}
 
-	return e, nil
+	return nil
 }
 
 func addYear(year int) (string, error) {
