@@ -1,15 +1,10 @@
-# This is an example .goreleaser.yml file with some sensible defaults.
-# Make sure to check the documentation at https://goreleaser.com
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
 before:
   hooks:
-    # You may remove this if you don't use go modules.
-    - go mod tidy
-    # you may remove this if you don't need go generate
-    # - go generate ./...
     - go mod download
 builds:
   - ldflags:
-      - -s -w -X main.version={{.Summary}} -X main.date={{.Date}}
+      - -s -w -X main.version={{.Summary}} -X main.date={{.CommitDate}}
     env:
       - CGO_ENABLED=0
     goos:
@@ -17,22 +12,37 @@ builds:
       - windows
       - darwin
     goarch:
+      - "386"
       - amd64
+      - arm
       - arm64
+    ignore:
+      - goos: darwin
+        goarch: "386"
+      - goos: darwin
+        goarch: arm
+      
 archives:
-  - name_template: >-
+  - format: tgz
+    name_template: >-
       {{ .ProjectName }}_
       {{- title .Os }}_
-      {{- if eq .Arch "amd64" }}x86_64
+      {{- if eq .Arch "amd64" }}x86-64
+      {{- else if eq .Arch "arm" }}arm-v6
+      {{- else if eq .Arch "arm64" }}arm-v8
       {{- else if eq .Arch "386" }}i386
       {{- else }}{{ .Arch}}{{ end }}
     format_overrides:
       - goos: windows
         format: zip
     files:
+      - info:
+          mtime: "{{ .CommitDate }}"
       - src: CHANGELOG*
         dst: docs
       - src: README*
+        dst: docs
+      - src: LICENSE*
         dst: docs
 checksum:
   name_template: 'checksums.txt'

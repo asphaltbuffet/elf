@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"strconv"
 	"time"
 
@@ -11,8 +10,6 @@ import (
 var (
 	addCmd *cobra.Command
 
-	next bool
-
 	MaxYear int = getMaxYear()
 )
 
@@ -21,56 +18,18 @@ const MinYear int = 2015
 func GetAddCmd() *cobra.Command {
 	if addCmd == nil {
 		addCmd = &cobra.Command{
-			Use:               "add year day [language]",
-			ValidArgsFunction: validYearCompletionArgs,
-			Args:              cobra.MatchAll(cobra.ExactArgs(1), validateAddInput),
-			Short:             "add a new exercise",
+			Use:   "add [-y|--year] [-d|--day] [-L|--language]",
+			Args:  cobra.NoArgs,
+			Short: "add a new exercise",
 			RunE: func(cmd *cobra.Command, args []string) error {
-				return runAdd(args)
+				_, err := acc.AddExercise(yearArg, dayArg, langArg)
+
+				return err
 			},
 		}
 	}
 
-	addCmd.Flags().BoolVar(&next, "next", false, "add next exercise for the given year")
-	// addCmd.Flags().IntVarP(&day, "day", "d", 0, "exercise day to use")
-	// addCmd.Flags().StringVarP(&implementation, "language", "l", "", "language implementation to use")
-
 	return addCmd
-}
-
-func runAdd(args []string) error {
-	// figure out which exercise we want
-	// check if exercise directory already exists (create if not):
-	// check if required files exist (create if not):
-	//     info.json
-	//     input.txt
-	//     README.md
-	// check if implementation directory exists (create if not)
-	// check if implementation file(s) exist (create if not)
-	// report results
-	return nil
-}
-
-func validateAddInput(cmd *cobra.Command, args []string) error {
-	// we are assured there is only one arg [see cobra.ExactArgs(1)]
-	y, err := strconv.Atoi(args[0])
-	if err != nil {
-		return fmt.Errorf("invalid year: %s", args[0])
-	}
-
-	if y < MinYear {
-		return fmt.Errorf("year is out of range: %s < %d", args[0], MinYear)
-	}
-
-	if y > MaxYear {
-		return fmt.Errorf("year is out of range: %s > %d", args[0], MaxYear)
-	}
-
-	if !next && dayArg < 1 || dayArg > 25 {
-		return fmt.Errorf("day is out of range: %d: 1 <= day <= 25", dayArg)
-	}
-
-	return nil
 }
 
 func validYearCompletionArgs(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {

@@ -23,7 +23,7 @@ func TestAOCClient_New(t *testing.T) {
 	rClient = resty.New().SetBaseURL("https://test.fake")
 
 	baseExercisesDir = "test_exercises"
-	fs, err = makeTestFs()
+	appFs, err = makeTestFs()
 	require.NoError(t, err)
 
 	got, err := NewAOCClient()
@@ -43,13 +43,12 @@ func TestAOCClient_New(t *testing.T) {
 func newTestClient(t *testing.T) *AOCClient {
 	t.Helper()
 
-	var err error
-
-	baseExercisesDir = "test_exercises"
-	fs, err = makeTestFs()
+	tc, err := NewAOCClient()
 	require.NoError(t, err)
 
-	tc, err := NewAOCClient()
+	cfgDir = "test_config"
+	baseExercisesDir = "test_exercises"
+	appFs, err = makeTestFs()
 	require.NoError(t, err)
 
 	rClient = resty.New().SetBaseURL("https://test.fake")
@@ -57,9 +56,45 @@ func newTestClient(t *testing.T) *AOCClient {
 	return tc
 }
 
-func makeTestFs() (afero.Fs, error) {
-	fs := afero.NewMemMapFs()
+//go:embed testdata/2015-1PuzzleData.golden
+var PuzzleData201501 []byte
 
+func makeTestFs() (afero.Fs, error) {
+	appFs := afero.NewMemMapFs()
+
+	// set up input files
+	if err := appFs.MkdirAll(filepath.Join("test_config", "inputs"), 0o755); err != nil {
+		return nil, err
+	}
+
+	if err := afero.WriteFile(
+		appFs,
+		filepath.Join("test_config", "inputs", "2015-1.txt"),
+		[]byte("test input data\ntest input data"),
+		0o600,
+	); err != nil {
+		return nil, err
+	}
+
+	// set up cached puzzle files
+	if err := appFs.MkdirAll(filepath.Join("test_config", "puzzle_pages"), 0o755); err != nil {
+		return nil, err
+	}
+
+	if err := afero.WriteFile(appFs, filepath.Join("test_config", "puzzle_pages", "2015-1.txt"), PuzzleData201501, 0o600); err != nil {
+		return nil, err
+	}
+
+	if err := afero.WriteFile(appFs, filepath.Join("test_config", "puzzle_pages", "2019-10.txt"), PuzzleData201501, 0o600); err != nil {
+		return nil, err
+	}
+
+	// create app config
+	if err := afero.WriteFile(appFs, "elf", []byte("token: 'abcd1234efgh5678'"), 0o644); err != nil {
+		return nil, err
+	}
+
+	// create exercise dirs
 	dirs := []string{
 		// these are intentionally out of order to test sorting
 		filepath.Join("test_exercises", "2015", "01-testDayOne", "go"),
@@ -71,13 +106,14 @@ func makeTestFs() (afero.Fs, error) {
 	}
 
 	for _, d := range dirs {
-		if err := fs.MkdirAll(d, 0o755); err != nil {
+		if err := appFs.MkdirAll(d, 0o755); err != nil {
 			return nil, err
 		}
 	}
 
+	// create expected files in exercise structure
 	err := afero.WriteFile(
-		fs,
+		appFs,
 		filepath.Join("test_exercises", "2015", "01-testDayOne", "info.json"),
 		infoJSON,
 		0o644)
@@ -85,7 +121,7 @@ func makeTestFs() (afero.Fs, error) {
 		return nil, err
 	}
 
-	return fs, nil
+	return appFs, nil
 }
 
 func TestAOCClient_GetExercise(t *testing.T) {

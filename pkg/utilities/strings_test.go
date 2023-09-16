@@ -13,6 +13,7 @@ func TestCamelToTitle(t *testing.T) {
 		arg  string
 		want string
 	}{
+		{"test data", "testDayOne", "Test Day One"},
 		{"multiple words", "notQuiteLisp", "Not Quite Lisp"},
 		{"single-letter capitalized word", "allInASingleNight", "All In A Single Night"},
 		{"hyphen and apostrophe", "doesn'tHeHaveIntern-ElvesForThis", "Doesn't He Have Intern-Elves For This"},

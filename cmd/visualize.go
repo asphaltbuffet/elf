@@ -13,7 +13,7 @@ func GetVisualizeCmd() *cobra.Command {
 		visualizeCmd = &cobra.Command{
 			Use:               "visualize year day [language]",
 			ValidArgsFunction: validYearCompletionArgs,
-			Args:              cobra.MatchAll(cobra.ExactArgs(1), validateAddInput),
+			Args:              cobra.NoArgs,
 			Short:             "visualize an exercise",
 			RunE: func(cmd *cobra.Command, args []string) error {
 				return RunVisualizeCmd(args)

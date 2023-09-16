@@ -22,7 +22,7 @@ const adventBaseURL = "https://adventofcode.com"
 
 var (
 	client *AOCClient
-	fs     afero.Fs = afero.NewOsFs()
+	appFs  afero.Fs = afero.NewOsFs()
 	cfgDir string
 
 	exercises map[int]map[int]*exercise.Exercise
@@ -30,6 +30,7 @@ var (
 
 	baseExercisesDir = "exercises"
 	adventPuzzleURL  = "%d/day/%d"
+	adventInputURL   = "%d/day/%d/input"
 )
 
 type RunMode int
@@ -110,7 +111,7 @@ func discoverExercises() error {
 		return nil
 	}
 
-	err := afero.Walk(fs, baseExercisesDir, walkFn)
+	err := afero.Walk(appFs, baseExercisesDir, walkFn)
 	if err != nil {
 		return err
 	}
@@ -133,7 +134,7 @@ func discoverExercises() error {
 	return nil
 }
 
-func (ac *AOCClient) GetClient() (*AOCClient, error) {
+func GetClient() (*AOCClient, error) {
 	if client != nil {
 		return client, nil
 	}
@@ -190,7 +191,7 @@ func registerInfo(year int, day int, path string) error {
 		return fmt.Errorf("duplicate info: year=%d day=%d", year, day)
 	}
 
-	i, err := exercise.LoadExerciseInfo(fs, filepath.Join(path, "info.json"))
+	i, err := exercise.LoadExerciseInfo(appFs, filepath.Join(path, "info.json"))
 	if err != nil {
 		// skipping instead of error for now, not all exercises may have info.json files
 		// return fmt.Errorf("loading exercise info: %w", err)
@@ -273,7 +274,7 @@ func (ac *AOCClient) ImplementationDirs(year int, day int) (map[string]string, e
 	// check base + runner(key) for directories and add if found
 	for r := range ac.Runners {
 		path := filepath.Join(base, r)
-		if _, err := fs.Stat(path); err == nil {
+		if _, err := appFs.Stat(path); err == nil {
 			dirs[r] = path
 		}
 	}

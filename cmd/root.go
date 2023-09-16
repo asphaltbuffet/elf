@@ -18,7 +18,7 @@ var (
 
 var (
 	rootCmd *cobra.Command
-	yearArg string
+	yearArg int
 	dayArg  int
 	langArg string
 
@@ -45,8 +45,7 @@ func GetRootCommand() *cobra.Command {
 		}
 	}
 
-	// TODO: should these be flags or positional args?
-	rootCmd.PersistentFlags().StringVarP(&yearArg, "year", "y", "", "exercise year")
+	rootCmd.PersistentFlags().IntVarP(&yearArg, "year", "y", 0, "exercise year")
 	rootCmd.PersistentFlags().IntVarP(&dayArg, "day", "d", 0, "exercise day")
 	rootCmd.PersistentFlags().StringVarP(&langArg, "lang", "L", "", "implementation language")
 
@@ -61,6 +60,14 @@ func GetRootCommand() *cobra.Command {
 }
 
 func initialize(cmd *cobra.Command, args []string) error {
+	if !haveValidYearFlag() {
+		return fmt.Errorf("invalid year: %d", yearArg)
+	}
+
+	if !haveValidDayFlag() {
+		return fmt.Errorf("invalid day: %d", dayArg)
+	}
+
 	// TODO: check if the user has initialized the application, set up defaults/load config
 	var err error
 
@@ -70,4 +77,12 @@ func initialize(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
+}
+
+func haveValidYearFlag() bool {
+	return yearArg >= MinYear && yearArg <= MaxYear
+}
+
+func haveValidDayFlag() bool {
+	return dayArg >= 1 && dayArg <= 25
 }

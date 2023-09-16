@@ -123,7 +123,7 @@ func runBenchmark(selectedExercise *exercise.Exercise, input string, numberRuns 
 		Implementations: implData,
 		Day:             selectedExercise.Day,
 		Runs:            numberRuns,
-		Year:            yearArg,
+		Year:            fmt.Sprintf("%d", selectedExercise.Year),
 		Date:            time.Now().UTC(),
 		Dir:             selectedExercise.Path,
 	}
