@@ -2,71 +2,13 @@
 package cmd
 
 import (
-	"reflect"
 	"testing"
 
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
-
-func TestExecute(t *testing.T) {
-	type args struct {
-		v string
-		d string
-	}
-
-	tests := []struct {
-		name string
-		args args
-	}{
-		// TODO: Add test cases.
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			Execute(tt.args.v, tt.args.d)
-		})
-	}
-}
-
-func TestGetRootCommand(t *testing.T) {
-	tests := []struct {
-		name string
-		want *cobra.Command
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := GetRootCommand(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("GetRootCommand() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func Test_initialize(t *testing.T) {
-	type args struct {
-		cmd  *cobra.Command
-		args []string
-	}
-
-	tests := []struct {
-		name    string
-		args    args
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if err := initialize(tt.args.cmd, tt.args.args); (err != nil) != tt.wantErr {
-				t.Errorf("initialize() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
 
 func Test_haveValidYearFlag(t *testing.T) {
 	tests := []struct {
@@ -108,4 +50,48 @@ func Test_haveValidDayFlag(t *testing.T) {
 			tt.assertion(t, haveValidDayFlag())
 		})
 	}
+}
+
+func Test_initialize(t *testing.T) {
+	type args struct {
+		year int
+		day  int
+		lang string
+	}
+
+	tests := []struct {
+		name      string
+		args      args
+		assertion assert.ErrorAssertionFunc
+	}{
+		{"good", args{2015, 1, "go"}, assert.NoError},
+		{"bad year", args{0, 1, "go"}, assert.Error},
+		{"bad day", args{2015, 0, "go"}, assert.Error},
+		// {"bad lang", args{2015, 1, "bad"}, assert.Error},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fs := afero.NewMemMapFs()
+			require.NoError(t, fs.MkdirAll("testdata", 0o755))
+			yearArg, dayArg, langArg = tt.args.year, tt.args.day, tt.args.lang
+
+			tt.assertion(t, initialize(fs))
+		})
+	}
+}
+
+func TestGetRootCommand(t *testing.T) {
+	got := GetRootCommand()
+
+	checkCommand(t, got, "elf")
+}
+
+func checkCommand(t *testing.T, cmd *cobra.Command, name string) {
+	t.Helper()
+
+	assert.IsType(t, &cobra.Command{}, cmd)
+	assert.NotEmpty(t, cmd)
+	assert.NotNil(t, cmd)
+	assert.Equal(t, name, cmd.Name())
 }

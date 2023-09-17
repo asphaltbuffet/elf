@@ -40,11 +40,15 @@ func Execute(v, d string) {
 func GetRootCommand() *cobra.Command {
 	if rootCmd == nil {
 		rootCmd = &cobra.Command{
-			Use:               "elf [command]",
-			Version:           fmt.Sprintf("%s (%s) %s", version, commit, date),
-			Short:             "elf is an Advent of Code helper application",
-			Long:              `TODO: add a long description`,
-			PersistentPreRunE: initialize,
+			Use:     "elf [command]",
+			Version: fmt.Sprintf("%s (%s) %s", version, commit, date),
+			Short:   "elf is an Advent of Code helper application",
+			Long:    `TODO: add a long description`,
+			PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+				appFs = afero.NewOsFs()
+
+				return initialize(appFs)
+			},
 		}
 	}
 
@@ -62,8 +66,8 @@ func GetRootCommand() *cobra.Command {
 	return rootCmd
 }
 
-func initialize(cmd *cobra.Command, args []string) error {
-	appFs = afero.NewOsFs()
+func initialize(fs afero.Fs) error {
+	appFs = fs
 
 	if !haveValidYearFlag() {
 		return fmt.Errorf("invalid year: %d", yearArg)
@@ -76,6 +80,7 @@ func initialize(cmd *cobra.Command, args []string) error {
 	// TODO: check if the user has initialized the application, set up defaults/load config
 	var err error
 
+	// TODO: pass fs to NewAOCClient
 	acc, err = aoc.NewAOCClient()
 	if err != nil {
 		return fmt.Errorf("unable to start the application: %w", err)
