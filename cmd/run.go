@@ -22,11 +22,11 @@ func GetRunCmd() *cobra.Command {
 				return RunRunCmd(args)
 			},
 		}
-	}
 
-	runCmd.Flags().BoolVarP(&testOnly, "test-only", "t", false, "only run test inputs")
-	runCmd.Flags().BoolVarP(&noTest, "no-test", "x", false, "do not run test inputs")
-	runCmd.MarkFlagsMutuallyExclusive("test-only", "no-test")
+		runCmd.Flags().BoolVarP(&testOnly, "test-only", "t", false, "only run test inputs")
+		runCmd.Flags().BoolVarP(&noTest, "no-test", "x", false, "do not run test inputs")
+		runCmd.MarkFlagsMutuallyExclusive("test-only", "no-test")
+	}
 
 	return runCmd
 }
