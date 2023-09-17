@@ -69,7 +69,7 @@ func (ac *AOCClient) RunExercise(year int, day int, lang string) error {
 }
 
 func GetRunner(e *exercise.Exercise, lang string) (runners.Runner, error) {
-	impls, err := e.GetImplementations()
+	impls, err := e.GetImplementations(appFs)
 	if err != nil {
 		return nil, fmt.Errorf("getting implementations for exercise: %w", err)
 	}

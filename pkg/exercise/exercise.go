@@ -2,11 +2,12 @@ package exercise
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/spf13/afero"
 
 	"github.com/asphaltbuffet/elf/pkg/utilities"
 )
@@ -25,8 +26,8 @@ func (e *Exercise) String() string {
 
 var exerciseDirRegexp = regexp.MustCompile(`(?m)^(\d{2})-([a-zA-Z-,'"]+)$`)
 
-func ListingFromDir(sourceDir string) ([]*Exercise, error) {
-	dirEntries, err := os.ReadDir(sourceDir)
+func ListingFromDir(fs afero.Fs, sourceDir string) ([]*Exercise, error) {
+	dirEntries, err := afero.ReadDir(fs, sourceDir)
 	if err != nil {
 		return nil, err
 	}

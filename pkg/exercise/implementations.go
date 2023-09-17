@@ -2,20 +2,21 @@ package exercise
 
 import (
 	"fmt"
-	"os"
 	"strings"
+
+	"github.com/spf13/afero"
 
 	"github.com/asphaltbuffet/elf/pkg/runners"
 )
 
 // GetImplementations returns a list of available implementations for the exercise.
-func (e *Exercise) GetImplementations() ([]string, error) {
-	dirEntries, err := os.ReadDir(e.Dir)
+func (e *Exercise) GetImplementations(fs afero.Fs) ([]string, error) {
+	dirEntries, err := afero.ReadDir(fs, e.Path)
 	if err != nil {
-		return nil, fmt.Errorf("getting implementations for exercise: %w", err)
+		return nil, fmt.Errorf("checking %s: %w", e.Path, err)
 	}
 
-	var impls []string
+	impls := []string{}
 
 	for _, entry := range dirEntries {
 		if !entry.IsDir() {
