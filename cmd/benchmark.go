@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/greenpau/go-calculator"
 	"github.com/schollz/progressbar/v3"
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
 	"github.com/asphaltbuffet/elf/pkg/exercise"
@@ -54,7 +54,8 @@ func GetBenchmarkCmd() *cobra.Command {
 			RunE: func(cmd *cobra.Command, args []string) error {
 				e, _ := acc.GetExercise(2015, dayArg)
 				i, _ := acc.GetInput(2015, dayArg)
-				return runBenchmark(e, i, iterations)
+
+				return runBenchmark(appFs, e, i, iterations)
 			},
 		}
 	}
@@ -85,8 +86,8 @@ func (e *ImplementationError) Error() string {
 	return fmt.Sprintf("%s run failed", e.Impl)
 }
 
-func runBenchmark(selectedExercise *exercise.Exercise, input string, numberRuns int) error {
-	implementations, err := selectedExercise.GetImplementations()
+func runBenchmark(fs afero.Fs, selectedExercise *exercise.Exercise, input string, numberRuns int) error {
+	implementations, err := selectedExercise.GetImplementations(fs)
 	if err != nil {
 		return err
 	}
@@ -137,7 +138,7 @@ func runBenchmark(selectedExercise *exercise.Exercise, input string, numberRuns 
 		return err
 	}
 
-	return os.WriteFile(fpath, jBytes, 0o600)
+	return afero.WriteFile(fs, fpath, jBytes, 0o600)
 }
 
 func benchmarkImplementation(implementation string, dir string, inputString string, numberRuns int) (*ImplementationData, error) {

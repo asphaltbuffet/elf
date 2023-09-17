@@ -4,6 +4,7 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
 	"github.com/asphaltbuffet/elf/pkg/aoc"
@@ -18,11 +19,13 @@ var (
 
 var (
 	rootCmd *cobra.Command
+
 	yearArg int
 	dayArg  int
 	langArg string
 
-	acc *aoc.AOCClient
+	acc   *aoc.AOCClient
+	appFs afero.Fs
 )
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -60,6 +63,8 @@ func GetRootCommand() *cobra.Command {
 }
 
 func initialize(cmd *cobra.Command, args []string) error {
+	appFs = afero.NewOsFs()
+
 	if !haveValidYearFlag() {
 		return fmt.Errorf("invalid year: %d", yearArg)
 	}
