@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/spf13/afero"
-	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -13,9 +12,7 @@ import (
 func TestGetGraphCmd(t *testing.T) {
 	got := GetGraphCmd()
 
-	assert.NotNil(t, got)
-	assert.IsType(t, &cobra.Command{}, got)
-	assert.Equal(t, "graph", got.Name())
+	checkCommand(t, got, "graph")
 }
 
 func Test_readBenchmarkFile(t *testing.T) {

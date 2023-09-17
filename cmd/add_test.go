@@ -4,16 +4,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestGetAddCmd(t *testing.T) {
 	got := GetAddCmd()
 
-	assert.NotNil(t, got)
-	assert.IsType(t, &cobra.Command{}, got)
-	assert.Equal(t, "add", got.Name())
+	checkCommand(t, got, "add")
 }
 
 func Test_validYearCompletionArgs(t *testing.T) {
