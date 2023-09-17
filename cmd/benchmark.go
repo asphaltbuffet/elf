@@ -52,29 +52,29 @@ func GetBenchmarkCmd() *cobra.Command {
 			Aliases: []string{"bench", "b"},
 			Short:   "generate benchmark data for an exercise",
 			RunE: func(cmd *cobra.Command, args []string) error {
-				e, _ := acc.GetExercise(2015, dayArg)
-				i, _ := acc.GetInput(2015, dayArg)
+				e, _ := acc.GetExercise(yearArg, dayArg)
+				i, _ := acc.GetInput(yearArg, dayArg)
 
 				return runBenchmark(appFs, e, i, iterations)
 			},
 		}
-	}
 
-	benchmarkCmd.Flags().IntVarP(&iterations, "number", "n", 30, "number of benchmark iterations to run")
-	// TODO: add flag to compare to previous benchmark data
-	// TODO: add flag to compare to other implementations
-	// TODO: add flag to skip writing to file
-	// TODO: add flag to print calculated results to stdout
+		// TODO: add flag to compare to previous benchmark data
+		// TODO: add flag to compare to other implementations
+		// TODO: add flag to skip writing to file
+		// TODO: add flag to print calculated results to stdout
+		benchmarkCmd.Flags().IntVarP(&iterations, "number", "n", 30, "number of benchmark iterations to run")
+	}
 
 	return benchmarkCmd
 }
 
-func makeBenchmarkID(part runners.Part, number int) string {
-	if number == -1 {
+func makeBenchmarkID(part runners.Part, subPart int) string {
+	if subPart == -1 {
 		return fmt.Sprintf("benchmark.part.%d", part)
 	}
 
-	return fmt.Sprintf("benchmark.part.%d.%d", part, number)
+	return fmt.Sprintf("benchmark.part.%d.%d", part, subPart)
 }
 
 // ImplementationError indicates that the implementation task failed.
