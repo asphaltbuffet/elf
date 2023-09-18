@@ -34,6 +34,7 @@ type customWriter struct {
 	mux     sync.Mutex
 }
 
+// Write is a custom writer for the command output.
 func (c *customWriter) Write(b []byte) (int, error) {
 	var n int
 
