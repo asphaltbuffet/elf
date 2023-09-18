@@ -37,12 +37,6 @@ jobs:
           name: code-coverage-report
           path: bin
 
-      - name: Archive linter results
-        uses: actions/upload-artifact@v3
-        with:
-          name: golangci-lint-report
-          path: bin
-
       - name: Upload code coverage results to Codecov
         uses: codecov/codecov-action@v3
         env:
@@ -65,12 +59,6 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: code-coverage-report
-          path: bin
-
-      - name: Download linting results
-        uses: actions/download-artifact@v3
-        with:
-          name: golangci-lint-report
           path: bin
 
       - name: Analyze with SonarCloud
