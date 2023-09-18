@@ -12,6 +12,7 @@ jobs:
     name: lint
     runs-on: ubuntu-latest
     steps:
+      - run: mkdir -p bin
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v4
         with:

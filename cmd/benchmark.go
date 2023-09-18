@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/greenpau/go-calculator"
 	"github.com/schollz/progressbar/v3"
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
 	"github.com/asphaltbuffet/elf/pkg/exercise"
@@ -52,28 +52,29 @@ func GetBenchmarkCmd() *cobra.Command {
 			Aliases: []string{"bench", "b"},
 			Short:   "generate benchmark data for an exercise",
 			RunE: func(cmd *cobra.Command, args []string) error {
-				e, _ := acc.GetExercise(2015, dayArg)
-				i, _ := acc.GetInput(2015, dayArg)
-				return runBenchmark(e, i, iterations)
+				e, _ := acc.GetExercise(yearArg, dayArg)
+				i, _ := acc.GetInput(yearArg, dayArg)
+
+				return runBenchmark(appFs, e, i, iterations)
 			},
 		}
-	}
 
-	benchmarkCmd.Flags().IntVarP(&iterations, "number", "n", 30, "number of benchmark iterations to run")
-	// TODO: add flag to compare to previous benchmark data
-	// TODO: add flag to compare to other implementations
-	// TODO: add flag to skip writing to file
-	// TODO: add flag to print calculated results to stdout
+		// TODO: add flag to compare to previous benchmark data
+		// TODO: add flag to compare to other implementations
+		// TODO: add flag to skip writing to file
+		// TODO: add flag to print calculated results to stdout
+		benchmarkCmd.Flags().IntVarP(&iterations, "number", "n", 30, "number of benchmark iterations to run")
+	}
 
 	return benchmarkCmd
 }
 
-func makeBenchmarkID(part runners.Part, number int) string {
-	if number == -1 {
+func makeBenchmarkID(part runners.Part, subPart int) string {
+	if subPart == -1 {
 		return fmt.Sprintf("benchmark.part.%d", part)
 	}
 
-	return fmt.Sprintf("benchmark.part.%d.%d", part, number)
+	return fmt.Sprintf("benchmark.part.%d.%d", part, subPart)
 }
 
 // ImplementationError indicates that the implementation task failed.
@@ -85,8 +86,8 @@ func (e *ImplementationError) Error() string {
 	return fmt.Sprintf("%s run failed", e.Impl)
 }
 
-func runBenchmark(selectedExercise *exercise.Exercise, input string, numberRuns int) error {
-	implementations, err := selectedExercise.GetImplementations()
+func runBenchmark(fs afero.Fs, selectedExercise *exercise.Exercise, input string, numberRuns int) error {
+	implementations, err := selectedExercise.GetImplementations(fs)
 	if err != nil {
 		return err
 	}
@@ -137,7 +138,7 @@ func runBenchmark(selectedExercise *exercise.Exercise, input string, numberRuns 
 		return err
 	}
 
-	return os.WriteFile(fpath, jBytes, 0o600)
+	return afero.WriteFile(fs, fpath, jBytes, 0o600)
 }
 
 func benchmarkImplementation(implementation string, dir string, inputString string, numberRuns int) (*ImplementationData, error) {

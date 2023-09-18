@@ -6,10 +6,10 @@ import (
 	"image/color"
 	"io/fs"
 	"math"
-	"os"
 	"path/filepath"
 
 	"github.com/dustin/go-humanize"
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"gonum.org/v1/plot"
 	"gonum.org/v1/plot/plotter"
@@ -43,9 +43,9 @@ func GetGraphCmd() *cobra.Command {
 				return runGraph(args[0])
 			},
 		}
-	}
 
-	graphCmd.Flags().StringVarP(&outfile, "output", "o", "run-times.png", "file to write output to")
+		graphCmd.Flags().StringVarP(&outfile, "output", "o", "run-times.png", "file to write output to")
+	}
 
 	return graphCmd
 }
@@ -84,7 +84,7 @@ func runGraph(year string) error {
 	for i, bf := range files {
 		var data *BenchmarkData
 
-		data, err = readBenchmarkFile(bf)
+		data, err = readBenchmarkFile(appFs, bf)
 		if err != nil {
 			return fmt.Errorf("reading benchmark file: %w", err)
 		}
@@ -93,7 +93,7 @@ func runGraph(year string) error {
 		benchData[i] = data
 	}
 
-	err = generateGraph(benchData, outfile)
+	err = generateGraph(appFs, benchData, outfile)
 	if err != nil {
 		return fmt.Errorf("generating graph: %w", err)
 	}
@@ -103,10 +103,10 @@ func runGraph(year string) error {
 	return nil
 }
 
-func readBenchmarkFile(path string) (*BenchmarkData, error) {
+func readBenchmarkFile(fs afero.Fs, path string) (*BenchmarkData, error) {
 	var bd BenchmarkData
 
-	f, err := os.ReadFile(filepath.Clean(path))
+	f, err := afero.ReadFile(fs, filepath.Clean(path))
 	if err != nil {
 		return nil, fmt.Errorf("reading file: %w", err)
 	}
@@ -161,7 +161,7 @@ func mapBenchmarkData(benchData []*BenchmarkData) map[string]map[int]plotter.XYs
 	return dataMap
 }
 
-func generateGraph(benchData []*BenchmarkData, outfile string) error {
+func generateGraph(fs afero.Fs, benchData []*BenchmarkData, outfile string) error {
 	plots, err := NewBenchmarkPlots(benchData[0].Year)
 	if err != nil {
 		return fmt.Errorf("creating plots: %w", err)
@@ -227,7 +227,7 @@ func generateGraph(benchData []*BenchmarkData, outfile string) error {
 	path := filepath.Join("exercises", benchData[0].Year, outfile)
 	fmt.Printf("writing graph to %s\n", path)
 
-	w, err := os.Create(filepath.Clean(path))
+	w, err := fs.Create(filepath.Clean(path))
 	if err != nil {
 		return fmt.Errorf("creating image file: %w", err)
 	}

@@ -4,6 +4,7 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
 	"github.com/asphaltbuffet/elf/pkg/aoc"
@@ -18,11 +19,13 @@ var (
 
 var (
 	rootCmd *cobra.Command
+
 	yearArg int
 	dayArg  int
 	langArg string
 
-	acc *aoc.AOCClient
+	acc   *aoc.AOCClient
+	appFs afero.Fs
 )
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -37,11 +40,15 @@ func Execute(v, d string) {
 func GetRootCommand() *cobra.Command {
 	if rootCmd == nil {
 		rootCmd = &cobra.Command{
-			Use:               "elf [command]",
-			Version:           fmt.Sprintf("%s (%s) %s", version, commit, date),
-			Short:             "elf is an Advent of Code helper application",
-			Long:              `TODO: add a long description`,
-			PersistentPreRunE: initialize,
+			Use:     "elf [command]",
+			Version: fmt.Sprintf("%s (%s) %s", version, commit, date),
+			Short:   "elf is an Advent of Code helper application",
+			Long:    `TODO: add a long description`,
+			PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+				appFs = afero.NewOsFs()
+
+				return initialize(appFs)
+			},
 		}
 	}
 
@@ -59,7 +66,9 @@ func GetRootCommand() *cobra.Command {
 	return rootCmd
 }
 
-func initialize(cmd *cobra.Command, args []string) error {
+func initialize(fs afero.Fs) error {
+	appFs = fs
+
 	if !haveValidYearFlag() {
 		return fmt.Errorf("invalid year: %d", yearArg)
 	}
@@ -71,6 +80,7 @@ func initialize(cmd *cobra.Command, args []string) error {
 	// TODO: check if the user has initialized the application, set up defaults/load config
 	var err error
 
+	// TODO: pass fs to NewAOCClient
 	acc, err = aoc.NewAOCClient()
 	if err != nil {
 		return fmt.Errorf("unable to start the application: %w", err)
