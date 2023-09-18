@@ -2,6 +2,8 @@ package aoc
 
 import (
 	"fmt"
+	"io"
+	"os"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -111,23 +113,23 @@ func runMainTasks(runner runners.Runner, input string) error {
 			return err
 		}
 
-		handleMainResult(result)
+		handleMainResult(os.Stdout, result)
 	}
 
 	return nil
 }
 
-func handleMainResult(r *runners.Result) {
+func handleMainResult(w io.Writer, r *runners.Result) {
 	part := parseMainID(r.TaskID)
 
-	bold.Print("Part ")             //nolint:errcheck,gosec // printing to stdout
-	boldYellow.Printf("%d: ", part) //nolint:errcheck,gosec // printing to stdout
+	bold.Fprint(w, "Part ")             //nolint:errcheck,gosec // printing to stdout
+	boldYellow.Fprintf(w, "%d: ", part) //nolint:errcheck,gosec // printing to stdout
 
 	if !r.Ok {
-		fmt.Print(incompleteLabel)
-		dimmed.Printf(" saying %q\n", r.Output) //nolint:errcheck,gosec // printing to stdout
+		fmt.Fprint(w, incompleteLabel)
+		dimmed.Fprintf(w, " saying %q\n", r.Output) //nolint:errcheck,gosec // printing to stdout
 	} else {
-		brightBlue.Print(r.Output)                                           //nolint:errcheck,gosec // printing to stdout
-		dimmed.Printf(" in %s\n", humanize.SIWithDigits(r.Duration, 1, "s")) //nolint:errcheck,gosec // printing to stdout
+		brightBlue.Fprint(w, r.Output)                                           //nolint:errcheck,gosec // printing to stdout
+		dimmed.Fprintf(w, " in %s\n", humanize.SIWithDigits(r.Duration, 1, "s")) //nolint:errcheck,gosec // printing to stdout
 	}
 }
