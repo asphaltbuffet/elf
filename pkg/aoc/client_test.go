@@ -60,7 +60,7 @@ func newTestClient(t *testing.T) *AOCClient {
 var PuzzleData201501 []byte
 
 func makeTestFs() (afero.Fs, error) {
-	appFs := afero.NewMemMapFs()
+	appFs = afero.NewMemMapFs()
 
 	// set up input files
 	if err := appFs.MkdirAll(filepath.Join("test_config", "inputs"), 0o755); err != nil {
