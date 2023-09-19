@@ -1,3 +1,3 @@
-// Package runners contains the interface and implementations for running the
-// solutions.
+// Package runners provides abstractions and utilities for working with different runner
+// implementations.
 package runners
