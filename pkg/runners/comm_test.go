@@ -1,7 +1,9 @@
 package runners
 
 import (
+	"bytes"
 	"fmt"
+	"os/exec"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -86,6 +88,34 @@ func Test_customWriter_GetEntry(t *testing.T) {
 			} else {
 				assert.Equal(t, tt.want, got, fmt.Sprintf("expected %q, got %q", tt.want, got))
 				assert.NotContains(t, c.entries, got)
+			}
+		})
+	}
+}
+
+func TestSetupBuffers(t *testing.T) {
+	tests := []struct {
+		name      string
+		assertion assert.ErrorAssertionFunc
+	}{
+		{
+			name:      "Set buffers correctly",
+			assertion: assert.NoError,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &exec.Cmd{}
+
+			got, err := setupBuffers(c)
+
+			tt.assertion(t, err)
+
+			if err == nil {
+				assert.IsType(t, &customWriter{}, c.Stdout)
+				assert.IsType(t, &bytes.Buffer{}, c.Stderr)
+				assert.NotNil(t, got)
 			}
 		})
 	}
