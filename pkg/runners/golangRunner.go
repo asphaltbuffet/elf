@@ -18,7 +18,7 @@ const (
 	golangInstallation              = "go"
 	golangWrapperFilename           = "runtime-wrapper.go"
 	golangWrapperExecutableFilename = "runtime-wrapper"
-	golangBuildpathBase             = "github.com/asphaltbuffetelfexercises/%s/%s"
+	golangBuildpathBase             = "github.com/asphaltbuffet/elf/exercises/%s/%s"
 )
 
 type golangRunner struct {
@@ -52,7 +52,8 @@ func (g *golangRunner) Start() error {
 		golangBuildpathBase,
 		filepath.Base(filepath.Dir(g.dir)),
 		filepath.Base(g.dir))
-	importPath := buildPath + "/go"
+
+	importPath := filepath.Join(buildPath, "go")
 
 	// generate wrapper code from template
 	var wrapperContent []byte
