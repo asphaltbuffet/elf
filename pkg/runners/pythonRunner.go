@@ -3,6 +3,7 @@ package runners
 import (
 	_ "embed"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -104,13 +105,19 @@ func (p *pythonRunner) Stop() error {
 }
 
 func (p *pythonRunner) Cleanup() error {
-	if p.wrapperFilepath == "" {
+	err := os.Remove(p.wrapperFilepath)
+
+	switch {
+	case errors.Is(err, os.ErrNotExist):
+		// already gone, maybe log this?
+		fallthrough
+
+	case err == nil:
 		return nil
+
+	default:
+		return err
 	}
-
-	_ = os.Remove(p.wrapperFilepath)
-
-	return nil
 }
 
 func (p *pythonRunner) Run(task *Task) (*Result, error) {
