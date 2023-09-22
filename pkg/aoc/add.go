@@ -57,9 +57,9 @@ func checkOrAddYear(year int) error {
 func addMissingFiles(e *exercise.Exercise, language string, year int, day int) error {
 	implPath := filepath.Join(e.Path, language)
 
-	info, err := appFs.Stat(implPath)
+	fi, err := appFs.Stat(implPath)
 	if err == nil {
-		return fmt.Errorf("exercise already exists: %s", info.Name())
+		return fmt.Errorf("exercise already exists: %s", fi.Name())
 	}
 
 	if err = appFs.MkdirAll(filepath.Join(e.Path, language), 0o755); err != nil {
