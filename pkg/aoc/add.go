@@ -47,7 +47,7 @@ func checkOrAddYear(year int) error {
 
 	yearPath := filepath.Join(baseExercisesDir, fmt.Sprintf("%d", year))
 
-	if err := appFs.MkdirAll(yearPath, 0o755); err != nil {
+	if err := appFs.MkdirAll(yearPath, 0o750); err != nil {
 		return fmt.Errorf("creating year directory: %w", err)
 	}
 
@@ -62,7 +62,7 @@ func addMissingFiles(e *exercise.Exercise, language string, year int, day int) e
 		return fmt.Errorf("exercise already exists: %s", fi.Name())
 	}
 
-	if err = appFs.MkdirAll(filepath.Join(e.Path, language), 0o755); err != nil {
+	if err = appFs.MkdirAll(filepath.Join(e.Path, language), 0o750); err != nil {
 		return fmt.Errorf("creating %s implementation directory: %w", language, err)
 	}
 
@@ -160,7 +160,7 @@ func addDay(year int, day int) (*exercise.Exercise, error) {
 	exerciseDir := fmt.Sprintf("%02d-%s", day, strcase.ToLowerCamel(title))
 	exercisePath := filepath.Join(yearDir, exerciseDir)
 
-	if err := appFs.MkdirAll(exercisePath, 0o755); err != nil {
+	if err := appFs.MkdirAll(exercisePath, 0o750); err != nil {
 		return nil, fmt.Errorf("creating day directory: %w", err)
 	}
 
@@ -213,7 +213,7 @@ var rClient = resty.New()
 
 func downloadPuzzlePage(year int, day int) ([]byte, error) {
 	// make sure we can write the cached file before we download it
-	err := appFs.MkdirAll(filepath.Join(cfgDir, "puzzle_pages"), 0o755)
+	err := appFs.MkdirAll(filepath.Join(cfgDir, "puzzle_pages"), 0o750)
 	if err != nil {
 		return nil, fmt.Errorf("creating cache directory: %w", err)
 	}
@@ -232,7 +232,7 @@ func downloadPuzzlePage(year int, day int) ([]byte, error) {
 	matches := re.FindSubmatch(res.Body())
 	if len(matches) != 2 {
 		// save the raw output to a file for debugging/error reporting
-		err = appFs.MkdirAll(filepath.Join(cfgDir, "logs"), 0o755)
+		err = appFs.MkdirAll(filepath.Join(cfgDir, "logs"), 0o750)
 		if err != nil {
 			return nil, fmt.Errorf("creating cache directory: %w", err)
 		}
@@ -274,7 +274,7 @@ func downloadInput(year, day int) ([]byte, error) {
 		return nil, fmt.Errorf("getting input data: %s", res.Status())
 	}
 
-	err = appFs.MkdirAll(filepath.Join(cfgDir, "inputs"), 0o755)
+	err = appFs.MkdirAll(filepath.Join(cfgDir, "inputs"), 0o750)
 	if err != nil {
 		return nil, fmt.Errorf("creating inputs directory: %w", err)
 	}

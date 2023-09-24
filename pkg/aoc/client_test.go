@@ -63,7 +63,7 @@ func makeTestFs() (afero.Fs, error) {
 	appFs = afero.NewMemMapFs()
 
 	// set up input files
-	if err := appFs.MkdirAll(filepath.Join("test_config", "inputs"), 0o755); err != nil {
+	if err := appFs.MkdirAll(filepath.Join("test_config", "inputs"), 0o750); err != nil {
 		return nil, err
 	}
 
@@ -77,7 +77,7 @@ func makeTestFs() (afero.Fs, error) {
 	}
 
 	// set up cached puzzle files
-	if err := appFs.MkdirAll(filepath.Join("test_config", "puzzle_pages"), 0o755); err != nil {
+	if err := appFs.MkdirAll(filepath.Join("test_config", "puzzle_pages"), 0o750); err != nil {
 		return nil, err
 	}
 
@@ -106,7 +106,7 @@ func makeTestFs() (afero.Fs, error) {
 	}
 
 	for _, d := range dirs {
-		if err := appFs.MkdirAll(d, 0o755); err != nil {
+		if err := appFs.MkdirAll(d, 0o750); err != nil {
 			return nil, err
 		}
 	}

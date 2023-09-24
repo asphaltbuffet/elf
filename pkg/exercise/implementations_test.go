@@ -151,15 +151,15 @@ func setupTestCase(t *testing.T) func(t *testing.T) {
 	t.Helper()
 
 	testFs = afero.NewMemMapFs()
-	require.NoError(t, testFs.MkdirAll(filepath.Join("testdata", "2015", "01-testDayOne", "go"), 0o755))
+	require.NoError(t, testFs.MkdirAll(filepath.Join("testdata", "2015", "01-testDayOne", "go"), 0o750))
 	// require.NoError(t, afero.WriteFile(testFs, filepath.Join("testdata", "2015", "01-testDayOne", "go", "exercise.go"), []byte("test go impl"), 0o600))
-	require.NoError(t, testFs.MkdirAll(filepath.Join("testdata", "2015", "01-testDayOne", "py"), 0o755))
-	require.NoError(t, testFs.MkdirAll(filepath.Join("testdata", "2016", "01-testDayOne", "go"), 0o755))
-	require.NoError(t, testFs.MkdirAll(filepath.Join("testdata", "2017", "01-testDayOne"), 0o755))
-	require.NoError(t, testFs.MkdirAll(filepath.Join("testdata", "2018"), 0o755))
-	require.NoError(t, testFs.MkdirAll(filepath.Join("testdata", "2020", "01-testDayOne", "fake"), 0o755))
-	require.NoError(t, testFs.MkdirAll(filepath.Join("testdata", "2021", "01-testDayOne", "py"), 0o755))
-	require.NoError(t, testFs.MkdirAll(filepath.Join("testdata", "2021", "01-testDayOne", "fake"), 0o755))
+	require.NoError(t, testFs.MkdirAll(filepath.Join("testdata", "2015", "01-testDayOne", "py"), 0o750))
+	require.NoError(t, testFs.MkdirAll(filepath.Join("testdata", "2016", "01-testDayOne", "go"), 0o750))
+	require.NoError(t, testFs.MkdirAll(filepath.Join("testdata", "2017", "01-testDayOne"), 0o750))
+	require.NoError(t, testFs.MkdirAll(filepath.Join("testdata", "2018"), 0o750))
+	require.NoError(t, testFs.MkdirAll(filepath.Join("testdata", "2020", "01-testDayOne", "fake"), 0o750))
+	require.NoError(t, testFs.MkdirAll(filepath.Join("testdata", "2021", "01-testDayOne", "py"), 0o750))
+	require.NoError(t, testFs.MkdirAll(filepath.Join("testdata", "2021", "01-testDayOne", "fake"), 0o750))
 
 	return func(t *testing.T) {
 		t.Helper()
