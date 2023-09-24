@@ -75,3 +75,4 @@ issues:
 
 output:
   format: "checkstyle:bin/golangci-lint-report.out,colored-line-number:stdout"
+  path-prefix: bin

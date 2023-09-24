@@ -189,7 +189,7 @@ func TestGetRunner(t *testing.T) {
 	}
 
 	appFs = afero.NewMemMapFs()
-	require.NoError(t, appFs.MkdirAll(filepath.Join("testdata", "2015", "01-testDayOne", "go"), 0o755))
+	require.NoError(t, appFs.MkdirAll(filepath.Join("testdata", "2015", "01-testDayOne", "go"), 0o750))
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

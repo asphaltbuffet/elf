@@ -35,7 +35,7 @@ func (ac *AOCClient) RunExercise(year int, day int, lang string) error {
 		_ = runner.Cleanup()
 	}()
 
-	info, err := ac.GetExerciseInfo(year, day)
+	exInfo, err := ac.GetExerciseInfo(year, day)
 	if err != nil {
 		return fmt.Errorf("getting exercise info: %w", err)
 	}
@@ -51,7 +51,7 @@ func (ac *AOCClient) RunExercise(year int, day int, lang string) error {
 	fmt.Print("Running...\n\n")
 
 	if ac.RunMode == RunModeTestOnly || ac.RunMode == RunModeAll {
-		if runTestErr := runTests(runner, info); runTestErr != nil {
+		if runTestErr := runTests(runner, exInfo); runTestErr != nil {
 			return runTestErr
 		}
 	}

@@ -73,7 +73,7 @@ func Test_initialize(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fs := afero.NewMemMapFs()
-			require.NoError(t, fs.MkdirAll("testdata", 0o755))
+			require.NoError(t, fs.MkdirAll("testdata", 0o750))
 			yearArg, dayArg, langArg = tt.args.year, tt.args.day, tt.args.lang
 
 			tt.assertion(t, initialize(fs))
