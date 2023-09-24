@@ -121,15 +121,17 @@ func (g *golangRunner) Stop() error {
 }
 
 func (g *golangRunner) Cleanup() error {
+	var wrapperErr, execErr error
+
 	if g.wrapperFilepath != "" {
-		_ = os.Remove(g.wrapperFilepath)
+		wrapperErr = os.Remove(g.wrapperFilepath)
 	}
 
 	if g.executableFilepath != "" {
-		_ = os.Remove(g.executableFilepath)
+		execErr = os.Remove(g.executableFilepath)
 	}
 
-	return nil
+	return errors.Join(wrapperErr, execErr)
 }
 
 func (g *golangRunner) Run(task *Task) (*Result, error) {
