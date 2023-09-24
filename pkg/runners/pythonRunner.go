@@ -63,11 +63,12 @@ func (p *pythonRunner) Start() error {
 	p.cmd.Env = append(p.cmd.Env, "PYTHONPATH="+pythonPathVar)
 	p.cmd.Dir = p.dir
 
-	if stdin, err := setupBuffers(p.cmd); err != nil {
+	stdin, err := setupBuffers(p.cmd)
+	if err != nil {
 		return err
-	} else {
-		p.stdin = stdin
 	}
+
+	p.stdin = stdin
 
 	return p.cmd.Start()
 }
