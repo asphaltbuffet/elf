@@ -2,6 +2,7 @@ package exercise
 
 import (
 	"encoding/json"
+	"fmt"
 	"path"
 
 	"github.com/spf13/afero"
@@ -27,16 +28,18 @@ type Test struct {
 
 // LoadExerciseInfo loads the input and test cases for an exercise from the given json file.
 func LoadExerciseInfo(fs afero.Fs, fname string) (*Info, error) {
-	data, err := afero.ReadFile(fs, path.Clean(fname))
+	infoFile := path.Clean(fname)
+
+	data, err := afero.ReadFile(fs, infoFile)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("read info file %q: %w", infoFile, err)
 	}
 
-	c := new(Info)
+	c := &Info{}
 
 	err = json.Unmarshal(data, c)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unmarshal info file %s: %w", infoFile, err)
 	}
 
 	return c, nil
