@@ -1,3 +1,6 @@
+run:
+  skip-dirs:
+    - mocks
 linters-settings:
   errcheck:
     check-type-assertions: true
@@ -65,7 +68,7 @@ linters:
     - wsl
 
 issues:
-  # enable issues excluded by default 
+  # enable issues excluded by default
   exclude-use-default: false
   exclude-rules:
     - path: _test.go
@@ -75,4 +78,3 @@ issues:
 
 output:
   format: "checkstyle:bin/golangci-lint-report.out,colored-line-number:stdout"
-  path-prefix: bin
