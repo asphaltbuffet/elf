@@ -129,7 +129,7 @@ func TestParseMainIDwPanic(t *testing.T) {
 
 func TestGetRunner(t *testing.T) {
 	type args struct {
-		e    *exercise.Exercise
+		e    *exercise.AdventExercise
 		lang string
 	}
 
@@ -143,7 +143,7 @@ func TestGetRunner(t *testing.T) {
 		{
 			name: "valid lang",
 			args: args{
-				e: &exercise.Exercise{
+				e: &exercise.AdventExercise{
 					Year:  2015,
 					Day:   1,
 					Title: "Test Day One",
@@ -158,7 +158,7 @@ func TestGetRunner(t *testing.T) {
 		{
 			name: "missing lang",
 			args: args{
-				e: &exercise.Exercise{
+				e: &exercise.AdventExercise{
 					Year:  2015,
 					Day:   1,
 					Title: "Test Day One",
@@ -174,7 +174,7 @@ func TestGetRunner(t *testing.T) {
 		{
 			name: "bad path",
 			args: args{
-				e: &exercise.Exercise{
+				e: &exercise.AdventExercise{
 					Year:  2015,
 					Day:   1,
 					Title: "Test Day One",

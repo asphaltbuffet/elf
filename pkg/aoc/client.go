@@ -28,7 +28,7 @@ var (
 	appFs  afero.Fs = afero.NewOsFs()
 	cfgDir string
 
-	exercises map[int]map[int]*exercise.Exercise
+	exercises map[int]map[int]*exercise.AdventExercise
 	info      map[int]map[int]*exercise.Info
 
 	baseExercisesDir = "exercises"
@@ -63,7 +63,7 @@ func NewAOCClient() (*AOCClient, error) {
 
 	cfgDir = filepath.Join(c, "elf")
 
-	exercises = make(map[int]map[int]*exercise.Exercise)
+	exercises = make(map[int]map[int]*exercise.AdventExercise)
 	info = make(map[int]map[int]*exercise.Info)
 
 	if err := discoverExercises(); err != nil {
@@ -171,10 +171,10 @@ func registerExercise(year int, day int, path string, name string) error {
 	}
 
 	if _, ok := exercises[year]; !ok {
-		exercises[year] = make(map[int]*exercise.Exercise)
+		exercises[year] = make(map[int]*exercise.AdventExercise)
 	}
 
-	exercises[year][day] = &exercise.Exercise{
+	exercises[year][day] = &exercise.AdventExercise{
 		Year:  year,
 		Day:   day,
 		Title: utilities.CamelToTitle(name),
@@ -207,7 +207,7 @@ func registerInfo(year int, day int, path string) error {
 	return nil
 }
 
-func (ac *AOCClient) GetExercise(year int, day int) (*exercise.Exercise, error) {
+func (ac *AOCClient) GetExercise(year int, day int) (*exercise.AdventExercise, error) {
 	if e, ok := exercises[year][day]; ok {
 		return e, nil
 	}

@@ -9,12 +9,12 @@ import (
 func TestExercise_String(t *testing.T) {
 	tests := []struct {
 		name string
-		e    *Exercise
+		e    *AdventExercise
 		want string
 	}{
 		{
 			name: "valid year",
-			e: &Exercise{
+			e: &AdventExercise{
 				Year:  2015,
 				Day:   1,
 				Title: "Test Exercise",
@@ -25,7 +25,7 @@ func TestExercise_String(t *testing.T) {
 		},
 		{
 			name: "empty title",
-			e: &Exercise{
+			e: &AdventExercise{
 				Year: 2015,
 				Day:  1,
 				Dir:  "01-testExercise",
@@ -35,7 +35,7 @@ func TestExercise_String(t *testing.T) {
 		},
 		{
 			name: "year 0",
-			e: &Exercise{
+			e: &AdventExercise{
 				Day:   1,
 				Title: "Test Exercise",
 				Dir:   "01-testExercise",
@@ -45,7 +45,7 @@ func TestExercise_String(t *testing.T) {
 		},
 		{
 			name: "day 0",
-			e: &Exercise{
+			e: &AdventExercise{
 				Year:  2015,
 				Title: "Test Exercise",
 				Dir:   "01-testExercise",

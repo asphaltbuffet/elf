@@ -10,7 +10,7 @@ import (
 )
 
 // GetImplementations returns a list of available implementations for the exercise.
-func (e *Exercise) GetImplementations(fs afero.Fs) ([]string, error) {
+func (e *AdventExercise) GetImplementations(fs afero.Fs) ([]string, error) {
 	dirEntries, err := afero.ReadDir(fs, e.Path)
 	if err != nil {
 		return nil, fmt.Errorf("checking %s: %w", e.Path, err)

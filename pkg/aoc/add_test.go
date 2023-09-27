@@ -54,14 +54,14 @@ func TestAOCClient_AddExercise(t *testing.T) {
 	tests := []struct {
 		name      string
 		args      args
-		want      *exercise.Exercise
+		want      *exercise.AdventExercise
 		assertion assert.ErrorAssertionFunc
 		errText   string
 	}{
 		{
 			name: "all files exist",
 			args: args{2015, 1, "go"},
-			want: &exercise.Exercise{
+			want: &exercise.AdventExercise{
 				Year:  2015,
 				Day:   1,
 				Title: "Test Day One",
@@ -74,7 +74,7 @@ func TestAOCClient_AddExercise(t *testing.T) {
 		{
 			name: "add new exercise",
 			args: args{2019, 10, "go"},
-			want: &exercise.Exercise{
+			want: &exercise.AdventExercise{
 				Year:  2019,
 				Day:   10,
 				Title: "Test Day One",
@@ -86,7 +86,7 @@ func TestAOCClient_AddExercise(t *testing.T) {
 		{
 			name: "missing py implementation",
 			args: args{2016, 1, "py"},
-			want: &exercise.Exercise{
+			want: &exercise.AdventExercise{
 				Year:  2016,
 				Day:   1,
 				Title: "Test Day One",
@@ -98,7 +98,7 @@ func TestAOCClient_AddExercise(t *testing.T) {
 		{
 			name: "missing year",
 			args: args{2020, 1, "py"},
-			want: &exercise.Exercise{
+			want: &exercise.AdventExercise{
 				Year:  2020,
 				Day:   1,
 				Title: "Test Day One",
@@ -170,7 +170,7 @@ func Test_addDay(t *testing.T) {
 		name      string
 		args      args
 		responder httpmock.Responder
-		want      *exercise.Exercise
+		want      *exercise.AdventExercise
 		assertion assert.ErrorAssertionFunc
 		errText   string
 	}{
@@ -178,7 +178,7 @@ func Test_addDay(t *testing.T) {
 			name:      "create year, day, and exercise files",
 			args:      args{year: 2017, day: 1},
 			responder: httpmock.NewStringResponder(http.StatusOK, respBody2015d1),
-			want: &exercise.Exercise{
+			want: &exercise.AdventExercise{
 				Year:  2017,
 				Day:   1,
 				Title: "Test Day One",
@@ -220,7 +220,7 @@ func Test_addDay(t *testing.T) {
 }
 
 // checkExerciseDirectoryFiles verifies presence of info.json and README.md
-func checkExerciseDirectoryFiles(t *testing.T, e *exercise.Exercise) {
+func checkExerciseDirectoryFiles(t *testing.T, e *exercise.AdventExercise) {
 	t.Helper()
 
 	_, err := appFs.Stat(filepath.Join(e.Path, "info.json"))
@@ -234,7 +234,7 @@ func checkExerciseDirectoryFiles(t *testing.T, e *exercise.Exercise) {
 }
 
 // checkLanguageDirectoryFiles verifies presence of exercise.go or __init__.py
-func checkLanguageDirectoryFiles(t *testing.T, lang string, e *exercise.Exercise) {
+func checkLanguageDirectoryFiles(t *testing.T, lang string, e *exercise.AdventExercise) {
 	t.Helper()
 
 	implFiles := map[string]string{

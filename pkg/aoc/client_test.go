@@ -134,7 +134,7 @@ func TestAOCClient_GetExercise(t *testing.T) {
 	tests := []struct {
 		name      string
 		args      args
-		want      *exercise.Exercise
+		want      *exercise.AdventExercise
 		assertion assert.ErrorAssertionFunc
 		errText   string
 	}{
@@ -148,7 +148,7 @@ func TestAOCClient_GetExercise(t *testing.T) {
 		{
 			name: "exercise exists",
 			args: args{year: 2015, day: 1},
-			want: &exercise.Exercise{
+			want: &exercise.AdventExercise{
 				Year:  2015,
 				Day:   1,
 				Title: "Test Day One",

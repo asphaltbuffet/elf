@@ -14,7 +14,7 @@ import (
 	"github.com/asphaltbuffet/elf/pkg/exercise"
 )
 
-func (ac *AOCClient) AddExercise(year int, day int, language string) (*exercise.Exercise, error) {
+func (ac *AOCClient) AddExercise(year int, day int, language string) (*exercise.AdventExercise, error) {
 	if err := checkOrAddYear(year); err != nil {
 		return nil, fmt.Errorf("checking/adding year: %w", err)
 	}
@@ -52,7 +52,7 @@ func checkOrAddYear(year int) error {
 	return nil
 }
 
-func addMissingFiles(e *exercise.Exercise, language string, year int, day int) error {
+func addMissingFiles(e *exercise.AdventExercise, language string, year int, day int) error {
 	implPath := filepath.Join(e.Path, language)
 
 	fi, err := appFs.Stat(implPath)
@@ -147,7 +147,7 @@ var goTemplate []byte
 //go:embed templates/py.tmpl
 var pyTemplate []byte
 
-func addDay(year int, day int) (*exercise.Exercise, error) {
+func addDay(year int, day int) (*exercise.AdventExercise, error) {
 	yearDir := filepath.Join(baseExercisesDir, fmt.Sprintf("%d", year))
 
 	title := getTitle(year, day)
@@ -162,7 +162,7 @@ func addDay(year int, day int) (*exercise.Exercise, error) {
 		return nil, fmt.Errorf("creating day directory: %w", err)
 	}
 
-	e := &exercise.Exercise{
+	e := &exercise.AdventExercise{
 		Year:  year,
 		Day:   day,
 		Title: title,
