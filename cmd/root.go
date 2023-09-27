@@ -90,7 +90,7 @@ func initialize(fs afero.Fs) error {
 }
 
 func haveValidYearFlag() bool {
-	return yearArg >= MinYear && yearArg <= MaxYear
+	return yearArg >= aoc.MinYear() && yearArg <= aoc.MaxYear()
 }
 
 func haveValidDayFlag() bool {

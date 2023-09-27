@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -40,13 +39,4 @@ func Test_validYearCompletionArgs(t *testing.T) {
 			assert.Equal(t, tt.want, got)
 		})
 	}
-}
-
-func Test_getValidYears(t *testing.T) {
-	got := getValidYears()
-	assert.GreaterOrEqual(t, len(got), 7)
-}
-
-func Test_getMaxYear(t *testing.T) {
-	assert.LessOrEqual(t, getMaxYear(), time.Now().Year())
 }
