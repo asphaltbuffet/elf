@@ -200,15 +200,6 @@ func getPuzzlePage(year int, day int) ([]byte, error) {
 	return downloadPuzzlePage(year, day)
 }
 
-func getCachedPuzzlePage(year int, day int) ([]byte, error) {
-	f, err := afero.ReadFile(appFs, filepath.Join(cfgDir, "puzzle_pages", fmt.Sprintf("%d-%d.txt", year, day)))
-	if err != nil {
-		return nil, fmt.Errorf("reading puzzle page: %w", err)
-	}
-
-	return f, nil
-}
-
 var rClient = resty.New()
 
 func downloadPuzzlePage(year int, day int) ([]byte, error) {
@@ -287,13 +278,4 @@ func downloadInput(year, day int) ([]byte, error) {
 	}
 
 	return bytes.TrimSpace(res.Body()), nil
-}
-
-func getCachedInput(year, day int) ([]byte, error) {
-	f, err := afero.ReadFile(appFs, filepath.Join(cfgDir, "inputs", fmt.Sprintf("%d-%d.txt", year, day)))
-	if err != nil {
-		return nil, fmt.Errorf("reading cached input: %w", err)
-	}
-
-	return f, nil
 }
