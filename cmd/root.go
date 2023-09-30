@@ -12,9 +12,7 @@ import (
 
 // application build information set by the linker
 var (
-	version string
-	commit  string
-	date    string
+	Version string
 )
 
 var (
@@ -30,9 +28,7 @@ var (
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
-func Execute(v, d string) {
-	version, date = v, d
-
+func Execute() {
 	cobra.CheckErr(GetRootCommand().Execute())
 }
 
@@ -41,7 +37,7 @@ func GetRootCommand() *cobra.Command {
 	if rootCmd == nil {
 		rootCmd = &cobra.Command{
 			Use:     "elf [command]",
-			Version: fmt.Sprintf("%s (%s) %s", version, commit, date),
+			Version: Version,
 			Short:   "elf is an Advent of Code helper application",
 			Long:    `TODO: add a long description`,
 			PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
