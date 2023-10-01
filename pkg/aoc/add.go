@@ -14,9 +14,9 @@ import (
 	"github.com/asphaltbuffet/elf/pkg/exercise"
 )
 
-func (ac *AOCClient) AddExercise(year int, day int, language string) (*exercise.AdventExercise, error) {
+func (ac *AOCClient) AddExercise(year int, day int, language string) error {
 	if err := checkOrAddYear(year); err != nil {
-		return nil, fmt.Errorf("checking/adding year: %w", err)
+		return fmt.Errorf("checking/adding year: %w", err)
 	}
 
 	// check for day/exercise
@@ -26,16 +26,16 @@ func (ac *AOCClient) AddExercise(year int, day int, language string) (*exercise.
 
 		e, dayErr = addDay(year, day)
 		if dayErr != nil {
-			return nil, fmt.Errorf("adding day: %w", dayErr)
+			return fmt.Errorf("adding day: %w", dayErr)
 		}
 	}
 
 	err = addMissingFiles(e, language, year, day)
 	if err != nil {
-		return nil, fmt.Errorf("adding missing files: %w", err)
+		return fmt.Errorf("adding missing files: %w", err)
 	}
 
-	return e, nil
+	return nil
 }
 
 func checkOrAddYear(year int) error {

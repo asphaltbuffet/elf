@@ -54,57 +54,33 @@ func TestAOCClient_AddExercise(t *testing.T) {
 	tests := []struct {
 		name      string
 		args      args
-		want      *exercise.AdventExercise
+		path      string
 		assertion assert.ErrorAssertionFunc
 		errText   string
 	}{
 		{
-			name: "all files exist",
-			args: args{2015, 1, "go"},
-			want: &exercise.AdventExercise{
-				Year:  2015,
-				Day:   1,
-				Title: "Test Day One",
-				Dir:   "01-testDayOne",
-				Path:  filepath.Join("test_exercises", "2015", "01-testDayOne"),
-			},
+			name:      "all files exist",
+			args:      args{2015, 1, "go"},
+			path:      filepath.Join("test_exercises", "2015", "01-testDayOne"),
 			assertion: assert.Error,
 			errText:   "exercise already exists",
 		},
 		{
-			name: "add new exercise",
-			args: args{2019, 10, "go"},
-			want: &exercise.AdventExercise{
-				Year:  2019,
-				Day:   10,
-				Title: "Test Day One",
-				Dir:   "10-testDayOne",
-				Path:  filepath.Join("test_exercises", "2019", "10-testDayOne"), // reusing 2015-1 test data, should fix this later
-			},
+			name:      "add new exercise",
+			args:      args{2019, 10, "go"},
+			path:      filepath.Join("test_exercises", "2019", "10-testDayOne"),
 			assertion: assert.NoError,
 		},
 		{
-			name: "missing py implementation",
-			args: args{2016, 1, "py"},
-			want: &exercise.AdventExercise{
-				Year:  2016,
-				Day:   1,
-				Title: "Test Day One",
-				Dir:   "01-testDayOne",
-				Path:  filepath.Join("test_exercises", "2016", "01-testDayOne"),
-			},
+			name:      "missing py implementation",
+			args:      args{2016, 1, "py"},
+			path:      filepath.Join("test_exercises", "2016", "01-testDayOne"),
 			assertion: assert.NoError,
 		},
 		{
-			name: "missing year",
-			args: args{2020, 1, "py"},
-			want: &exercise.AdventExercise{
-				Year:  2020,
-				Day:   1,
-				Title: "Test Day One",
-				Dir:   "01-testDayOne",
-				Path:  filepath.Join("test_exercises", "2020", "01-testDayOne"),
-			},
+			name:      "missing year",
+			args:      args{2020, 1, "py"},
+			path:      filepath.Join("test_exercises", "2020", "01-testDayOne"),
 			assertion: assert.NoError,
 		},
 	}
@@ -135,17 +111,15 @@ func TestAOCClient_AddExercise(t *testing.T) {
 			ac, err := GetClient()
 			require.NoError(t, err)
 
-			got, err := ac.AddExercise(tt.args.year, tt.args.day, tt.args.language)
+			err = ac.AddExercise(tt.args.year, tt.args.day, tt.args.language)
 
 			tt.assertion(t, err)
 			if err != nil {
 				assert.ErrorContains(t, err, tt.errText)
 			} else {
-				assert.Equal(t, tt.want, got)
-
 				// make sure files are there
-				checkLanguageDirectoryFiles(t, tt.args.language, got)
-				checkExerciseDirectoryFiles(t, got)
+				checkLanguageDirectoryFiles(t, tt.args.language, tt.path)
+				checkExerciseDirectoryFiles(t, tt.path)
 			}
 		})
 	}
@@ -220,21 +194,21 @@ func Test_addDay(t *testing.T) {
 }
 
 // checkExerciseDirectoryFiles verifies presence of info.json and README.md
-func checkExerciseDirectoryFiles(t *testing.T, e *exercise.AdventExercise) {
+func checkExerciseDirectoryFiles(t *testing.T, path string) {
 	t.Helper()
 
-	_, err := appFs.Stat(filepath.Join(e.Path, "info.json"))
+	_, err := appFs.Stat(filepath.Join(path, "info.json"))
 	assert.NoError(t, err)
 
-	_, err = appFs.Stat(filepath.Join(e.Path, "README.md"))
+	_, err = appFs.Stat(filepath.Join(path, "README.md"))
 	assert.NoError(t, err)
 
-	_, err = appFs.Stat(filepath.Join(e.Path, "input.txt"))
+	_, err = appFs.Stat(filepath.Join(path, "input.txt"))
 	assert.NoError(t, err)
 }
 
 // checkLanguageDirectoryFiles verifies presence of exercise.go or __init__.py
-func checkLanguageDirectoryFiles(t *testing.T, lang string, e *exercise.AdventExercise) {
+func checkLanguageDirectoryFiles(t *testing.T, lang string, path string) {
 	t.Helper()
 
 	implFiles := map[string]string{
@@ -242,6 +216,6 @@ func checkLanguageDirectoryFiles(t *testing.T, lang string, e *exercise.AdventEx
 		"py": "__init__.py",
 	}
 
-	_, err := appFs.Stat(filepath.Join(e.Path, lang, implFiles[lang]))
+	_, err := appFs.Stat(filepath.Join(path, lang, implFiles[lang]))
 	assert.NoError(t, err)
 }

@@ -21,7 +21,7 @@ func GetAddCmd() *cobra.Command {
 			Args:  cobra.NoArgs,
 			Short: "add a new exercise",
 			RunE: func(cmd *cobra.Command, args []string) error {
-				_, err := acc.AddExercise(yearArg, dayArg, langArg)
+				err := acc.AddExercise(yearArg, dayArg, langArg)
 
 				return err
 			},
