@@ -5,7 +5,7 @@ go 1.21
 require (
 	github.com/dustin/go-humanize v1.0.1
 	github.com/fatih/color v1.15.0
-	github.com/go-resty/resty/v2 v2.7.0
+	github.com/go-resty/resty/v2 v2.9.1
 	github.com/greenpau/go-calculator v1.0.1
 	github.com/jarcoal/httpmock v1.3.1
 	github.com/logrusorgru/aurora v2.0.3+incompatible
