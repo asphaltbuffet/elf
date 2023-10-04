@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/asphaltbuffet/elf/mocks"
 	"github.com/asphaltbuffet/elf/pkg/exercise"
 	"github.com/asphaltbuffet/elf/pkg/runners"
 )
@@ -128,7 +129,7 @@ func TestParseMainIDwPanic(t *testing.T) {
 
 func TestGetRunner(t *testing.T) {
 	type args struct {
-		e    *exercise.Exercise
+		e    *exercise.AdventExercise
 		lang string
 	}
 
@@ -142,7 +143,7 @@ func TestGetRunner(t *testing.T) {
 		{
 			name: "valid lang",
 			args: args{
-				e: &exercise.Exercise{
+				e: &exercise.AdventExercise{
 					Year:  2015,
 					Day:   1,
 					Title: "Test Day One",
@@ -157,7 +158,7 @@ func TestGetRunner(t *testing.T) {
 		{
 			name: "missing lang",
 			args: args{
-				e: &exercise.Exercise{
+				e: &exercise.AdventExercise{
 					Year:  2015,
 					Day:   1,
 					Title: "Test Day One",
@@ -173,7 +174,7 @@ func TestGetRunner(t *testing.T) {
 		{
 			name: "bad path",
 			args: args{
-				e: &exercise.Exercise{
+				e: &exercise.AdventExercise{
 					Year:  2015,
 					Day:   1,
 					Title: "Test Day One",
@@ -236,6 +237,60 @@ func Test_handleMainResult(t *testing.T) {
 			handleMainResult(&got, tt.args.r)
 
 			assert.Equal(t, tt.want, got.String())
+		})
+	}
+}
+
+func Test_runMainTasks(t *testing.T) {
+	m := new(mocks.MockRunner)
+
+	type args struct {
+		input string
+	}
+
+	tests := []struct {
+		name      string
+		args      args
+		assertion assert.ErrorAssertionFunc
+	}{
+		{
+			name: "two parts",
+			args: args{
+				input: "fake input",
+			},
+			assertion: assert.NoError,
+		},
+	}
+
+	m.On("Run", &runners.Task{
+		TaskID:    "main.1",
+		Part:      1,
+		Input:     "fake input",
+		OutputDir: "",
+	}).Return(&runners.Result{
+		TaskID:   "main.1",
+		Ok:       true,
+		Output:   "fake output 1",
+		Duration: 0.00001,
+	}, nil)
+
+	m.On("Run", &runners.Task{
+		TaskID:    "main.2",
+		Part:      2,
+		Input:     "fake input",
+		OutputDir: "",
+	}).Return(&runners.Result{
+		TaskID:   "main.2",
+		Ok:       true,
+		Output:   "fake output 2",
+		Duration: 0.00001,
+	}, nil)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.assertion(t, runMainTasks(m, tt.args.input))
+
+			m.AssertExpectations(t)
 		})
 	}
 }

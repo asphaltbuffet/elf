@@ -13,7 +13,7 @@ var testFs afero.Fs
 
 func TestExercise_GetImplementations(t *testing.T) {
 	type args struct {
-		e *Exercise
+		e *AdventExercise
 	}
 
 	tests := []struct {
@@ -26,7 +26,7 @@ func TestExercise_GetImplementations(t *testing.T) {
 		{
 			name: "two languages",
 			args: args{
-				&Exercise{
+				&AdventExercise{
 					Year:  2015,
 					Day:   1,
 					Title: "Test Day One",
@@ -41,7 +41,7 @@ func TestExercise_GetImplementations(t *testing.T) {
 		{
 			name: "one language",
 			args: args{
-				&Exercise{
+				&AdventExercise{
 					Year:  2016,
 					Day:   1,
 					Title: "Test Day One",
@@ -56,7 +56,7 @@ func TestExercise_GetImplementations(t *testing.T) {
 		{
 			name: "only invalid language",
 			args: args{
-				&Exercise{
+				&AdventExercise{
 					Year:  2020,
 					Day:   1,
 					Title: "Test Day One",
@@ -71,7 +71,7 @@ func TestExercise_GetImplementations(t *testing.T) {
 		{
 			name: "valid and invalid languages",
 			args: args{
-				&Exercise{
+				&AdventExercise{
 					Year:  2021,
 					Day:   1,
 					Title: "Test Day One",
@@ -86,7 +86,7 @@ func TestExercise_GetImplementations(t *testing.T) {
 		{
 			name: "no languages",
 			args: args{
-				&Exercise{
+				&AdventExercise{
 					Year:  2017,
 					Day:   1,
 					Title: "Test Day One",
@@ -101,7 +101,7 @@ func TestExercise_GetImplementations(t *testing.T) {
 		{
 			name: "no exercise",
 			args: args{
-				&Exercise{
+				&AdventExercise{
 					Year:  2018,
 					Day:   1,
 					Title: "Test Day One",
@@ -116,7 +116,7 @@ func TestExercise_GetImplementations(t *testing.T) {
 		{
 			name: "no year",
 			args: args{
-				&Exercise{
+				&AdventExercise{
 					Year:  2019,
 					Day:   1,
 					Title: "Test Day One",

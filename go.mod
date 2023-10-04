@@ -16,6 +16,8 @@ require (
 	gonum.org/v1/plot v0.14.0
 )
 
+require github.com/stretchr/objx v0.5.0 // indirect
+
 require (
 	git.sr.ht/~sbinet/gg v0.5.0 // indirect
 	github.com/ajstarks/svgo v0.0.0-20211024235047-1546f124cd8b // indirect

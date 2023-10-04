@@ -1,10 +1,14 @@
 package aoc
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
+	"github.com/asphaltbuffet/elf/mocks"
+	"github.com/asphaltbuffet/elf/pkg/exercise"
 	"github.com/asphaltbuffet/elf/pkg/runners"
 )
 
@@ -66,6 +70,56 @@ func Test_parseTestID(t *testing.T) {
 
 			assert.Equal(t, tt.wantPart, part)
 			assert.Equal(t, tt.wantSub, sub)
+		})
+	}
+}
+
+func Test_runTests(t *testing.T) {
+	m := new(mocks.MockRunner)
+
+	type args struct {
+		exInfo *exercise.Info
+	}
+
+	tests := []struct {
+		name      string
+		args      args
+		assertion assert.ErrorAssertionFunc
+	}{
+		{
+			name: "run error - part one",
+			args: args{
+				exInfo: &exercise.Info{
+					InputFile: "fake.txt",
+					TestCases: exercise.TestCase{
+						One: []*exercise.Test{{Input: "fake", Expected: "FAKE"}},
+						Two: []*exercise.Test{{Input: "fake", Expected: "FAKE"}},
+					},
+				},
+			},
+			assertion: assert.Error,
+		},
+		{
+			name: "run error - part two",
+			args: args{
+				exInfo: &exercise.Info{
+					InputFile: "fake.txt",
+					TestCases: exercise.TestCase{
+						One: []*exercise.Test{{Input: "", Expected: ""}},
+						Two: []*exercise.Test{{Input: "fake", Expected: "FAKE"}},
+					},
+				},
+			},
+			assertion: assert.Error,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m.On("Run", mock.Anything).Return(&runners.Result{}, errors.New("mock error"))
+
+			tt.assertion(t, runTests(m, tt.args.exInfo))
+			m.AssertExpectations(t)
 		})
 	}
 }

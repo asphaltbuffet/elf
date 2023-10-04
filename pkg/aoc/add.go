@@ -4,21 +4,19 @@ import (
 	"bytes"
 	_ "embed"
 	"fmt"
-	"net/http"
 	"path/filepath"
 	"regexp"
 	"text/template"
 
-	"github.com/go-resty/resty/v2"
 	"github.com/iancoleman/strcase"
 	"github.com/spf13/afero"
 
 	"github.com/asphaltbuffet/elf/pkg/exercise"
 )
 
-func (ac *AOCClient) AddExercise(year int, day int, language string) (*exercise.Exercise, error) {
+func (ac *AOCClient) AddExercise(year int, day int, language string) error {
 	if err := checkOrAddYear(year); err != nil {
-		return nil, fmt.Errorf("checking/adding year: %w", err)
+		return fmt.Errorf("checking/adding year: %w", err)
 	}
 
 	// check for day/exercise
@@ -28,16 +26,16 @@ func (ac *AOCClient) AddExercise(year int, day int, language string) (*exercise.
 
 		e, dayErr = addDay(year, day)
 		if dayErr != nil {
-			return nil, fmt.Errorf("adding day: %w", dayErr)
+			return fmt.Errorf("adding day: %w", dayErr)
 		}
 	}
 
 	err = addMissingFiles(e, language, year, day)
 	if err != nil {
-		return nil, fmt.Errorf("adding missing files: %w", err)
+		return fmt.Errorf("adding missing files: %w", err)
 	}
 
-	return e, nil
+	return nil
 }
 
 func checkOrAddYear(year int) error {
@@ -54,7 +52,7 @@ func checkOrAddYear(year int) error {
 	return nil
 }
 
-func addMissingFiles(e *exercise.Exercise, language string, year int, day int) error {
+func addMissingFiles(e *exercise.AdventExercise, language string, year int, day int) error {
 	implPath := filepath.Join(e.Path, language)
 
 	fi, err := appFs.Stat(implPath)
@@ -149,7 +147,7 @@ var goTemplate []byte
 //go:embed templates/py.tmpl
 var pyTemplate []byte
 
-func addDay(year int, day int) (*exercise.Exercise, error) {
+func addDay(year int, day int) (*exercise.AdventExercise, error) {
 	yearDir := filepath.Join(baseExercisesDir, fmt.Sprintf("%d", year))
 
 	title := getTitle(year, day)
@@ -164,7 +162,7 @@ func addDay(year int, day int) (*exercise.Exercise, error) {
 		return nil, fmt.Errorf("creating day directory: %w", err)
 	}
 
-	e := &exercise.Exercise{
+	e := &exercise.AdventExercise{
 		Year:  year,
 		Day:   day,
 		Title: title,
@@ -200,61 +198,6 @@ func getPuzzlePage(year int, day int) ([]byte, error) {
 	return downloadPuzzlePage(year, day)
 }
 
-func getCachedPuzzlePage(year int, day int) ([]byte, error) {
-	f, err := afero.ReadFile(appFs, filepath.Join(cfgDir, "puzzle_pages", fmt.Sprintf("%d-%d.txt", year, day)))
-	if err != nil {
-		return nil, fmt.Errorf("reading puzzle page: %w", err)
-	}
-
-	return f, nil
-}
-
-var rClient = resty.New()
-
-func downloadPuzzlePage(year int, day int) ([]byte, error) {
-	// make sure we can write the cached file before we download it
-	err := appFs.MkdirAll(filepath.Join(cfgDir, "puzzle_pages"), 0o750)
-	if err != nil {
-		return nil, fmt.Errorf("creating cache directory: %w", err)
-	}
-
-	res, err := rClient.R().Get(fmt.Sprintf(adventPuzzleURL, year, day))
-	if err != nil {
-		return nil, fmt.Errorf("getting puzzle page: %w", err)
-	}
-
-	if res.StatusCode() != http.StatusOK {
-		return nil, fmt.Errorf("getting puzzle page: %s", res.Status())
-	}
-
-	re := regexp.MustCompile(`(?s)<article.*?>(.*)</article>`)
-
-	matches := re.FindSubmatch(res.Body())
-	if len(matches) != 2 {
-		// save the raw output to a file for debugging/error reporting
-		err = appFs.MkdirAll(filepath.Join(cfgDir, "logs"), 0o750)
-		if err != nil {
-			return nil, fmt.Errorf("creating cache directory: %w", err)
-		}
-
-		dumpFile := filepath.Join(cfgDir, "puzzle_pages", fmt.Sprintf("%d-%d-ERROR.dump", year, day))
-		_ = afero.WriteFile(appFs, dumpFile, res.Body(), 0o600)
-
-		return nil, fmt.Errorf("parsing puzzle page, raw output saved to: %s", dumpFile)
-	}
-
-	data := bytes.TrimSpace(matches[1])
-
-	cacheFile := filepath.Join(cfgDir, "puzzle_pages", fmt.Sprintf("%d-%d.txt", year, day))
-
-	err = afero.WriteFile(appFs, cacheFile, data, 0o644)
-	if err != nil {
-		return nil, fmt.Errorf("caching puzzle page to %s: %w", cacheFile, err)
-	}
-
-	return data, nil
-}
-
 func downloadOrGetCachedInput(year int, day int) ([]byte, error) {
 	d, err := getCachedInput(year, day)
 	if err == nil {
@@ -262,38 +205,4 @@ func downloadOrGetCachedInput(year int, day int) ([]byte, error) {
 	}
 
 	return downloadInput(year, day)
-}
-
-func downloadInput(year, day int) ([]byte, error) {
-	res, err := rClient.R().Get(fmt.Sprintf(adventInputURL, year, day))
-	if err != nil {
-		return nil, fmt.Errorf("accessing input site: %w", err)
-	}
-
-	if res.StatusCode() != http.StatusOK {
-		return nil, fmt.Errorf("getting input data: %s", res.Status())
-	}
-
-	err = appFs.MkdirAll(filepath.Join(cfgDir, "inputs"), 0o750)
-	if err != nil {
-		return nil, fmt.Errorf("creating inputs directory: %w", err)
-	}
-
-	inputPath := filepath.Join(cfgDir, "inputs", fmt.Sprintf("%d-%d.txt", year, day))
-
-	err = afero.WriteFile(appFs, inputPath, res.Body(), 0o600)
-	if err != nil {
-		return nil, fmt.Errorf("caching puzzle page to %s: %w", inputPath, err)
-	}
-
-	return bytes.TrimSpace(res.Body()), nil
-}
-
-func getCachedInput(year, day int) ([]byte, error) {
-	f, err := afero.ReadFile(appFs, filepath.Join(cfgDir, "inputs", fmt.Sprintf("%d-%d.txt", year, day)))
-	if err != nil {
-		return nil, fmt.Errorf("reading cached input: %w", err)
-	}
-
-	return f, nil
 }

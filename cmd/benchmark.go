@@ -86,7 +86,7 @@ func (e *ImplementationError) Error() string {
 	return fmt.Sprintf("%s run failed", e.Impl)
 }
 
-func runBenchmark(fs afero.Fs, selectedExercise *exercise.Exercise, input string, numberRuns int) error {
+func runBenchmark(fs afero.Fs, selectedExercise *exercise.AdventExercise, input string, numberRuns int) error {
 	implementations, err := selectedExercise.GetImplementations(fs)
 	if err != nil {
 		return err

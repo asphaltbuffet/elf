@@ -28,8 +28,8 @@ func parseTestID(id string) (runners.Part, int) {
 	return runners.Part(uint8(p)), n
 }
 
-func runTests(runner runners.Runner, info *exercise.Info) error {
-	for i, testCase := range info.TestCases.One {
+func runTests(runner runners.Runner, exInfo *exercise.Info) error {
+	for i, testCase := range exInfo.TestCases.One {
 		id := makeTestID(runners.PartOne, i)
 
 		if testCase.Input == "" && testCase.Expected == "" {
@@ -54,7 +54,7 @@ func runTests(runner runners.Runner, info *exercise.Info) error {
 		handleTestResult(result, testCase)
 	}
 
-	for i, testCase := range info.TestCases.Two {
+	for i, testCase := range exInfo.TestCases.Two {
 		id := makeTestID(runners.PartTwo, i)
 
 		if testCase.Input == "" && testCase.Expected == "" {

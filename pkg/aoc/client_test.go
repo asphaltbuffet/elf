@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/go-resty/resty/v2"
 	"github.com/spf13/afero"
@@ -37,7 +38,7 @@ func TestAOCClient_New(t *testing.T) {
 	// assertions based on structure in test filesystem (see makeTestFs())
 	assert.Equal(t, "test_exercises", got.ExercisesDir)
 	assert.Equal(t, []int{2015, 2016, 2019}, got.Years)
-	assert.Equal(t, map[int]([]int){2015: []int{1, 2}, 2016: []int{1}, 2019: []int{10}}, got.Days)
+	assert.Equal(t, map[int][]int{2015: {1, 2}, 2016: {1}, 2019: {10}}, got.Days)
 }
 
 func newTestClient(t *testing.T) *AOCClient {
@@ -133,7 +134,7 @@ func TestAOCClient_GetExercise(t *testing.T) {
 	tests := []struct {
 		name      string
 		args      args
-		want      *exercise.Exercise
+		want      *exercise.AdventExercise
 		assertion assert.ErrorAssertionFunc
 		errText   string
 	}{
@@ -147,7 +148,7 @@ func TestAOCClient_GetExercise(t *testing.T) {
 		{
 			name: "exercise exists",
 			args: args{year: 2015, day: 1},
-			want: &exercise.Exercise{
+			want: &exercise.AdventExercise{
 				Year:  2015,
 				Day:   1,
 				Title: "Test Day One",
@@ -354,7 +355,7 @@ func TestAOCClient_MissingDays(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		want      map[int]([]int)
+		want      map[int][]int
 		assertion assert.ErrorAssertionFunc
 		errText   string
 	}{
@@ -411,34 +412,17 @@ func TestAOCClient_MissingImplementations(t *testing.T) {
 	}
 }
 
-func TestAOCClient_GetExerciseInput(t *testing.T) {
-	type args struct {
-		year int
-		day  int
-	}
+func Test_ValidYears(t *testing.T) {
+	got := ValidYears()
 
-	tests := []struct {
-		name      string
-		args      args
-		want      string
-		assertion assert.ErrorAssertionFunc
-		errText   string
-	}{
-		// TODO: Add test cases.
-	}
+	assert.GreaterOrEqual(t, len(got), 7)
+	assert.Contains(t, got, 2015)
+	assert.Contains(t, got, 2022)
+}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ac := newTestClient(t)
+func Test_MaxYear(t *testing.T) {
+	got := MaxYear()
 
-			got, err := ac.GetExerciseInput(tt.args.year, tt.args.day)
-
-			tt.assertion(t, err)
-			if err == nil {
-				assert.Equal(t, tt.want, got)
-			} else {
-				assert.ErrorContains(t, err, tt.errText)
-			}
-		})
-	}
+	assert.GreaterOrEqual(t, got, 2015)
+	assert.LessOrEqual(t, got, time.Now().Year())
 }

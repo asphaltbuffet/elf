@@ -18,14 +18,17 @@ import (
 	"github.com/asphaltbuffet/elf/pkg/utilities"
 )
 
-const adventBaseURL = "https://adventofcode.com"
+const (
+	adventBaseURL string = "https://adventofcode.com"
+	minYear       int    = 2015
+)
 
 var (
 	client *AOCClient
 	appFs  afero.Fs = afero.NewOsFs()
 	cfgDir string
 
-	exercises map[int]map[int]*exercise.Exercise
+	exercises map[int]map[int]*exercise.AdventExercise
 	info      map[int]map[int]*exercise.Info
 
 	baseExercisesDir = "exercises"
@@ -45,7 +48,7 @@ type AOCClient struct {
 	ExercisesDir string
 	Runners      map[string]runners.RunnerCreator
 	Years        []int
-	Days         map[int]([]int)
+	Days         map[int][]int
 	RunMode      RunMode
 }
 
@@ -60,14 +63,14 @@ func NewAOCClient() (*AOCClient, error) {
 
 	cfgDir = filepath.Join(c, "elf")
 
-	exercises = make(map[int]map[int]*exercise.Exercise)
+	exercises = make(map[int]map[int]*exercise.AdventExercise)
 	info = make(map[int]map[int]*exercise.Info)
 
 	if err := discoverExercises(); err != nil {
 		return nil, fmt.Errorf("searching for exercises: %w", err)
 	}
 
-	days := make(map[int]([]int), len(exercises))
+	days := make(map[int][]int, len(exercises))
 	years := make([]int, 0, len(exercises))
 
 	for year, dayMap := range exercises {
@@ -168,10 +171,10 @@ func registerExercise(year int, day int, path string, name string) error {
 	}
 
 	if _, ok := exercises[year]; !ok {
-		exercises[year] = make(map[int]*exercise.Exercise)
+		exercises[year] = make(map[int]*exercise.AdventExercise)
 	}
 
-	exercises[year][day] = &exercise.Exercise{
+	exercises[year][day] = &exercise.AdventExercise{
 		Year:  year,
 		Day:   day,
 		Title: utilities.CamelToTitle(name),
@@ -204,7 +207,7 @@ func registerInfo(year int, day int, path string) error {
 	return nil
 }
 
-func (ac *AOCClient) GetExercise(year int, day int) (*exercise.Exercise, error) {
+func (ac *AOCClient) GetExercise(year int, day int) (*exercise.AdventExercise, error) {
 	if e, ok := exercises[year][day]; ok {
 		return e, nil
 	}
@@ -306,10 +309,10 @@ func isValidExercise(year int, day int) error {
 	return nil
 }
 
-func (ac *AOCClient) MissingDays() map[int]([]int) {
-	missing := make(map[int]([]int), getMaxYear()-2015)
+func (ac *AOCClient) MissingDays() map[int][]int {
+	missing := make(map[int][]int, MaxYear()-2015)
 
-	for y := 2015; y <= getMaxYear(); y++ {
+	for y := 2015; y <= MaxYear(); y++ {
 		missing[y] = []int{}
 
 		for d := 1; d <= 25; d++ {
@@ -322,7 +325,7 @@ func (ac *AOCClient) MissingDays() map[int]([]int) {
 	return missing
 }
 
-func getMaxYear() int {
+func MaxYear() int {
 	maxYear := time.Now().Year()
 
 	if time.Now().Month() != time.December {
@@ -351,4 +354,18 @@ func (ac *AOCClient) MissingImplementations(year, day int) []string {
 
 func (ac *AOCClient) GetExerciseInput(year int, day int) (string, error) {
 	return "", fmt.Errorf("not implemented")
+}
+
+func ValidYears() []int {
+	var years []int
+
+	for i := MinYear(); i <= MaxYear(); i++ {
+		years = append(years, i)
+	}
+
+	return years
+}
+
+func MinYear() int {
+	return minYear
 }

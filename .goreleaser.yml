@@ -4,7 +4,7 @@ before:
     - go mod download
 builds:
   - ldflags:
-      - -s -w -X main.version={{.Summary}} -X main.date={{.CommitDate}}
+      - -s -w -X '{{.ModulePath}}/cmd.Version={{.Summary}}'
     env:
       - CGO_ENABLED=0
     goos:
