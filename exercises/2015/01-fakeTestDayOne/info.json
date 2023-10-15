@@ -1,0 +1,25 @@
+{
+    "inputFile": "input.txt",
+    "testCases": {
+        "one": [
+            {
+                "input": "FaKe",
+                "expected": "fake"
+            },
+            {
+                "input": "FAKE",
+                "expected": "fake"
+            }            
+        ],
+        "two": [
+            {
+                "input": "fAkE",
+                "expected": "FAKE"
+            },
+            {
+                "input": "fake",
+                "expected": "FAKE"
+            }
+        ]
+    }
+}
