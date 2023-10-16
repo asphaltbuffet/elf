@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"text/template"
 )
 
@@ -184,5 +185,5 @@ func getModuleName() string {
 		panic("failed to get module name: " + stderrBuffer.String())
 	}
 
-	return stdoutBuffer.String()
+	return strings.Trim(stdoutBuffer.String(), "\n")
 }
