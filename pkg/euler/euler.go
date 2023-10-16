@@ -20,8 +20,16 @@ func New(id int, lang string) *Problem {
 }
 
 func (p *Problem) Solve() error {
-	fmt.Println("Solving", p)
-	return nil
+	return fmt.Errorf("not implemented")
+}
+
+func (p *Problem) SetLanguage(lang string) {
+	slog.Debug("setting language", slog.String("language", lang))
+	p.Language = lang
+}
+
+func (p *Problem) Test() error {
+	return fmt.Errorf("not implemented")
 }
 
 func (p *Problem) String() string {

@@ -1,4 +1,5 @@
 {
+    "type": "advent",
     "inputFile": "input.txt",
     "testCases": {
         "one": [
@@ -9,7 +10,7 @@
             {
                 "input": "FAKE",
                 "expected": "fake"
-            }            
+            }
         ],
         "two": [
             {

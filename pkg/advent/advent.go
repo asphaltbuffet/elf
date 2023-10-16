@@ -98,6 +98,37 @@ func (e *Exercise) Solve() error {
 	return nil
 }
 
+func (e *Exercise) Test() error {
+	data, err := loadData(e.Path())
+	if err != nil {
+		return err
+	}
+
+	runner := runners.Available[e.Language](e.Path())
+
+	if err = runner.Start(); err != nil {
+		return err
+	}
+
+	defer func() {
+		_ = runner.Stop()
+		_ = runner.Cleanup()
+	}()
+
+	fmt.Println(e.String())
+	fmt.Print("  Testing...\n\n")
+
+	if err = runTests(runner, data); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// String returns a string representation of the exercise in the format:
+// `Advent of Code: YYYY-DD (LANGUAGE)`.
+//
+// Example: Advent of Code: 2020-01 (Go).
 func (e *Exercise) String() string {
 	if e == nil {
 		return "Advent of Code: INVALID EXERCISE"

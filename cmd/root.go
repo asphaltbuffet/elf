@@ -42,6 +42,7 @@ func GetRootCommand() *cobra.Command {
 	}
 
 	rootCmd.AddCommand(GetSolveCmd())
+	rootCmd.AddCommand(GetTestCmd())
 	// rootCmd.AddCommand(GetAddCmd())
 	// rootCmd.AddCommand(GetBenchmarkCmd())
 	// rootCmd.AddCommand(GetShowCmd())
