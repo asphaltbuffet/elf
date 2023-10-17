@@ -32,6 +32,10 @@ func (p *Problem) Test() error {
 	return fmt.Errorf("not implemented")
 }
 
+func (p *Problem) Dir() string {
+	return fmt.Sprintf("problems/%03d", p.ID)
+}
+
 func (p *Problem) String() string {
 	if p == nil {
 		return "Project Euler: NIL PROBLEM"

@@ -2,7 +2,6 @@
 package cmd
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/spf13/afero"
@@ -43,17 +42,13 @@ func GetRootCommand() *cobra.Command {
 
 	rootCmd.AddCommand(GetSolveCmd())
 	rootCmd.AddCommand(GetTestCmd())
-	// rootCmd.AddCommand(GetAddCmd())
+	rootCmd.AddCommand(GetDownloadCmd())
 	// rootCmd.AddCommand(GetBenchmarkCmd())
-	// rootCmd.AddCommand(GetShowCmd())
-	// rootCmd.AddCommand(GetInfoCmd())
 
 	return rootCmd
 }
 
 func initialize(fs afero.Fs) error {
-	fmt.Println("initializing...")
-
 	cfg = viper.New()
 	cfg.SetDefault("advent.token", "")
 	cfg.SetDefault("advent.user", "")

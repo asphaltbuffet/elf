@@ -45,7 +45,6 @@ var golangInterfaceFile []byte
 func (g *golangRunner) Start() error {
 	// exercises/<year>/<day>-<title>/go
 	g.wrapperFilepath = filepath.Join(g.dir, golangWrapperFilename)
-	fmt.Println("[DEBUG] wrapper file path: ", g.wrapperFilepath)
 	g.executableFilepath = filepath.Join(g.dir, golangWrapperExecutableFilename)
 
 	// windows requires .exe extension
@@ -53,17 +52,13 @@ func (g *golangRunner) Start() error {
 		g.executableFilepath += ".exe"
 	}
 
-	fmt.Println("[DEBUG] exec file path: ", g.executableFilepath)
-
 	// determine package import path
 	buildPath := filepath.Join(".", g.dir)
-	fmt.Println("[DEBUG] build path: ", buildPath)
 
 	project = getModuleName()
 
 	// should be like: "github.com/asphaltbuffet/advent-of-code/exercises/2015/01-notQuiteLisp/go"
 	importPath := filepath.Join(project, buildPath, "go")
-	fmt.Println("[DEBUG] import path: ", importPath)
 
 	// generate wrapper code from template
 	var wrapperContent []byte

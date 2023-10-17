@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/dustin/go-humanize"
 
 	"github.com/asphaltbuffet/elf/pkg/runners"
@@ -84,38 +85,52 @@ func runTests(runner runners.Runner, exInfo *Data) error {
 func handleTestResult(r *runners.Result, testCase *Test) {
 	part, n := parseTestID(r.TaskID)
 
-	fmt.Print("Test ")           //nolint:errcheck,gosec // printing to stdout
-	fmt.Printf("%d.%d", part, n) //nolint:errcheck,gosec // printing to stdout
-	fmt.Print(": ")              //nolint:errcheck,gosec // printing to stdout
+	testStyle := lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("69")).SetString(fmt.Sprintf("Test %d.%d:", part, n))
 
 	passed := r.Output == testCase.Expected
 	missing := testCase.Input == "" && testCase.Expected == ""
 
-	var status, followUpText string
+	var status, followUpText lipgloss.Style
 
 	switch {
 	case missing:
-		status = "EMPTY"
+		status = lipgloss.NewStyle().Faint(true).SetString("EMPTY")
 
 	case !r.Ok:
-		status = "DID NOT COMPLETE"
-		followUpText = fmt.Sprintf(" saying %q", r.Output)
+		status = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("202")).
+			SetString("DID NOT COMPLETE")
+
+		followUpText = lipgloss.NewStyle().
+			Faint(true).
+			Italic(true).
+			Foreground(lipgloss.Color("242")).
+			SetString(fmt.Sprintf("saying %q", r.Output))
 
 	case passed:
-		status = "PASS"
+		status = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("48")).SetString("PASS")
 
 	default:
-		status = "FAIL"
+		status = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("161")).SetString("FAIL")
 	}
 
-	if followUpText == "" && !missing {
-		followUpText = fmt.Sprintf(" in %s", humanize.SIWithDigits(r.Duration, 1, "s"))
+	if followUpText.String() == "" && !missing {
+		followUpText = lipgloss.NewStyle().
+			Faint(true).
+			Italic(true).
+			Foreground(lipgloss.Color("242")).
+			SetString(fmt.Sprintf("in %s", humanize.SIWithDigits(r.Duration, 1, "s")))
 	}
 
-	fmt.Print(status)
-	fmt.Println(followUpText) //nolint:errcheck,gosec // printing to stdout
+	fmt.Println(testStyle, status, followUpText)
 
 	if !passed && r.Ok {
-		fmt.Printf(" └ Expected %s, got %s\n", testCase.Expected, r.Output)
+		extra := lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color("161")).
+			PaddingLeft(4).
+			SetString(fmt.Sprintf("⤷ expected %q, got %q", testCase.Expected, r.Output))
+
+		fmt.Println(extra)
 	}
 }

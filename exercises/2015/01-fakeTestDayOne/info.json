@@ -8,8 +8,8 @@
                 "expected": "fake"
             },
             {
-                "input": "FAKE",
-                "expected": "fake"
+                "input": "",
+                "expected": ""
             }
         ],
         "two": [
@@ -18,8 +18,12 @@
                 "expected": "FAKE"
             },
             {
-                "input": "fake",
-                "expected": "FAKE"
+                "input": "fAkE",
+                "expected": "this fails"
+            },
+            {
+                "input": "die",
+                "expected": "DIE"
             }
         ]
     }

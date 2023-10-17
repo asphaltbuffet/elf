@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/charmbracelet/lipgloss"
+
 	"github.com/asphaltbuffet/elf/pkg/runners"
 )
 
@@ -63,17 +65,17 @@ func (e *Exercise) SetLanguage(lang string) {
 }
 
 func (e *Exercise) Solve() error {
-	data, err := loadData(e.Path())
+	data, err := loadData(e.Dir())
 	if err != nil {
 		return err
 	}
 
-	input, err := os.ReadFile(filepath.Join(e.Path(), data.InputFile))
+	input, err := os.ReadFile(filepath.Join(e.Dir(), data.InputFile))
 	if err != nil {
 		return err
 	}
 
-	runner := runners.Available[e.Language](e.Path())
+	runner := runners.Available[e.Language](e.Dir())
 
 	if err = runner.Start(); err != nil {
 		return err
@@ -84,8 +86,9 @@ func (e *Exercise) Solve() error {
 		_ = runner.Cleanup()
 	}()
 
-	fmt.Println(e.String())
-	fmt.Print("  Running...\n\n")
+	headerStyle := lipgloss.NewStyle().Bold(true).BorderStyle(lipgloss.NormalBorder()).Foreground(lipgloss.Color("5"))
+
+	fmt.Println(headerStyle.Render(e.String()))
 
 	if err = runTests(runner, data); err != nil {
 		return err
@@ -99,12 +102,12 @@ func (e *Exercise) Solve() error {
 }
 
 func (e *Exercise) Test() error {
-	data, err := loadData(e.Path())
+	data, err := loadData(e.Dir())
 	if err != nil {
 		return err
 	}
 
-	runner := runners.Available[e.Language](e.Path())
+	runner := runners.Available[e.Language](e.Dir())
 
 	if err = runner.Start(); err != nil {
 		return err
@@ -115,8 +118,12 @@ func (e *Exercise) Test() error {
 		_ = runner.Cleanup()
 	}()
 
-	fmt.Println(e.String())
-	fmt.Print("  Testing...\n\n")
+	headerStyle := lipgloss.NewStyle().
+		Bold(true).
+		BorderStyle(lipgloss.NormalBorder()).
+		Foreground(lipgloss.Color("5"))
+
+	fmt.Println(headerStyle.Render(e.String()))
 
 	if err = runTests(runner, data); err != nil {
 		return err
@@ -142,11 +149,11 @@ func (e *Exercise) String() string {
 	return fmt.Sprintf("Advent of Code: %04d-%02d (%s)", e.Year, e.Day, name)
 }
 
-// Path returns the path to the exercise directory.
+// Dir returns the path to the exercise directory.
 // It will return an empty string if the exercise does not exist.
 //
-// Example: exercises/2020/01-someExerciseTitle
-func (e *Exercise) Path() string {
+// Example: exercises/2020/01-someExerciseTitle.
+func (e *Exercise) Dir() string {
 	entries, _ := os.ReadDir(filepath.Join(baseDir, fmt.Sprintf("%d", e.Year)))
 
 	for _, entry := range entries {

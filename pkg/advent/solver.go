@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/dustin/go-humanize"
 
 	"github.com/asphaltbuffet/elf/pkg/runners"
@@ -49,14 +50,25 @@ func runMainTasks(runner runners.Runner, input string) error {
 func handleMainResult(w io.Writer, r *runners.Result) {
 	part := parseMainID(r.TaskID)
 
-	fmt.Fprint(w, "Part ")       //nolint:errcheck,gosec // printing to stdout
-	fmt.Fprintf(w, "%d: ", part) //nolint:errcheck,gosec // printing to stdout
+	mainStyle := lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("57")).SetString(fmt.Sprintf("Part %d:", part))
 
-	if !r.Ok {
-		fmt.Fprint(w, "did not complete")
-		fmt.Fprintf(w, " saying %q\n", r.Output) //nolint:errcheck,gosec // printing to stdout
+	var status, followUpText lipgloss.Style
+
+	if r.Ok {
+		status = lipgloss.NewStyle().Bold(true).SetString(r.Output)
+		followUpText = lipgloss.NewStyle().
+			Faint(true).
+			Italic(true).
+			Foreground(lipgloss.Color("242")).
+			SetString(fmt.Sprintf("in %s", humanize.SIWithDigits(r.Duration, 1, "s")))
 	} else {
-		fmt.Fprint(w, r.Output)                                               //nolint:errcheck,gosec // printing to stdout
-		fmt.Fprintf(w, " in %s\n", humanize.SIWithDigits(r.Duration, 1, "s")) //nolint:errcheck,gosec // printing to stdout
+		status = lipgloss.NewStyle().Faint(true).Foreground(lipgloss.Color("227")).SetString("did not complete")
+		followUpText = lipgloss.NewStyle().
+			Faint(true).
+			Italic(true).
+			Foreground(lipgloss.Color("242")).
+			SetString(fmt.Sprintf("saying %q", r.Output))
 	}
+
+	fmt.Fprintln(w, mainStyle, status, followUpText)
 }

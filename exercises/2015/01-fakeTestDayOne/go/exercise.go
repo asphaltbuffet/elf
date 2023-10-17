@@ -5,6 +5,7 @@
 package exercises
 
 import (
+	"fmt"
 	"os"
 	"strings"
 
@@ -24,6 +25,10 @@ func (e Exercise) One(in string) (any, error) {
 
 // Two returns the answer to the second part of the exercise.
 func (e Exercise) Two(in string) (any, error) {
+	if in == "die" {
+		return nil, fmt.Errorf("example fake error")
+	}
+
 	// the test exercise converts the input to uppercase
 	return strings.ToUpper(in), nil
 }
