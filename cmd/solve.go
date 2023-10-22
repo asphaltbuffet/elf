@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"fmt"
+	"log/slog"
+	"os"
 	"strconv"
 
 	"github.com/spf13/cobra"
@@ -58,10 +60,16 @@ func runSolveCmd(cmd *cobra.Command, args []string) error {
 	)
 
 	key, id := args[0][0], args[0][1:]
+	dir, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+
+	slog.Info("solving advent exercise", "dir", dir)
 
 	switch key {
 	case adventKey:
-		ch, err = advent.New(id, language)
+		ch, err = advent.NewFromDir(dir, language)
 		if err != nil {
 			return err
 		}
