@@ -1,30 +1,37 @@
 {
     "type": "advent",
-    "inputFile": "input.txt",
-    "testCases": {
-        "one": [
-            {
-                "input": "FaKe",
-                "expected": "fake"
-            },
-            {
-                "input": "",
-                "expected": ""
-            }
-        ],
-        "two": [
-            {
-                "input": "fAkE",
-                "expected": "FAKE"
-            },
-            {
-                "input": "fAkE",
-                "expected": "this fails"
-            },
-            {
-                "input": "die",
-                "expected": "DIE"
-            }
-        ]
+    "id": "2015-01",
+    "title": "Fake Test Day One",
+    "year": 2015,
+    "day": 1,
+    "url": "https://fake.fk/2015/day/1",
+    "data": {
+        "inputFile": "input.txt",
+        "testCases": {
+            "one": [
+                {
+                    "input": "FaKe",
+                    "expected": "fake"
+                },
+                {
+                    "input": "",
+                    "expected": ""
+                }
+            ],
+            "two": [
+                {
+                    "input": "fAkE",
+                    "expected": "FAKE"
+                },
+                {
+                    "input": "fAkE",
+                    "expected": "this fails"
+                },
+                {
+                    "input": "die",
+                    "expected": "DIE"
+                }
+            ]
+        }
     }
 }

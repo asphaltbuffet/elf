@@ -45,6 +45,6 @@ var Available = map[string]RunnerCreator{
 // RunnerNames maps runner type strings (like "go" or "py") to more
 // human-friendly names (like "Golang" or "Python").
 var RunnerNames = map[string]string{
-	"go": "Golang",
+	"go": "Go",
 	"py": "Python",
 }

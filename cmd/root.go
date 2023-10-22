@@ -2,8 +2,11 @@
 package cmd
 
 import (
+	"log/slog"
 	"os"
+	"time"
 
+	"github.com/lmittmann/tint"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -22,7 +25,10 @@ var (
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
-	cobra.CheckErr(GetRootCommand().Execute())
+	err := GetRootCommand().Execute()
+	if err != nil {
+		os.Exit(1)
+	}
 }
 
 // GetRootCommand returns the root command for the CLI.
@@ -49,6 +55,15 @@ func GetRootCommand() *cobra.Command {
 }
 
 func initialize(fs afero.Fs) error {
+	w := os.Stderr
+
+	slog.SetDefault(slog.New(
+		tint.NewHandler(w, &tint.Options{
+			Level:      slog.LevelDebug,
+			TimeFormat: time.StampMilli,
+		}),
+	))
+
 	cfg = viper.New()
 	cfg.SetDefault("advent.token", "")
 	cfg.SetDefault("advent.user", "")
@@ -71,8 +86,13 @@ func initialize(fs afero.Fs) error {
 	if err := cfg.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 			// only return error if it's not a missing config file
+			slog.Error("failed to read config file", "error", err, "config", cfg.ConfigFileUsed())
 			return err
 		}
+
+		slog.Warn("no config file found")
+	} else {
+		slog.Info("starting elf", "version", Version, "config", cfg.ConfigFileUsed())
 	}
 
 	return nil

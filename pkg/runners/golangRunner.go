@@ -2,11 +2,13 @@ package runners
 
 import (
 	"bytes"
+	"context"
 	_ "embed"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -43,6 +45,13 @@ var golangInterfaceFile []byte
 
 // Start compiles the exercise code and starts the executable.
 func (g *golangRunner) Start() error {
+	slog.LogAttrs(
+		context.Background(),
+		slog.LevelInfo,
+		"setting up runner",
+		slog.String("dir", g.dir),
+	)
+
 	// exercises/<year>/<day>-<title>/go
 	g.wrapperFilepath = filepath.Join(g.dir, golangWrapperFilename)
 	g.executableFilepath = filepath.Join(g.dir, golangWrapperExecutableFilename)
@@ -52,11 +61,20 @@ func (g *golangRunner) Start() error {
 		g.executableFilepath += ".exe"
 	}
 
-	// determine package import path
-	buildPath := filepath.Join(".", g.dir)
-
 	project = getModuleName()
 
+	slog.LogAttrs(
+		context.Background(),
+		slog.LevelInfo,
+		"paths created",
+		slog.String("dir", g.dir),
+		slog.String("project", "project"),
+	)
+
+	tokens := strings.Split(filepath.ToSlash(g.dir), "/")
+	buildPath := filepath.Join(tokens[len(tokens)-3:]...)
+
+	// determine package import path
 	// should be like: "github.com/asphaltbuffet/advent-of-code/exercises/2015/01-notQuiteLisp/go"
 	importPath := filepath.Join(project, buildPath, "go")
 
@@ -78,6 +96,17 @@ func (g *golangRunner) Start() error {
 	if err := os.WriteFile(g.wrapperFilepath, wrapperContent, 0o600); err != nil {
 		return err
 	}
+
+	slog.LogAttrs(
+		context.Background(),
+		slog.LevelInfo,
+		"building runner",
+		slog.String("wrapper", g.wrapperFilepath),
+		slog.String("executable", g.executableFilepath),
+		slog.String("buildPath", buildPath),
+		slog.String("project", project),
+		slog.String("importPath", importPath),
+	)
 
 	stderrBuffer := new(bytes.Buffer)
 

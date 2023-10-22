@@ -1,15 +1,17 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"os"
-	"strconv"
+	"path"
+	"path/filepath"
 
+	"github.com/lmittmann/tint"
 	"github.com/spf13/cobra"
 
 	"github.com/asphaltbuffet/elf/pkg/advent"
-	"github.com/asphaltbuffet/elf/pkg/euler"
 )
 
 var (
@@ -18,17 +20,9 @@ var (
 	noTest   bool
 )
 
-const (
-	adventKey = 'a'
-	eulerKey  = 'e'
-)
-
-const exampleText = `  elf solve a2015-01 --lang=go --no-test
-    elf solve e1 --lang=py
-
-  If no language is given, the default language is used: 
-
-    elf solve a2015-01`
+const exampleText = `  elf solve --lang=go --no-test
+  elf solve --lang=py
+  elf solve # using default language from config`
 
 func GetSolveCmd() *cobra.Command {
 	if solveCmd == nil {
@@ -36,7 +30,7 @@ func GetSolveCmd() *cobra.Command {
 			Use:     "solve <id> [--lang=<language>] [--no-test]",
 			Aliases: []string{"s"},
 			Example: exampleText,
-			Args:    cobra.ExactArgs(1),
+			Args:    cobra.NoArgs,
 			Short:   "solve a challenge",
 			RunE:    runSolveCmd,
 		}
@@ -53,42 +47,60 @@ type Challenge interface {
 	String() string
 }
 
+type Info struct {
+	ChallengeType string `json:"type"`
+}
+
 func runSolveCmd(cmd *cobra.Command, args []string) error {
 	var (
 		ch  Challenge
 		err error
 	)
 
-	key, id := args[0][0], args[0][1:]
 	dir, err := os.Getwd()
 	if err != nil {
+		slog.Error("getting current directory", tint.Err(err))
 		return err
 	}
 
-	slog.Info("solving advent exercise", "dir", dir)
+	info, err := ReadInfo(dir)
+	if err != nil {
+		slog.Error("getting exercise info", tint.Err(err))
+		return err
+	}
 
-	switch key {
-	case adventKey:
-		ch, err = advent.NewFromDir(dir, language)
-		if err != nil {
-			return err
-		}
+	slog.Debug("solving exercise", slog.Group("exercise", "dir", dir, "language", language, "type", info.ChallengeType))
 
-	case eulerKey:
-		eulerID, err := strconv.Atoi(id)
-		if err != nil {
-			return fmt.Errorf("invalid project euler ID: %s is not a number", id)
-		}
-
-		ch = euler.New(eulerID, language)
-
-	default:
-		return fmt.Errorf("no ID specified")
+	ch, err = advent.NewFromDir(dir, language)
+	if err != nil {
+		slog.Error("creating exercise", tint.Err(err))
+		return err
 	}
 
 	if solveErr := ch.Solve(); solveErr != nil {
-		fmt.Println("Failed to solve: ", solveErr)
+		slog.Error("solving exercise", tint.Err(solveErr))
+		cmd.PrintErrln("Failed to solve: ", solveErr)
 	}
 
 	return nil
+}
+
+func ReadInfo(dir string) (*Info, error) {
+	fn := filepath.Join(dir, "info.json")
+
+	data, err := os.ReadFile(path.Clean(fn))
+	if err != nil {
+		slog.Debug("failed to read info", tint.Err(err))
+		return nil, fmt.Errorf("read info file %q: %w", fn, err)
+	}
+
+	d := &Info{}
+
+	err = json.Unmarshal(data, d)
+	if err != nil {
+		slog.Debug("failed to unmarshall info", tint.Err(err))
+		return nil, fmt.Errorf("unmarshal info file %s: %w", fn, err)
+	}
+
+	return d, nil
 }
