@@ -45,10 +45,7 @@ var golangInterfaceFile []byte
 
 // Start compiles the exercise code and starts the executable.
 func (g *golangRunner) Start() error {
-	slog.LogAttrs(
-		context.Background(),
-		slog.LevelInfo,
-		"setting up runner",
+	slog.LogAttrs(context.TODO(), slog.LevelDebug, "setting up runner",
 		slog.String("dir", g.dir),
 	)
 
@@ -63,10 +60,7 @@ func (g *golangRunner) Start() error {
 
 	project = getModuleName()
 
-	slog.LogAttrs(
-		context.Background(),
-		slog.LevelInfo,
-		"paths created",
+	slog.LogAttrs(context.TODO(), slog.LevelDebug, "paths created",
 		slog.String("dir", g.dir),
 		slog.String("project", "project"),
 	)
@@ -97,10 +91,7 @@ func (g *golangRunner) Start() error {
 		return err
 	}
 
-	slog.LogAttrs(
-		context.Background(),
-		slog.LevelInfo,
-		"building runner",
+	slog.LogAttrs(context.Background(), slog.LevelDebug, "building runner",
 		slog.String("wrapper", g.wrapperFilepath),
 		slog.String("executable", g.executableFilepath),
 		slog.String("buildPath", buildPath),

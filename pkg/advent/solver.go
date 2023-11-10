@@ -3,12 +3,14 @@ package advent
 import (
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/dustin/go-humanize"
+	"github.com/lmittmann/tint"
 
 	"github.com/asphaltbuffet/elf/pkg/runners"
 )
@@ -22,6 +24,7 @@ func parseMainID(id string) runners.Part {
 
 	p, err := strconv.ParseUint(tokens[1], 10, 8)
 	if err != nil {
+		slog.Error("parsing part from main id", slog.Group("task", "id", id, "tokens", tokens), tint.Err(err))
 		panic(err)
 	}
 
@@ -38,6 +41,7 @@ func runMainTasks(runner runners.Runner, input string) error {
 			Input:  input,
 		})
 		if err != nil {
+			slog.Error("running main tasks", slog.Group("result", "id", result.TaskID, "ok", result.Ok, "output", result.Output), tint.Err(err))
 			return err
 		}
 
@@ -69,6 +73,8 @@ func handleMainResult(w io.Writer, r *runners.Result) {
 			Foreground(lipgloss.Color("242")).
 			SetString(fmt.Sprintf("saying %q", r.Output))
 	}
+
+	slog.Debug("handling main result", slog.Group("result", "id", r.TaskID, "ok", r.Ok, "output", r.Output))
 
 	fmt.Fprintln(w, mainStyle, status, followUpText)
 }
