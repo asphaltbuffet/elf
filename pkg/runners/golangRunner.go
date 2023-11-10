@@ -77,12 +77,12 @@ func (g *golangRunner) Start() error {
 	{
 		tpl := template.Must(template.New("").Parse(string(golangInterfaceFile)))
 		b := new(bytes.Buffer)
-		err := tpl.Execute(b, struct {
-			ImportPath string
-		}{importPath})
+
+		err := tpl.Execute(b, struct{ ImportPath string }{importPath})
 		if err != nil {
 			return err
 		}
+
 		wrapperContent = b.Bytes()
 	}
 
@@ -109,9 +109,7 @@ func (g *golangRunner) Start() error {
 	}
 
 	//nolint:gosec // no user input
-	cmd := exec.Command(
-		golangInstallation,
-		"build",
+	cmd := exec.Command(golangInstallation, "build",
 		"-tags", "runtime",
 		"-o", g.executableFilepath,
 		g.wrapperFilepath)
