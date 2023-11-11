@@ -29,7 +29,7 @@ var (
 
 const cacheFileExt = ".txt"
 
-func Download(url string, lang string, force bool) (string, error) {
+func Download(url string, lang string, _ bool) (string, error) {
 	logger = slog.With(slog.String("action", "download"))
 
 	cfgDir, _ = os.UserConfigDir()
@@ -54,47 +54,13 @@ func Download(url string, lang string, force bool) (string, error) {
 
 	exPath, ok := getExercisePath(year, day)
 	if ok {
-		infoPath := filepath.Join(exPath, "info.json")
-
-		_, err = appFs.Stat(infoPath)
-		if err == nil {
-			// exercise exists, we may need to update it
-			logger.Info("update existing exercise", slog.String("url", url), slog.String("dir", exPath))
-
-			// TODO: a bad info.json will cause this to behave unpredictably
-			// TODO: if this fails, either try to create a new exercise, or at the very least, tell user to delete problematic file(s)
-			e, err = NewExerciseFromInfo(exPath)
-			if err != nil {
-				logger.Error("creating exercise from info", slog.String("url", url), slog.String("dir", exPath), tint.Err(err))
-				return "", fmt.Errorf("creating exercise from info: %w", err)
-			}
-		}
+		e, err = loadExisting(exPath)
 	} else {
-		var page []byte
-		var title string
-
-		page, err = getPage(year, day)
-		if err != nil {
-			logger.Error("getting page data", slog.String("url", url), slog.Int("year", year), slog.Int("day", day), tint.Err(err))
-			return "", fmt.Errorf("getting page data: %w", err)
-		}
-
-		title, err = extractTitle(page)
-		if err != nil {
-			logger.Error("extracting title from page data", slog.String("url", url), slog.Int("year", year), slog.Int("day", day), tint.Err(err))
-			return "", fmt.Errorf("extracting title from page data: %w", err)
-		}
-
-		e = &Exercise{
-			ID:       makeExerciseID(year, day),
-			Title:    title,
-			Language: lang,
-			Year:     year,
-			Day:      day,
-			URL:      url,
-			Data:     nil, // this should be empty, we only load this from info.json
-			path:     makeExercisePath(year, day, title),
-		}
+		e, err = loadFromURL(url, year, day, lang)
+	}
+	if err != nil {
+		logger.Error("loading exercise", slog.String("url", url), slog.String("lang", lang), tint.Err(err))
+		return "", fmt.Errorf("loading exercise: %w", err)
 	}
 
 	// the basic exercise information is here; add missing elements
@@ -108,6 +74,75 @@ func Download(url string, lang string, force bool) (string, error) {
 	return e.path, nil
 }
 
+func loadExisting(path string) (*Exercise, error) {
+	var (
+		err error
+		e   *Exercise
+	)
+
+	infoPath := filepath.Join(path, "info.json")
+
+	_, err = appFs.Stat(infoPath)
+	if err == nil {
+		// exercise exists, we may need to update it
+		logger.Info("update existing exercise", slog.String("dir", path))
+
+		// TODO: a bad info.json will cause this to behave unpredictably
+		// TODO: if this fails, try to create a new exercise, or tell user to delete file(s)
+		e, err = NewExerciseFromInfo(path)
+		if err != nil {
+			logger.Error("creating exercise from info", slog.String("dir", path), tint.Err(err))
+			return nil, fmt.Errorf("loading exercise from info: %w", err)
+		}
+	}
+
+	return e, nil
+}
+
+func loadFromURL(url string, year, day int, lang string) (*Exercise, error) {
+	var (
+		page  []byte
+		title string
+		err   error
+		e     *Exercise
+	)
+
+	page, err = getPage(year, day)
+	if err != nil {
+		logger.Error("getting page data",
+			slog.String("url", url),
+			slog.Int("year", year),
+			slog.Int("day", day),
+			tint.Err(err))
+
+		return nil, fmt.Errorf("getting page data: %w", err)
+	}
+
+	title, err = extractTitle(page)
+	if err != nil {
+		logger.Error("extracting title from page data",
+			slog.String("url", url),
+			slog.Int("year", year),
+			slog.Int("day", day),
+			tint.Err(err))
+
+		return nil, fmt.Errorf("extracting title from page data: %w", err)
+	}
+
+	e = &Exercise{
+		ID:       makeExerciseID(year, day),
+		Title:    title,
+		Year:     year,
+		Language: lang,
+		Day:      day,
+		URL:      url,
+		Data:     nil, // this should be empty, we only load this from info.json
+		path:     makeExercisePath(year, day, title),
+	}
+
+	return e, nil
+}
+
 func getExercisePath(year, day int) (string, bool) {
 	// it may be better to use filepath.WalkDir here...
 	dirEntries, err := os.ReadDir(strconv.Itoa(year))
@@ -117,8 +152,8 @@ func getExercisePath(year, day int) (string, bool) {
 
 	for _, entry := range dirEntries {
 		if entry.IsDir() && entry.Name()[:2] == fmt.Sprintf("%02d-", day) {
-			fp, err := filepath.Abs(filepath.Join(strconv.Itoa(year), entry.Name()))
-			return fp, err == nil
+			fp, fpErr := filepath.Abs(filepath.Join(strconv.Itoa(year), entry.Name()))
+			return fp, fpErr == nil
 		}
 	}
 
@@ -138,7 +173,7 @@ func extractTitle(page []byte) (string, error) {
 	re := regexp.MustCompile(`--- Day \d{1,2}: (.*) ---`)
 
 	matches := re.FindStringSubmatch(tt)
-	if len(matches) != 2 {
+	if len(matches) != 2 { //nolint:gomnd // we expect 2 matches
 		return "", fmt.Errorf("getting title from page data: no match")
 	}
 
@@ -168,7 +203,7 @@ func ParseURL(url string) (int, int, error) {
 	re := regexp.MustCompile(`^https?://(www\.)?adventofcode\.com/(?P<year>\d{4})/day/(?P<day>\d{1,2})`)
 
 	matches := findNamedMatches(re, url)
-	if len(matches) != 2 {
+	if len(matches) != 2 { //nolint:gomnd // we expect 2 matches
 		slog.Error("parsing URL", slog.String("url", url), slog.Any("found", matches))
 		return 0, 0, fmt.Errorf("parsing %s: invalid URL format", url)
 	}
@@ -224,7 +259,10 @@ func downloadPuzzlePage(year, day int) ([]byte, error) {
 		return nil, fmt.Errorf("creating cache directory: %w", err)
 	}
 
-	logger.Info("downloading puzzle page", slog.String("file", filepath.Join(cfgDir, "pages", makeExerciseID(year, day)+cacheFileExt)))
+	logger.Info(
+		"downloading puzzle page",
+		slog.String("file",
+			filepath.Join(cfgDir, "pages", makeExerciseID(year, day)+cacheFileExt)))
 
 	// unfortunately this will save "404 Not Found" or other error responses to this location too...
 	req := rClient.R().SetOutput(filepath.Join("pages", makeExerciseID(year, day)+cacheFileExt))
@@ -232,13 +270,16 @@ func downloadPuzzlePage(year, day int) ([]byte, error) {
 	resp, err := req.Get("/{year}/day/{day}")
 	if err != nil {
 		logger.Error("getting puzzle page", tint.Err(err))
-		logger.Error("requesting puzzle page", slog.String("url", resp.Request.URL), slog.String("status", resp.Status()), slog.Int("code", resp.StatusCode()))
 
 		return nil, fmt.Errorf("requesting page: %w", err)
 	}
 
 	if resp.StatusCode() != http.StatusOK {
-		logger.Error("download page response", slog.String("url", resp.Request.URL), slog.String("status", resp.Status()), slog.Int("code", resp.StatusCode()))
+		logger.Error(
+			"download page response",
+			slog.String("url", resp.Request.URL),
+			slog.String("status", resp.Status()),
+			slog.Int("code", resp.StatusCode()))
 
 		return nil, fmt.Errorf("processing page response: %s", resp.Status())
 	}
@@ -370,14 +411,38 @@ func (e *Exercise) addMissingFiles() error {
 	}
 
 	tmpls := []tmplFile{
-		{Name: "info", Path: "", Data: infoTemplate, FileName: "info.json", Replace: replaceInfo},
-		{Name: "readme", Path: "", Data: readmeTemplate, FileName: "README.md", Replace: replaceReadme},
+		{
+			Name:     "info",
+			Path:     "",
+			Data:     infoTemplate,
+			FileName: "info.json",
+			Replace:  replaceInfo,
+		},
+		{
+			Name:     "readme",
+			Path:     "",
+			Data:     readmeTemplate,
+			FileName: "README.md",
+			Replace:  replaceReadme,
+		},
 	}
 
 	if e.Language == "go" {
-		tmpls = append(tmpls, tmplFile{Name: "go", Path: "go", Data: goTemplate, FileName: "exercise.go", Replace: replaceLanguage})
+		tmpls = append(tmpls, tmplFile{
+			Name:     "go",
+			Path:     "go",
+			Data:     goTemplate,
+			FileName: "exercise.go",
+			Replace:  replaceLanguage,
+		})
 	} else if e.Language == "py" {
-		tmpls = append(tmpls, tmplFile{Name: "py", Path: "py", Data: pyTemplate, FileName: "__init__.py", Replace: replaceLanguage})
+		tmpls = append(tmpls, tmplFile{
+			Name:     "py",
+			Path:     "py",
+			Data:     pyTemplate,
+			FileName: "__init__.py",
+			Replace:  replaceLanguage,
+		})
 	}
 
 	for _, t := range tmpls {

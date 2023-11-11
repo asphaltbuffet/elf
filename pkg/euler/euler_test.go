@@ -44,7 +44,7 @@ func TestProblem_String(t *testing.T) {
 		p    *euler.Problem
 		want string
 	}{
-		{"single digit problem in go", &euler.Problem{ID: 1, Language: "go"}, "Project Euler: 001 (Golang)"},
+		{"single digit problem in go", &euler.Problem{ID: 1, Language: "go"}, "Project Euler: 001 (Go)"},
 		{"double digit problem in py", &euler.Problem{ID: 69, Language: "py"}, "Project Euler: 069 (Python)"},
 		{"triple digit problem in py", &euler.Problem{ID: 666, Language: "py"}, "Project Euler: 666 (Python)"},
 		{"invalid language", &euler.Problem{ID: 666, Language: "foo"}, "Project Euler: 666 (INVALID LANGUAGE)"},

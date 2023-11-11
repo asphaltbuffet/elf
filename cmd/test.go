@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"log/slog"
 	"os"
 
@@ -40,7 +39,7 @@ func GetTestCmd() *cobra.Command {
 	return testCmd
 }
 
-func runTestCmd(cmd *cobra.Command, args []string) error {
+func runTestCmd(cmd *cobra.Command, _ []string) error {
 	var (
 		ch  ChallengeTester
 		err error
@@ -64,7 +63,7 @@ func runTestCmd(cmd *cobra.Command, args []string) error {
 
 	if testErr := ch.Test(); testErr != nil {
 		slog.Error("testing exercise", tint.Err(testErr))
-		fmt.Println("Failed to run tests: ", testErr)
+		cmd.Println("Failed to run tests: ", testErr)
 	}
 
 	return nil

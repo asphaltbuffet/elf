@@ -51,7 +51,7 @@ type Info struct {
 	ChallengeType string `json:"type"`
 }
 
-func runSolveCmd(cmd *cobra.Command, args []string) error {
+func runSolveCmd(cmd *cobra.Command, _ []string) error {
 	var (
 		ch  Challenge
 		err error

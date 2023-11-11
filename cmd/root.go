@@ -2,6 +2,7 @@
 package cmd
 
 import (
+	"errors"
 	"log/slog"
 	"os"
 	"time"
@@ -12,7 +13,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-// application build information set by the linker
+// application build information set by the linker.
 var (
 	Version string
 )
@@ -83,8 +84,9 @@ func initialize(fs afero.Fs) error {
 	cfg.AddConfigPath(".")
 	cfg.AddConfigPath("$HOME/.config/elf")
 
-	if err := cfg.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+	err = cfg.ReadInConfig()
+	if err != nil {
+		if !errors.As(err, &viper.ConfigFileNotFoundError{}) {
 			// only return error if it's not a missing config file
 			slog.Error("failed to read config file", "error", err, "config", cfg.ConfigFileUsed())
 			return err

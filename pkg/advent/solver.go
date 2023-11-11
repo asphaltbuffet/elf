@@ -41,7 +41,9 @@ func runMainTasks(runner runners.Runner, input string) error {
 			Input:  input,
 		})
 		if err != nil {
-			slog.Error("running main tasks", slog.Group("result", "id", result.TaskID, "ok", result.Ok, "output", result.Output), tint.Err(err))
+			slog.Error("running main tasks",
+				slog.Group("result", "id", result.TaskID, "ok", result.Ok, "output", result.Output),
+				tint.Err(err))
 			return err
 		}
 
@@ -54,7 +56,10 @@ func runMainTasks(runner runners.Runner, input string) error {
 func handleMainResult(w io.Writer, r *runners.Result) {
 	part := parseMainID(r.TaskID)
 
-	mainStyle := lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("57")).SetString(fmt.Sprintf("Part %d:", part))
+	mainStyle := lipgloss.NewStyle().
+		PaddingLeft(2). //nolint:gomnd // hard-coded padding for now
+		Foreground(lipgloss.Color("57")).
+		SetString(fmt.Sprintf("Part %d:", part))
 
 	var status, followUpText lipgloss.Style
 

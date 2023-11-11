@@ -57,7 +57,13 @@ func NewFromDir(dir, lang string) (*Exercise, error) {
 	e.Language = lang
 	e.path = dir
 
-	slog.Debug("created advent exercise", "id", e.ID, "language", e.Language, "year", e.Year, "day", e.Day, "url", e.URL, "path", e.path)
+	slog.Debug("created advent exercise",
+		"id", e.ID,
+		"language", e.Language,
+		"year", e.Year,
+		"day", e.Day,
+		"url", e.URL,
+		"path", e.path)
 
 	return e, nil
 }
@@ -72,7 +78,10 @@ func (e *Exercise) Solve() error {
 
 	input, err := os.ReadFile(filepath.Join(e.path, e.Data.InputFile))
 	if err != nil {
-		logger.Error("failed to read input file", slog.String("path", e.Data.InputFile), tint.Err(err))
+		logger.Error("failed to read input file",
+			slog.String("path", e.Data.InputFile),
+			tint.Err(err))
+
 		return err
 	}
 
@@ -88,7 +97,10 @@ func (e *Exercise) Solve() error {
 		_ = runner.Cleanup()
 	}()
 
-	headerStyle := lipgloss.NewStyle().Bold(true).BorderStyle(lipgloss.NormalBorder()).Foreground(lipgloss.Color("5"))
+	headerStyle := lipgloss.NewStyle().
+		Bold(true).
+		BorderStyle(lipgloss.NormalBorder()).
+		Foreground(lipgloss.Color("5"))
 
 	fmt.Println(headerStyle.Render(e.String()))
 
@@ -97,7 +109,8 @@ func (e *Exercise) Solve() error {
 		return err
 	}
 
-	if err := runMainTasks(runner, string(input)); err != nil {
+	err = runMainTasks(runner, string(input))
+	if err != nil {
 		logger.Error("running main tasks", tint.Err(err))
 		return err
 	}

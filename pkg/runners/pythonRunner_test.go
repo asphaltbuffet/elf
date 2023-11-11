@@ -45,7 +45,7 @@ func Test_pythonRunner_Cleanup(t *testing.T) {
 	tf, err := os.MkdirTemp("", "test-py")
 	require.NoError(t, err)
 
-	defer assert.NoError(t, os.RemoveAll(tf))
+	defer require.NoError(t, os.RemoveAll(tf))
 
 	exDir := filepath.Join(tf, "2015", "01-testDayOne", "py")
 	require.NoError(t, os.MkdirAll(exDir, 0o750))
@@ -88,9 +88,9 @@ func Test_pythonRunner_Cleanup(t *testing.T) {
 			}
 			require.DirExists(t, tt.p.dir)
 
-			err := tt.p.Cleanup()
+			tErr := tt.p.Cleanup()
 
-			tt.assertion(t, err)
+			tt.assertion(t, tErr)
 		})
 	}
 }

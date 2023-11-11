@@ -116,7 +116,7 @@ func (g *golangRunner) Start() error {
 
 	cmd.Stderr = stderrBuffer
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("compilation failed: %s: %s", err, stderrBuffer.String())
+		return fmt.Errorf("compilation failed: %w: %s", err, stderrBuffer.String())
 	}
 
 	if !cmd.ProcessState.Success() {
@@ -129,15 +129,16 @@ func (g *golangRunner) Start() error {
 	}
 
 	// run executable for exercise (wrapped)
-	//nolint:gosec // no user input
+
 	g.cmd = exec.Command(absExecPath)
 	cmd.Dir = g.dir
 
-	if stdin, err := setupBuffers(g.cmd); err != nil {
+	stdin, err := setupBuffers(g.cmd)
+	if err != nil {
 		return err
-	} else {
-		g.stdin = stdin
 	}
+
+	g.stdin = stdin
 
 	return g.cmd.Start()
 }
@@ -177,8 +178,8 @@ func (g *golangRunner) Run(task *Task) (*Result, error) {
 
 	res := new(Result)
 
-	if err := readJSONFromCommand(res, g.cmd); err != nil {
-		return nil, err
+	if jsonErr := readJSONFromCommand(res, g.cmd); jsonErr != nil {
+		return nil, jsonErr
 	}
 
 	return res, nil

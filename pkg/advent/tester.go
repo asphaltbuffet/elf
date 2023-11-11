@@ -85,7 +85,10 @@ func runTests(runner runners.Runner, exInfo *Data) error {
 func handleTestResult(r *runners.Result, testCase *Test) {
 	part, n := parseTestID(r.TaskID)
 
-	testStyle := lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("69")).SetString(fmt.Sprintf("Test %d.%d:", part, n))
+	testStyle := lipgloss.NewStyle().
+		PaddingLeft(2). //nolint:gomnd // hard-coded padding for now
+		Foreground(lipgloss.Color("69")).
+		SetString(fmt.Sprintf("Test %d.%d:", part, n))
 
 	passed := r.Output == testCase.Expected
 	missing := testCase.Input == "" && testCase.Expected == ""
@@ -128,7 +131,7 @@ func handleTestResult(r *runners.Result, testCase *Test) {
 		extra := lipgloss.NewStyle().
 			Bold(true).
 			Foreground(lipgloss.Color("161")).
-			PaddingLeft(4).
+			PaddingLeft(4). //nolint:gomnd // hard-coded padding for now
 			SetString(fmt.Sprintf("⤷ expected %q, got %q", testCase.Expected, r.Output))
 
 		fmt.Println(extra)
