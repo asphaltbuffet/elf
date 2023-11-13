@@ -50,7 +50,8 @@ type customWriter struct {
 
 // Write writes the given bytes to the custom writer.
 //
-// Newline characters ('\n') are used to flush the pending buffer and append the current contents to the list of entries.
+// Newline characters ('\n') are used to flush the pending buffer and append
+// the current contents to the list of entries.
 func (c *customWriter) Write(b []byte) (int, error) {
 	var n int
 
@@ -95,8 +96,9 @@ func setupBuffers(cmd *exec.Cmd) (io.WriteCloser, error) {
 }
 
 func checkWait(cmd *exec.Cmd) ([]byte, error) {
-	//nolint:errcheck // we will handle errors in the loop
-	c := cmd.Stdout.(*customWriter)
+	const checkWaitDelay time.Duration = 10 * time.Millisecond
+
+	c := cmd.Stdout.(*customWriter) //nolint:errcheck // we will handle errors in the loop
 
 	for {
 		e, err := c.GetEntry()
@@ -105,10 +107,13 @@ func checkWait(cmd *exec.Cmd) ([]byte, error) {
 		}
 
 		if cmd.ProcessState != nil {
-			return nil, fmt.Errorf("run failed with exit code %d: %s", cmd.ProcessState.ExitCode(), cmd.Stderr.(*bytes.Buffer).String())
+			return nil, fmt.Errorf(
+				"run failed with exit code %d: %s",
+				cmd.ProcessState.ExitCode(),
+				cmd.Stderr.(*bytes.Buffer).String())
 		}
 
-		time.Sleep(time.Millisecond * 10)
+		time.Sleep(checkWaitDelay)
 	}
 }
 

@@ -84,7 +84,7 @@ func Test_customWriter_GetEntry(t *testing.T) {
 
 			tt.assertion(t, err)
 			if err != nil {
-				assert.ErrorContains(t, err, tt.errText)
+				assert.ErrorContains(t, err, tt.errText) //nolint:testifylint // error message is not a constant
 			} else {
 				assert.Equal(t, tt.want, got, fmt.Sprintf("expected %q, got %q", tt.want, got))
 				assert.NotContains(t, c.entries, got)

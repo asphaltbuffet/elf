@@ -46,7 +46,7 @@ func Test_golangRunner_Cleanup(t *testing.T) {
 	tf, err := os.MkdirTemp("", "test-go")
 	require.NoError(t, err)
 
-	defer assert.NoError(t, os.RemoveAll(tf))
+	defer require.NoError(t, os.RemoveAll(tf))
 
 	exDir := filepath.Join(tf, "2015", "01-testDayOne", "go")
 	require.NoError(t, os.MkdirAll(exDir, 0o750))
@@ -96,13 +96,13 @@ func Test_golangRunner_Cleanup(t *testing.T) {
 				require.NoError(t, os.WriteFile(tt.g.executableFilepath, []byte("fake binary"), 0o600))
 			}
 
-			err := tt.g.Cleanup()
+			tErr := tt.g.Cleanup()
 
 			assert.NoFileExists(t, tt.g.wrapperFilepath)
 			assert.NoFileExists(t, tt.g.executableFilepath)
 			require.DirExists(t, tt.g.dir)
 
-			tt.assertion(t, err)
+			tt.assertion(t, tErr)
 		})
 	}
 }

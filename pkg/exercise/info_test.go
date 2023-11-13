@@ -94,7 +94,7 @@ func TestLoadExerciseInfo(t *testing.T) {
 			tt.assertion(t, err)
 			assert.Equal(t, tt.want, got)
 			if err != nil {
-				assert.ErrorContains(t, err, tt.errText)
+				assert.ErrorContains(t, err, tt.errText) //nolint:testifylint // error message is not a constant
 			}
 		})
 	}

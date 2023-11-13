@@ -74,6 +74,8 @@ func (p *pythonRunner) Start() error {
 }
 
 func (p *pythonRunner) Stop() error {
+	const processExitTimeout time.Duration = 5 * time.Second
+
 	if p.cmd == nil || p.cmd.Process == nil {
 		return nil
 	}
@@ -92,7 +94,7 @@ func (p *pythonRunner) Stop() error {
 
 	// wait up to 5 seconds for the process to exit.
 	select {
-	case <-time.After(5 * time.Second):
+	case <-time.After(processExitTimeout):
 		if err := p.cmd.Process.Kill(); err != nil {
 			return fmt.Errorf("failed to kill python process: %w", err)
 		}
@@ -130,8 +132,8 @@ func (p *pythonRunner) Run(task *Task) (*Result, error) {
 	_, _ = p.stdin.Write(append(taskJSON, '\n'))
 
 	res := new(Result)
-	if err := readJSONFromCommand(res, p.cmd); err != nil {
-		return nil, err
+	if jsonErr := readJSONFromCommand(res, p.cmd); jsonErr != nil {
+		return nil, jsonErr
 	}
 
 	return res, nil

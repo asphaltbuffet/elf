@@ -2,34 +2,34 @@
 package cmd
 
 import (
-	"fmt"
+	"errors"
+	"log/slog"
+	"os"
+	"time"
 
+	"github.com/lmittmann/tint"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
-
-	"github.com/asphaltbuffet/elf/pkg/aoc"
+	"github.com/spf13/viper"
 )
 
-// application build information set by the linker
+// application build information set by the linker.
 var (
 	Version string
 )
 
 var (
 	rootCmd *cobra.Command
-
-	yearArg int
-	dayArg  int
-	langArg string
-
-	acc   *aoc.AOCClient
-	appFs afero.Fs
+	cfg     = viper.New()
 )
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
-	cobra.CheckErr(GetRootCommand().Execute())
+	err := GetRootCommand().Execute()
+	if err != nil {
+		os.Exit(1)
+	}
 }
 
 // GetRootCommand returns the root command for the CLI.
@@ -38,57 +38,64 @@ func GetRootCommand() *cobra.Command {
 		rootCmd = &cobra.Command{
 			Use:     "elf [command]",
 			Version: Version,
-			Short:   "elf is an Advent of Code helper application",
-			Long:    `TODO: add a long description`,
+			Short:   "elf is a programming challenge helper application",
 			PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-				appFs = afero.NewOsFs()
+				appFs := afero.NewOsFs()
 
 				return initialize(appFs)
 			},
 		}
 	}
 
-	rootCmd.PersistentFlags().IntVarP(&yearArg, "year", "y", 0, "exercise year")
-	rootCmd.PersistentFlags().IntVarP(&dayArg, "day", "d", 0, "exercise day")
-	rootCmd.PersistentFlags().StringVarP(&langArg, "lang", "L", "", "implementation language")
-
-	rootCmd.AddCommand(GetAddCmd())
-	rootCmd.AddCommand(GetBenchmarkCmd())
-	rootCmd.AddCommand(GetGraphCmd())
-	// TODO: add init command
-	rootCmd.AddCommand(GetRunCmd())
-	rootCmd.AddCommand(GetVisualizeCmd())
+	rootCmd.AddCommand(GetSolveCmd())
+	rootCmd.AddCommand(GetTestCmd())
+	rootCmd.AddCommand(GetDownloadCmd())
+	// rootCmd.AddCommand(GetBenchmarkCmd())
 
 	return rootCmd
 }
 
 func initialize(fs afero.Fs) error {
-	appFs = fs
+	w := os.Stderr
 
-	if !haveValidYearFlag() {
-		return fmt.Errorf("invalid year: %d", yearArg)
+	slog.SetDefault(slog.New(
+		tint.NewHandler(w, &tint.Options{
+			Level:      slog.LevelDebug,
+			TimeFormat: time.StampMilli,
+		}),
+	))
+
+	cfg = viper.New()
+	cfg.SetDefault("advent.token", "")
+	cfg.SetDefault("advent.user", "")
+	cfg.SetDefault("advent.dir", "exercises")
+	cfg.SetDefault("euler.dir", "problems")
+	cfg.SetDefault("language", "go")
+
+	cfg.SetFs(fs)
+	cfg.SetConfigName("elf.toml")
+	cfg.SetConfigType("toml")
+
+	userCfg, err := os.UserConfigDir()
+	if err == nil {
+		cfg.AddConfigPath(userCfg)
 	}
 
-	if !haveValidDayFlag() {
-		return fmt.Errorf("invalid day: %d", dayArg)
-	}
+	cfg.AddConfigPath(".")
+	cfg.AddConfigPath("$HOME/.config/elf")
 
-	// TODO: check if the user has initialized the application, set up defaults/load config
-	var err error
-
-	// TODO: pass fs to NewAOCClient
-	acc, err = aoc.NewAOCClient()
+	err = cfg.ReadInConfig()
 	if err != nil {
-		return fmt.Errorf("unable to start the application: %w", err)
+		if !errors.As(err, &viper.ConfigFileNotFoundError{}) {
+			// only return error if it's not a missing config file
+			slog.Error("failed to read config file", "error", err, "config", cfg.ConfigFileUsed())
+			return err
+		}
+
+		slog.Warn("no config file found")
+	} else {
+		slog.Info("starting elf", "version", Version, "config", cfg.ConfigFileUsed())
 	}
 
 	return nil
-}
-
-func haveValidYearFlag() bool {
-	return yearArg >= aoc.MinYear() && yearArg <= aoc.MaxYear()
-}
-
-func haveValidDayFlag() bool {
-	return dayArg >= 1 && dayArg <= 25
 }
