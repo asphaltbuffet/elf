@@ -1,37 +1,48 @@
-# dev build - no tools adjustments
-dev: gen build-local lint test
+go_path := `go env GOPATH`
 
-# build pipeline
-all: mod inst gen build test
+# test and lint
+check: test lint
+
+# dev build pipeline
+dev: generate snapshot lint test
 
 # CI build pipeline
-ci: all diff
+ci: mod-tidy install generate build test diff
 
 # remove files created during build pipeline
 clean:
-    -rm -rf dist
-    -rm -rf bin
+    rm -rf dist
+    rm -rf bin
+
+# go clean + remove build artifacts
+[no-exit-message]
+nuke: clean
     go clean -i -cache -testcache -modcache -fuzzcache -x
 
 # go mod tidy
-mod:
+[no-exit-message]
+mod-tidy:
     go mod tidy
 
-# go install tools
-inst:
-    curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $$(go env GOPATH)/bin v1.54.2
+# install tools
+install:
+    curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b {{ go_path }}/bin v1.55.2
     go install mvdan.cc/gofumpt@v0.4.0
+    go install gotest.tools/gotestsum@v1.11.0
 
 # go generate
-gen:
+[no-exit-message]
+generate:
     go generate ./...
 
 # go build
+[no-exit-message]
 build:
     go build -o dist/ ./...
 
-# goreleaser build
-build-local:
+# goreleaser build snapshot
+[no-exit-message]
+snapshot:
     goreleaser build --clean --single-target --snapshot
 
 # golangci-lint
@@ -39,13 +50,25 @@ lint:
     -golangci-lint run --fix
 
 # go test
+[no-exit-message]
 test:
     @mkdir -p bin
-    go test -race -covermode=atomic -coverprofile=bin/coverage.out ./...
+    gotestsum --format=dots-v2 -- -race -covermode=atomic -coverprofile=bin/coverage.out ./...
     go tool cover -html=bin/coverage.out -o bin/coverage.html
     go tool cover -func=bin/coverage.out
 
 # git diff
-diff:
+_diff:
     git diff --exit-code
-    RES=$$(git status --porcelain) ; if [ -n "$$RES" ]; then echo $$RES && exit 1 ; fi
+
+diff: _diff
+    #!/usr/bin/env bash
+    set -euxo pipefail
+    RES="$(git status --porcelain)"
+    if [ -n "$RES" ]
+    then 
+        echo $RES && exit 1
+    fi
+
+alias gen := generate
+alias ss := snapshot

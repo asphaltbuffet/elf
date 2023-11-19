@@ -159,3 +159,6 @@ dist/
 
 # go test output files
 bin/
+
+# taskfile fingerprints
+.task/
