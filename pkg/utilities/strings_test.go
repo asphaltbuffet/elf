@@ -29,3 +29,24 @@ func TestCamelToTitle(t *testing.T) {
 		})
 	}
 }
+
+func TestToCamel(t *testing.T) {
+	tests := []struct {
+		name string
+		arg  string
+		want string
+	}{
+		{"test data", "Test Day One", "testDayOne"},
+		{"multiple words", "Not Quite Lisp", "notQuiteLisp"},
+		{"single-letter capitalized word", "All In A Single Night", "allInASingleNight"},
+		{"hyphen and apostrophe", "Doesn't He Have Intern-Elves For This", "doesn'tHeHaveIntern-ElvesForThis"},
+		{"single word", "Matchsticks", "matchsticks"},
+		{"hyphen", "Cathode-Ray Tube", "cathode-RayTube"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, ToCamel(tt.arg))
+		})
+	}
+}

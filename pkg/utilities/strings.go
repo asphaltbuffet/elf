@@ -30,7 +30,7 @@ func CamelToTitle(x string) string {
 
 func ToCamel(s string) string {
 	// Remove all characters that are not alphanumeric or spaces or underscores
-	s = regexp.MustCompile("[^a-zA-Z0-9_ ]+").ReplaceAllString(s, "")
+	s = regexp.MustCompile("[^a-zA-Z0-9'-_ ]+").ReplaceAllString(s, "")
 
 	// Replace all underscores with spaces
 	s = strings.ReplaceAll(s, "_", " ")
