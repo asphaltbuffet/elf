@@ -13,17 +13,21 @@ type MockRunner struct {
 }
 
 func (m *MockRunner) Start() error {
-	return m.Called().Error(0)
-}
-
-func (m *MockRunner) Cleanup() error {
-	return m.Called().Error(0)
-}
-
-func (m *MockRunner) Run(task *runners.Task) (*runners.Result, error) {
-	return m.Called(task).Get(0).(*runners.Result), m.Called(task).Error(1)
+	args := m.Called()
+	return args.Error(0)
 }
 
 func (m *MockRunner) Stop() error {
-	return m.Called().Error(0)
+	args := m.Called()
+	return args.Error(0)
+}
+
+func (m *MockRunner) Run(task *runners.Task) (*runners.Result, error) {
+	args := m.Called(task)
+	return args.Get(0).(*runners.Result), args.Error(1)
+}
+
+func (m *MockRunner) Cleanup() error {
+	args := m.Called()
+	return args.Error(0)
 }
