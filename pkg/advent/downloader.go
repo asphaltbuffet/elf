@@ -325,7 +325,7 @@ func (e *Exercise) downloadInput() ([]byte, error) {
 	return bytes.TrimSpace(resp.Body()), nil
 }
 
-func (e *Exercise) Input() ([]byte, error) {
+func (e *Exercise) getInput() ([]byte, error) {
 	d, err := e.getCachedInput()
 	if err == nil {
 		return d, nil
@@ -364,16 +364,6 @@ func (t *tmplFile) LogValue() slog.Value {
 	)
 }
 
-func (e *Exercise) LogValue() slog.Value {
-	return slog.GroupValue(
-		slog.String("id", e.ID),
-		slog.String("title", e.Title),
-		slog.String("url", e.URL),
-		slog.String("dir", e.Dir()),
-		slog.String("lang", e.Language),
-	)
-}
-
 func (e *Exercise) addMissingFiles() error {
 	var (
 		err             error
@@ -401,7 +391,7 @@ func (e *Exercise) addMissingFiles() error {
 
 	if replaceInput { // TODO: should be if replacing OR if it doesn't exist
 		// read cached data or download puzzle input
-		inputFile, inErr := e.Input()
+		inputFile, inErr := e.getInput()
 		if inErr != nil {
 			addLogger.Error("load input data", tint.Err(inErr))
 			return fmt.Errorf("loading input: %w", inErr)

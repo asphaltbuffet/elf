@@ -16,35 +16,6 @@ import (
 	"github.com/asphaltbuffet/elf/pkg/utilities"
 )
 
-type Exercise struct {
-	ID       string `json:"id"`
-	Title    string `json:"title"`
-	Language string `json:"-"`
-	Year     int    `json:"year"`
-	Day      int    `json:"day"`
-	URL      string `json:"url"`
-	Data     *Data  `json:"data"`
-	path     string `json:"-"`
-}
-
-// Data contains the relative path to exercise input and the specific test case data for an exercise.
-type Data struct {
-	InputFile string   `json:"inputFile"`
-	TestCases TestCase `json:"testCases"`
-}
-
-// TestCase contains the test case for each part of an exercise.
-type TestCase struct {
-	One []*Test `json:"one"`
-	Two []*Test `json:"two"`
-}
-
-// Test contains the input and expected output for a test case.
-type Test struct {
-	Input    string `json:"input"`
-	Expected string `json:"expected"`
-}
-
 func NewFromDir(dir, lang string) (*Exercise, error) {
 	logger := slog.With(slog.String("src", "NewFromDir"))
 	logger.Debug("creating new advent exercise", "dir", dir, "language", lang)
@@ -76,18 +47,11 @@ func (e *Exercise) Solve() error {
 	logger := slog.With(slog.String("fn", "Solve"), slog.String("exercise", e.Title))
 	logger.Debug("solving", slog.String("language", e.Language))
 
-	input, err := os.ReadFile(filepath.Join(e.path, e.Data.InputFile))
-	if err != nil {
-		logger.Error("failed to read input file",
-			slog.String("path", e.Data.InputFile),
-			tint.Err(err))
+	input := e.Data.Input
 
-		return err
-	}
+	runner := e.runner
 
-	runner := runners.Available[e.Language](e.path)
-
-	if err = runner.Start(); err != nil {
+	if err := runner.Start(); err != nil {
 		logger.Error("starting runner", slog.String("path", e.Data.InputFile), tint.Err(err))
 		return err
 	}
@@ -104,13 +68,12 @@ func (e *Exercise) Solve() error {
 
 	fmt.Println(headerStyle.Render(e.String()))
 
-	if err = runTests(runner, e.Data); err != nil {
+	if err := runTests(runner, e.Data); err != nil {
 		logger.Error("running tests", tint.Err(err))
 		return err
 	}
 
-	err = runMainTasks(runner, string(input))
-	if err != nil {
+	if err := runMainTasks(runner, string(input)); err != nil {
 		logger.Error("running main tasks", tint.Err(err))
 		return err
 	}
