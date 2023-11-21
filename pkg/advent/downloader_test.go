@@ -64,3 +64,91 @@ func Test_extractTitle(t *testing.T) {
 		})
 	}
 }
+
+func TestParseURL(t *testing.T) {
+	type args struct {
+		url string
+	}
+
+	tests := []struct {
+		name      string
+		args      args
+		year      int
+		day       int
+		assertion assert.ErrorAssertionFunc
+	}{
+		{
+			name: "https with valid date",
+			args: args{
+				url: "https://adventofcode.com/2015/day/1",
+			},
+			year:      2015,
+			day:       1,
+			assertion: assert.NoError,
+		},
+		{
+			name: "http with valid date",
+			args: args{
+				url: "http://adventofcode.com/2015/day/1",
+			},
+			year:      2015,
+			day:       1,
+			assertion: assert.NoError,
+		},
+		{
+			name: "long domain with valid date",
+			args: args{
+				url: "https://www.adventofcode.com/2015/day/1",
+			},
+			year:      2015,
+			day:       1,
+			assertion: assert.NoError,
+		},
+		{
+			name: "base url only",
+			args: args{
+				url: "https://adventofcode.com",
+			},
+			year:      0,
+			day:       0,
+			assertion: assert.Error,
+		},
+		{
+			name: "incomplete base url",
+			args: args{
+				url: "adventofcode.com/2015/day/1",
+			},
+			year:      0,
+			day:       0,
+			assertion: assert.Error,
+		},
+		{
+			name: "no year",
+			args: args{
+				url: "https://adventofcode.com/day/1",
+			},
+			year:      0,
+			day:       0,
+			assertion: assert.Error,
+		},
+		{
+			name: "no day",
+			args: args{
+				url: "https://adventofcode.com/2015",
+			},
+			year:      0,
+			day:       0,
+			assertion: assert.Error,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotYear, gotDay, err := ParseURL(tt.args.url)
+
+			tt.assertion(t, err)
+			assert.Equal(t, tt.year, gotYear)
+			assert.Equal(t, tt.day, gotDay)
+		})
+	}
+}

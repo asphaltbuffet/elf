@@ -217,6 +217,10 @@ func ParseURL(url string) (int, int, error) {
 
 func findNamedMatches(re *regexp.Regexp, s string) map[string]string {
 	match := re.FindStringSubmatch(s)
+	if len(match) == 0 {
+		return nil
+	}
+
 	result := make(map[string]string)
 
 	for i, name := range re.SubexpNames() {
