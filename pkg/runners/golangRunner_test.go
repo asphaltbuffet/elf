@@ -27,8 +27,8 @@ func Test_newGolangRunner(t *testing.T) {
 			want: &golangRunner{
 				dir:                filepath.Join("testdata", "2015", "01-testDayOne", "go"),
 				cmd:                nil,
-				wrapperFilepath:    "",
-				executableFilepath: "",
+				wrapperFilepath:    filepath.Join("testdata", "2015", "01-testDayOne", "go", "runtime-wrapper.go"),
+				executableFilepath: filepath.Join("testdata", "2015", "01-testDayOne", "go", "runtime-wrapper"),
 				stdin:              nil,
 			},
 		},

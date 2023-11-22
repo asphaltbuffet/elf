@@ -27,7 +27,7 @@ func Test_newPythonRunner(t *testing.T) {
 			want: &pythonRunner{
 				dir:             filepath.Join("testdata", "2015", "01-testDayOne", "py"),
 				cmd:             nil,
-				wrapperFilepath: "",
+				wrapperFilepath: filepath.Join("testdata", "2015", "01-testDayOne", "py", "runtime-wrapper.py"),
 				stdin:           nil,
 			},
 		},

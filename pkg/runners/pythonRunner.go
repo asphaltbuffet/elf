@@ -21,10 +21,10 @@ const (
 )
 
 type pythonRunner struct {
-	dir             string
 	cmd             *exec.Cmd
-	wrapperFilepath string
+	dir             string
 	stdin           io.WriteCloser
+	wrapperFilepath string
 }
 
 func newPythonRunner(dir string) Runner {
@@ -110,17 +110,12 @@ func (p *pythonRunner) Stop() error {
 func (p *pythonRunner) Cleanup() error {
 	err := os.Remove(p.wrapperFilepath)
 
-	switch {
-	case errors.Is(err, os.ErrNotExist):
+	if errors.Is(err, os.ErrNotExist) {
 		// already gone, maybe log this?
-		fallthrough
-
-	case err == nil:
 		return nil
-
-	default:
-		return err
 	}
+
+	return err
 }
 
 func (p *pythonRunner) Run(task *Task) (*Result, error) {
@@ -134,12 +129,12 @@ func (p *pythonRunner) Run(task *Task) (*Result, error) {
 		return nil, fmt.Errorf("writing task to stdin: %w", err)
 	}
 
-	res := new(Result)
-	if jsonErr := readJSONFromCommand(res, p.cmd); jsonErr != nil {
+	r := new(Result)
+	if jsonErr := readJSONFromCommand(r, p.cmd); jsonErr != nil {
 		return nil, jsonErr
 	}
 
-	return res, nil
+	return r, nil
 }
 
 func (p *pythonRunner) String() string {

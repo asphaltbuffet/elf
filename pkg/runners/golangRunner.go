@@ -14,7 +14,9 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"syscall"
 	"text/template"
+	"time"
 )
 
 var project string
@@ -37,7 +39,9 @@ type golangRunner struct {
 
 func newGolangRunner(dir string) Runner {
 	return &golangRunner{
-		dir: dir,
+		dir:                dir,
+		wrapperFilepath:    filepath.Join(dir, golangWrapperFilename),
+		executableFilepath: filepath.Join(dir, golangWrapperExecutableFilename),
 	}
 }
 
@@ -49,10 +53,6 @@ func (g *golangRunner) Start() error {
 	slog.LogAttrs(context.TODO(), slog.LevelDebug, "setting up runner",
 		slog.String("dir", g.dir),
 	)
-
-	// exercises/<year>/<day>-<title>/go
-	g.wrapperFilepath = filepath.Join(g.dir, golangWrapperFilename)
-	g.executableFilepath = filepath.Join(g.dir, golangWrapperExecutableFilename)
 
 	// windows requires .exe extension
 	if runtime.GOOS == "windows" {
@@ -145,11 +145,37 @@ func (g *golangRunner) Start() error {
 }
 
 func (g *golangRunner) Stop() error {
+	const processExitTimeout time.Duration = 5 * time.Second
+
 	if g.cmd == nil || g.cmd.Process == nil {
 		return nil
 	}
 
-	return g.cmd.Process.Kill()
+	// First try to send a SIGTERM.
+	if err := g.cmd.Process.Signal(syscall.SIGTERM); err != nil {
+		return fmt.Errorf("failed to send SIGTERM to go process: %w", err)
+	}
+
+	// Wait for the process to exit, but not forever.
+	done := make(chan error, 1)
+	go func() {
+		_, err := g.cmd.Process.Wait()
+		done <- err
+	}()
+
+	// wait up to 5 seconds for the process to exit.
+	select {
+	case <-time.After(processExitTimeout):
+		if err := g.cmd.Process.Kill(); err != nil {
+			return fmt.Errorf("failed to kill go process: %w", err)
+		}
+	case err := <-done:
+		if err != nil {
+			return fmt.Errorf("failed to stop go process: %w", err)
+		}
+	}
+
+	return nil
 }
 
 func (g *golangRunner) Cleanup() error {
@@ -192,18 +218,16 @@ func (g *golangRunner) String() string {
 }
 
 func getModuleName() string {
-	const golangInstallation string = "go"
-
-	stderrBuffer := new(bytes.Buffer)
-	stdoutBuffer := new(bytes.Buffer)
+	errBuf := new(bytes.Buffer)
+	outBuf := new(bytes.Buffer)
 
 	cmd := exec.Command(golangInstallation, "list", "-m")
-	cmd.Stdout = stdoutBuffer
-	cmd.Stderr = stderrBuffer
+	cmd.Stdout = outBuf
+	cmd.Stderr = errBuf
 
 	if err := cmd.Run(); err != nil {
-		panic("failed to get module name: " + stderrBuffer.String())
+		panic("failed to get module name: " + errBuf.String())
 	}
 
-	return strings.Trim(stdoutBuffer.String(), "\n")
+	return strings.Trim(outBuf.String(), "\n")
 }
