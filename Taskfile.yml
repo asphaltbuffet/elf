@@ -68,8 +68,9 @@ tasks:
     cmds:
       - go build -o dist/ ./...
 
-  snapshot: 
+  snapshot:
     desc: goreleaser build snapshot
+    deps: [install, mod-tidy]
     aliases: [ss]
     cmds:
       - goreleaser build --clean --single-target --snapshot
