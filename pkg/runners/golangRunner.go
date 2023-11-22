@@ -20,10 +20,11 @@ import (
 var project string
 
 const (
-	golangInstallation              = "go"
-	golangWrapperFilename           = "runtime-wrapper.go"
-	golangWrapperExecutableFilename = "runtime-wrapper"
-	golangBuildpathBase             = "github.com/asphaltbuffet/elf/exercises/%s/%s"
+	goRunnerName                    string = "Go"
+	golangInstallation              string = "go"
+	golangWrapperFilename           string = "runtime-wrapper.go"
+	golangWrapperExecutableFilename string = "runtime-wrapper"
+	golangBuildpathBase             string = "github.com/asphaltbuffet/elf/exercises/%s/%s"
 )
 
 type golangRunner struct {
@@ -183,6 +184,11 @@ func (g *golangRunner) Run(task *Task) (*Result, error) {
 	}
 
 	return res, nil
+}
+
+// String returns a string representation of the runner type.
+func (g *golangRunner) String() string {
+	return goRunnerName
 }
 
 func getModuleName() string {

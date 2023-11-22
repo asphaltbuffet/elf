@@ -1,7 +1,6 @@
 package runners
 
 import (
-	_ "embed"
 	"os"
 	"path/filepath"
 	"testing"
@@ -113,4 +112,14 @@ func Test_pythonRunner_Stop(t *testing.T) {
 			tt.assertion(t, tt.p.Stop())
 		})
 	}
+}
+
+func Test_pythonRunner_String(t *testing.T) {
+	t.Parallel()
+
+	p := &pythonRunner{}
+	assert.Equal(t, "Python", p.String())
+
+	p = nil
+	assert.Equal(t, "Python", p.String(), "nil runner should return the name of the runner")
 }

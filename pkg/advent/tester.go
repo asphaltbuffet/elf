@@ -2,14 +2,44 @@ package advent
 
 import (
 	"fmt"
+	"log/slog"
 	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/dustin/go-humanize"
+	"github.com/lmittmann/tint"
 
 	"github.com/asphaltbuffet/elf/pkg/runners"
 )
+
+func (e *Exercise) Test() error {
+	testerLog := slog.With(slog.String("fn", "Solve"), slog.String("exercise", e.Title))
+	testerLog.Debug("solving", slog.String("language", e.Language))
+
+	runner := runners.Available[e.Language](e.path)
+
+	if err := runner.Start(); err != nil {
+		testerLog.Error("starting runner", slog.String("path", e.Data.InputFile), tint.Err(err))
+		return err
+	}
+
+	defer func() {
+		_ = runner.Stop()
+		_ = runner.Cleanup()
+	}()
+
+	headerStyle := lipgloss.NewStyle().Bold(true).BorderStyle(lipgloss.NormalBorder()).Foreground(lipgloss.Color("5"))
+
+	fmt.Println(headerStyle.Render(e.String()))
+
+	if err := runTests(runner, e.Data); err != nil {
+		testerLog.Error("running tests", tint.Err(err))
+		return err
+	}
+
+	return nil
+}
 
 func makeTestID(part runners.Part, n int) string {
 	return fmt.Sprintf("test.%d.%d", part, n)

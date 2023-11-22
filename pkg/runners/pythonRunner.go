@@ -15,8 +15,9 @@ import (
 )
 
 const (
-	python3Installation   = "python3"
-	pythonWrapperFilename = "runtime-wrapper.py"
+	pythonRunnerName      string = "Python"
+	python3Installation   string = "python3"
+	pythonWrapperFilename string = "runtime-wrapper.py"
 )
 
 type pythonRunner struct {
@@ -28,7 +29,8 @@ type pythonRunner struct {
 
 func newPythonRunner(dir string) Runner {
 	return &pythonRunner{
-		dir: dir,
+		dir:             dir,
+		wrapperFilepath: filepath.Join(dir, pythonWrapperFilename),
 	}
 }
 
@@ -36,8 +38,6 @@ func newPythonRunner(dir string) Runner {
 var pythonInterface []byte
 
 func (p *pythonRunner) Start() error {
-	p.wrapperFilepath = filepath.Join(p.dir, pythonWrapperFilename)
-
 	// Save interaction code
 	if err := os.WriteFile(p.wrapperFilepath, pythonInterface, 0o600); err != nil {
 		return err
@@ -137,4 +137,8 @@ func (p *pythonRunner) Run(task *Task) (*Result, error) {
 	}
 
 	return res, nil
+}
+
+func (p *pythonRunner) String() string {
+	return pythonRunnerName
 }
