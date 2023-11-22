@@ -42,6 +42,8 @@ tasks:
     cmds:
       - go mod tidy
     sources:
+      - "**/*.go"
+    generates:
       - go.mod
       - go.sum
 
