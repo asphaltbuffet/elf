@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	au "github.com/logrusorgru/aurora"
+	"github.com/charmbracelet/lipgloss"
 )
 
 // A Task represents a unit of work to be performed.
@@ -127,7 +127,8 @@ func readJSONFromCommand(res interface{}, cmd *exec.Cmd) error {
 		err = json.Unmarshal(inp, res)
 		if err != nil {
 			// anything returned as an error is considered a debug message
-			fmt.Printf("[%s] %v\n", au.BrightRed("DBG"), strings.TrimSpace(string(inp)))
+			style := lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
+			fmt.Printf("[%s] %v\n", style.Render("DBG"), strings.TrimSpace(string(inp)))
 		} else {
 			break
 		}
