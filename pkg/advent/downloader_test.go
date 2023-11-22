@@ -2,10 +2,54 @@ package advent
 
 import (
 	_ "embed"
+	"net/http"
+	"os"
+	"path/filepath"
 	"testing"
 
+	"github.com/jarcoal/httpmock"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+func setupTestCase(t *testing.T) func(t *testing.T) {
+	t.Helper()
+
+	cfgDir = t.TempDir()
+
+	rClient.SetBaseURL("https://test.fake")
+
+	require.Equal(t, "https://test.fake", rClient.BaseURL)
+	httpmock.ActivateNonDefault(rClient.GetClient())
+
+	return func(t *testing.T) {
+		t.Helper()
+
+		httpmock.DeactivateAndReset()
+		require.NoError(t, os.RemoveAll(exerciseBaseDir))
+	}
+}
+
+func setupSubTest(t *testing.T) func(t *testing.T) {
+	t.Helper()
+
+	httpmock.Reset()
+
+	return func(t *testing.T) {
+		t.Helper()
+
+		t.Log("teardown sub-test")
+	}
+}
+
+func goldenValue(t *testing.T, goldenFile string) []byte {
+	t.Helper()
+
+	content, err := os.ReadFile(filepath.Join("testdata", goldenFile))
+	require.NoError(t, err)
+
+	return content
+}
 
 func Test_extractTitle(t *testing.T) {
 	type args struct {
@@ -149,6 +193,64 @@ func TestParseURL(t *testing.T) {
 			tt.assertion(t, err)
 			assert.Equal(t, tt.year, gotYear)
 			assert.Equal(t, tt.day, gotDay)
+		})
+	}
+}
+
+//go:embed testdata/2015-1_resp_body
+var respBody2015d1 string
+
+func Test_downloadPuzzlePage(t *testing.T) {
+	type args struct {
+		year int
+		day  int
+	}
+
+	tests := []struct {
+		name          string
+		pageResponder httpmock.Responder
+		args          args
+		golden        string
+		assertion     assert.ErrorAssertionFunc
+		errText       string
+	}{
+		{
+			name:          "good request for 2015-1",
+			pageResponder: httpmock.NewStringResponder(http.StatusOK, respBody2015d1),
+			args:          args{year: 2015, day: 1},
+			golden:        "2015-1PuzzleData.golden",
+			assertion:     assert.NoError,
+		},
+		{
+			name:          "404 response",
+			pageResponder: httpmock.NewStringResponder(http.StatusNotFound, "404 Not Found"),
+			args:          args{year: 2015, day: 1},
+			assertion:     assert.Error,
+			errText:       "processing page response",
+		},
+	}
+
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			teardownSubTest := setupSubTest(t)
+			defer teardownSubTest(t)
+
+			httpmock.RegisterResponder("GET",
+				`=~^/(201[5-9]|202[012])/day/([1-9]|1[0-9]|2[0-5])$`,
+				tt.pageResponder)
+
+			got, err := downloadPuzzlePage(tt.args.year, tt.args.day)
+
+			tt.assertion(t, err)
+			if err != nil {
+				require.ErrorContains(t, err, tt.errText)
+			} else {
+				want := goldenValue(t, tt.golden)
+				assert.Equal(t, want, got)
+			}
 		})
 	}
 }
