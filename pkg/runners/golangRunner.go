@@ -169,21 +169,21 @@ func (g *golangRunner) Cleanup() error {
 func (g *golangRunner) Run(task *Task) (*Result, error) {
 	taskJSON, err := json.Marshal(task)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("marshalling task to json: %w", err)
 	}
 
 	_, err = g.stdin.Write(append(taskJSON, '\n'))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("writing task to stdin: %w", err)
 	}
 
-	res := new(Result)
+	r := new(Result)
 
-	if jsonErr := readJSONFromCommand(res, g.cmd); jsonErr != nil {
+	if jsonErr := readJSONFromCommand(r, g.cmd); jsonErr != nil {
 		return nil, jsonErr
 	}
 
-	return res, nil
+	return r, nil
 }
 
 // String returns a string representation of the runner type.

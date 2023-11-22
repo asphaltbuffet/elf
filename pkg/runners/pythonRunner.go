@@ -126,10 +126,13 @@ func (p *pythonRunner) Cleanup() error {
 func (p *pythonRunner) Run(task *Task) (*Result, error) {
 	taskJSON, err := json.Marshal(task)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("marshalling task to json: %w", err)
 	}
 
-	_, _ = p.stdin.Write(append(taskJSON, '\n'))
+	_, err = p.stdin.Write(append(taskJSON, '\n'))
+	if err != nil {
+		return nil, fmt.Errorf("writing task to stdin: %w", err)
+	}
 
 	res := new(Result)
 	if jsonErr := readJSONFromCommand(res, p.cmd); jsonErr != nil {

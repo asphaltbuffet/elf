@@ -26,13 +26,7 @@ func NewFromDir(dir, lang string) (*Exercise, error) {
 	e.Language = lang
 	e.path = dir
 
-	slog.Debug("created advent exercise",
-		"id", e.ID,
-		"language", e.Language,
-		"year", e.Year,
-		"day", e.Day,
-		"url", e.URL,
-		"path", e.path)
+	slog.Debug("new advent exercise", slog.Any("exercise", e))
 
 	return e, nil
 }
