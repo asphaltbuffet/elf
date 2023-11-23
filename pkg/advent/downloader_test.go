@@ -45,7 +45,7 @@ func setupSubTest(t *testing.T) func(t *testing.T) {
 func goldenValue(t *testing.T, goldenFile string) []byte {
 	t.Helper()
 
-	content, err := os.ReadFile(filepath.Join("testdata", goldenFile))
+	content, err := os.ReadFile(goldenFile)
 	require.NoError(t, err)
 
 	return content
@@ -197,7 +197,7 @@ func TestParseURL(t *testing.T) {
 	}
 }
 
-//go:embed testdata/2015-1_resp_body
+//go:embed testdata/http/2015-1_resp_body
 var respBody2015d1 string
 
 func Test_downloadPuzzlePage(t *testing.T) {
@@ -218,7 +218,7 @@ func Test_downloadPuzzlePage(t *testing.T) {
 			name:          "good request for 2015-1",
 			pageResponder: httpmock.NewStringResponder(http.StatusOK, respBody2015d1),
 			args:          args{year: 2015, day: 1},
-			golden:        "2015-1PuzzleData.golden",
+			golden:        filepath.Join("testdata", "golden", "2015-1PuzzleData.golden"),
 			assertion:     assert.NoError,
 		},
 		{
@@ -248,6 +248,52 @@ func Test_downloadPuzzlePage(t *testing.T) {
 			if err != nil {
 				require.ErrorContains(t, err, tt.errText)
 			} else {
+				want := goldenValue(t, tt.golden)
+				assert.Equal(t, want, got)
+			}
+		})
+	}
+}
+
+func Test_getCachedPuzzlePage(t *testing.T) {
+	cfgDir = "testdata"
+
+	type args struct {
+		year int
+		day  int
+	}
+
+	tests := []struct {
+		name      string
+		args      args
+		golden    string
+		assertion assert.ErrorAssertionFunc
+	}{
+		{
+			name: "cached file exists",
+			args: args{
+				year: 2015,
+				day:  2,
+			},
+			golden:    "testdata/golden/2015-02.golden",
+			assertion: assert.NoError,
+		},
+		{
+			name: "no cached file",
+			args: args{
+				year: 2015,
+				day:  3,
+			},
+			assertion: assert.Error,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := getCachedPuzzlePage(tt.args.year, tt.args.day)
+
+			tt.assertion(t, err)
+			if err == nil {
 				want := goldenValue(t, tt.golden)
 				assert.Equal(t, want, got)
 			}
