@@ -300,3 +300,37 @@ func Test_getCachedPuzzlePage(t *testing.T) {
 		})
 	}
 }
+
+func TestExercise_getCachedInput(t *testing.T) {
+	cfgDir = "testdata"
+
+	tests := []struct {
+		name      string
+		e         *Exercise
+		golden    string
+		assertion assert.ErrorAssertionFunc
+	}{
+		{
+			name:      "cached file exists",
+			e:         &Exercise{ID: "2015-02"},
+			golden:    "testdata/golden/2015-02_input.golden",
+			assertion: assert.NoError,
+		},
+		{
+			name:      "no cached file",
+			e:         &Exercise{ID: "2015-03"},
+			assertion: assert.Error,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := tt.e.getCachedInput()
+
+			tt.assertion(t, err)
+			if err == nil {
+				want := goldenValue(t, tt.golden)
+				assert.Equal(t, want, got)
+			}
+		})
+	}
+}
