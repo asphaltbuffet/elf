@@ -12,14 +12,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func setupTestCase(t *testing.T) func(t *testing.T) {
+var NotFoundResponder = httpmock.NewStringResponder(http.StatusNotFound, "404 Not Found")
+
+func setupTestCase(t *testing.T, useTempDir bool) func(t *testing.T) {
 	t.Helper()
 
-	cfgDir = t.TempDir()
+	if useTempDir {
+		cfgDir = t.TempDir()
+	} else {
+		cfgDir = "testdata"
+	}
+
+	exerciseBaseDir = filepath.Join(cfgDir, "exercises")
 
 	rClient.SetBaseURL("https://test.fake")
 
-	require.Equal(t, "https://test.fake", rClient.BaseURL)
 	httpmock.ActivateNonDefault(rClient.GetClient())
 
 	return func(t *testing.T) {
@@ -49,6 +56,100 @@ func goldenValue(t *testing.T, goldenFile string) []byte {
 	require.NoError(t, err)
 
 	return content
+}
+
+//go:embed testdata/http/input_body
+var respBodyInput string
+
+func TestDownload(t *testing.T) {
+	type args struct {
+		url       string
+		lang      string
+		overwrite bool
+	}
+
+	type goldenFiles struct {
+		pageData string
+		input    string
+	}
+
+	tests := []struct {
+		name           string
+		args           args
+		pageResponder  httpmock.Responder
+		inputResponder httpmock.Responder
+		golden         goldenFiles
+		callCount      int
+		assertion      assert.ErrorAssertionFunc
+		errText        string
+	}{
+		{
+			name:           "cached data",
+			pageResponder:  httpmock.NewStringResponder(http.StatusOK, respBody2015d1),
+			inputResponder: httpmock.NewStringResponder(http.StatusOK, respBodyInput),
+			args: args{
+				url:       "https://adventofcode.com/2015/day/1",
+				lang:      "go",
+				overwrite: true,
+			},
+			golden: goldenFiles{
+				pageData: filepath.Join("testdata", "golden", "2015-1PuzzleData.golden"),
+				input:    filepath.Join("testdata", "golden", "input.golden"),
+			},
+			callCount: 0,
+			assertion: assert.NoError,
+		},
+		{
+			name:           "404 response",
+			pageResponder:  NotFoundResponder,
+			inputResponder: NotFoundResponder,
+			args: args{
+				url:       "https://adventofcode.com/2020/day/1",
+				lang:      "go",
+				overwrite: true,
+			},
+			callCount: 1,
+			assertion: assert.Error,
+			errText:   "processing page response",
+		},
+	}
+
+	teardownTestCase := setupTestCase(t, false)
+	defer teardownTestCase(t)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// set up testing
+			teardownSubTest := setupSubTest(t)
+			defer teardownSubTest(t)
+
+			httpmock.RegisterNoResponder(httpmock.NewNotFoundResponder(t.Error))
+
+			httpmock.RegisterResponder("GET",
+				`=~^/(201[5-9]|202[012])/day/([1-9]|1[0-9]|2[0-5])$`,
+				tt.pageResponder)
+
+			httpmock.RegisterResponder("GET",
+				`=~input$`,
+				tt.inputResponder)
+
+			// execute function under test
+			got, err := Download(tt.args.url, tt.args.lang, tt.args.overwrite)
+			t.Log("got", got, "err", err)
+
+			// assert results
+			tt.assertion(t, err)
+			if err != nil {
+				require.ErrorContains(t, err, tt.errText)
+			} else {
+				// pdWant := goldenValue(t, tt.golden.pageData)
+				// inWant := goldenValue(t, tt.golden.input)
+				assert.FileExists(t, filepath.Join(got, "input.txt"))
+
+				assert.Equal(t, tt.callCount, httpmock.GetTotalCallCount())
+			}
+		})
+	}
 }
 
 func Test_extractTitle(t *testing.T) {
@@ -223,14 +324,14 @@ func Test_downloadPuzzlePage(t *testing.T) {
 		},
 		{
 			name:          "404 response",
-			pageResponder: httpmock.NewStringResponder(http.StatusNotFound, "404 Not Found"),
+			pageResponder: NotFoundResponder,
 			args:          args{year: 2015, day: 1},
 			assertion:     assert.Error,
 			errText:       "processing page response",
 		},
 	}
 
-	teardownTestCase := setupTestCase(t)
+	teardownTestCase := setupTestCase(t, true)
 	defer teardownTestCase(t)
 
 	for _, tt := range tests {
@@ -241,6 +342,8 @@ func Test_downloadPuzzlePage(t *testing.T) {
 			httpmock.RegisterResponder("GET",
 				`=~^/(201[5-9]|202[012])/day/([1-9]|1[0-9]|2[0-5])$`,
 				tt.pageResponder)
+
+			httpmock.RegisterNoResponder(httpmock.NewNotFoundResponder(t.Error))
 
 			got, err := downloadPuzzlePage(tt.args.year, tt.args.day)
 
@@ -313,7 +416,7 @@ func TestExercise_getCachedInput(t *testing.T) {
 		{
 			name:      "cached file exists",
 			e:         &Exercise{ID: "2015-02"},
-			golden:    "testdata/golden/2015-02_input.golden",
+			golden:    "testdata/golden/input.golden",
 			assertion: assert.NoError,
 		},
 		{
