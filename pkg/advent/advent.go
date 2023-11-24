@@ -14,6 +14,30 @@ import (
 	"github.com/asphaltbuffet/elf/pkg/utilities"
 )
 
+var exerciseBaseDir = "exercises"
+
+func New(options ...func(*Exercise)) *Exercise {
+	e := &Exercise{}
+
+	for _, option := range options {
+		option(e)
+	}
+
+	return e
+}
+
+func WithDir(dir string) func(*Exercise) {
+	return func(e *Exercise) {
+		e.path = dir
+	}
+}
+
+func WithLanguage(lang string) func(*Exercise) {
+	return func(e *Exercise) {
+		e.Language = lang
+	}
+}
+
 func NewFromDir(dir, lang string) (*Exercise, error) {
 	logger := slog.With(slog.String("src", "NewFromDir"))
 	logger.Debug("creating new advent exercise", "dir", dir, "language", lang)
@@ -29,23 +53,6 @@ func NewFromDir(dir, lang string) (*Exercise, error) {
 	slog.Debug("new advent exercise", slog.Any("exercise", e))
 
 	return e, nil
-}
-
-func (e *Exercise) SetLanguage(lang string) {
-	e.Language = lang
-}
-
-// Dir returns the path to the exercise directory.
-// It will return an empty string if the exercise does not exist.
-//
-// Example: exercises/2020/01-someExerciseTitle.
-func (e *Exercise) Dir() string {
-	if e == nil || e.path == "" {
-		slog.Error("nil exercise or no path available")
-		panic("no exercise path available")
-	}
-
-	return filepath.Join("exercises", strconv.Itoa(e.Year), filepath.Base(e.path))
 }
 
 func NewExerciseFromInfo(dir string) (*Exercise, error) {
@@ -73,10 +80,48 @@ func NewExerciseFromInfo(dir string) (*Exercise, error) {
 	return d, nil
 }
 
+func loadExisting(path string) (*Exercise, error) {
+	var (
+		err error
+		e   *Exercise
+	)
+
+	infoPath := filepath.Join(path, "info.json")
+
+	_, err = appFs.Stat(infoPath)
+	if err == nil {
+		// exercise exists, we may need to update it
+		logger.Info("update existing exercise", slog.String("dir", path))
+
+		// TODO: a bad info.json will cause this to behave unpredictably
+		// TODO: if this fails, try to create a new exercise, or tell user to delete file(s)
+		e, err = NewExerciseFromInfo(path)
+		if err != nil {
+			logger.Error("creating exercise from info", slog.String("dir", path), tint.Err(err))
+			return nil, fmt.Errorf("loading exercise from info: %w", err)
+		}
+	}
+
+	return e, nil
+}
+
+// Dir returns the path to the exercise directory.
+// It will return an empty string if the exercise does not exist.
+//
+// Example: exercises/2020/01-someExerciseTitle.
+func (e *Exercise) Dir() string {
+	if e == nil || e.path == "" {
+		slog.Error("nil exercise or no path available")
+		panic("no exercise path available")
+	}
+
+	return filepath.Join(exerciseBaseDir, strconv.Itoa(e.Year), filepath.Base(e.path))
+}
+
 func makeExerciseID(year, day int) string {
 	return fmt.Sprintf("%d-%02d", year, day)
 }
 
 func makeExercisePath(year, day int, title string) string {
-	return filepath.Join("exercises", strconv.Itoa(year), fmt.Sprintf("%02d-%s", day, utilities.ToCamel(title)))
+	return filepath.Join(exerciseBaseDir, strconv.Itoa(year), fmt.Sprintf("%02d-%s", day, utilities.ToCamel(title)))
 }

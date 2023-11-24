@@ -72,31 +72,6 @@ func Download(url string, lang string, _ bool) (string, error) {
 	return e.path, nil
 }
 
-func loadExisting(path string) (*Exercise, error) {
-	var (
-		err error
-		e   *Exercise
-	)
-
-	infoPath := filepath.Join(path, "info.json")
-
-	_, err = appFs.Stat(infoPath)
-	if err == nil {
-		// exercise exists, we may need to update it
-		logger.Info("update existing exercise", slog.String("dir", path))
-
-		// TODO: a bad info.json will cause this to behave unpredictably
-		// TODO: if this fails, try to create a new exercise, or tell user to delete file(s)
-		e, err = NewExerciseFromInfo(path)
-		if err != nil {
-			logger.Error("creating exercise from info", slog.String("dir", path), tint.Err(err))
-			return nil, fmt.Errorf("loading exercise from info: %w", err)
-		}
-	}
-
-	return e, nil
-}
-
 func loadFromURL(url string, year, day int, lang string) (*Exercise, error) {
 	var (
 		page  []byte

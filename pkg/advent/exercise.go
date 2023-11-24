@@ -46,3 +46,7 @@ func (e *Exercise) LogValue() slog.Value {
 		slog.String("lang", e.Language),
 	)
 }
+
+func (e *Exercise) SetLanguage(lang string) {
+	e.Language = lang
+}
