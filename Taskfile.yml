@@ -1,5 +1,10 @@
 version: '3'
 
+output:
+  group:
+    begin: '::group::{{.TASK}}'
+    end: '::endgroup::'
+
 tasks:
   check:
     desc: test and lint
@@ -98,4 +103,4 @@ tasks:
     desc: git diff
     cmds:
       - git diff --exit-code
-      - RES=$$(git status --porcelain) ; if [ -n "$$RES" ]; then echo $$RES && exit 1 ; fi
+      - RES="$(git status --porcelain)" ; if [ -n "$RES" ]; then echo $RES && exit 1 ; fi
