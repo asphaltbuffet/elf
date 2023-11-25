@@ -419,3 +419,63 @@ func TestExercise_getCachedInput(t *testing.T) {
 		})
 	}
 }
+
+func Test_getExercisePath(t *testing.T) {
+	exerciseBaseDir = "testdata/fs"
+	// logger = slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
+
+	type args struct {
+		year int
+		day  int
+	}
+	tests := []struct {
+		name     string
+		args     args
+		wantPath string
+		wantOk   bool
+	}{
+		{
+			name: "no year",
+			args: args{
+				year: 2014,
+				day:  1,
+			},
+			wantPath: "",
+			wantOk:   false,
+		},
+		{
+			name: "empty year",
+			args: args{
+				year: 2015,
+				day:  1,
+			},
+			wantPath: "",
+			wantOk:   false,
+		},
+		{
+			name: "full day",
+			args: args{
+				year: 2017,
+				day:  1,
+			},
+			wantPath: filepath.Join(exerciseBaseDir, "2017", "01-fakeFullDay"),
+			wantOk:   true,
+		},
+		{
+			name: "empty day",
+			args: args{
+				year: 2017,
+				day:  2,
+			},
+			wantPath: filepath.Join(exerciseBaseDir, "2017", "02-fakeEmptyDay"),
+			wantOk:   true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotPath, gotOk := getExercisePath(tt.args.year, tt.args.day)
+			assert.Equal(t, tt.wantPath, gotPath)
+			assert.Equal(t, tt.wantOk, gotOk)
+		})
+	}
+}

@@ -87,6 +87,9 @@ tasks:
       - gotestsum --debug -- -race -covermode=atomic -coverprofile=bin/coverage.out $(go list ./... | grep -v /mocks)
       - go tool cover -html=bin/coverage.out -o bin/coverage.html
       - go tool cover -func=bin/coverage.out
+    sources:
+      - "**/*.go"
+      - "**/testdata/**"
     generates:
       - bin/coverage.out
       - bin/coverage.html

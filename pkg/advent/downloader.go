@@ -5,12 +5,14 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
+	"strings"
 	"text/template"
 
 	"golang.org/x/net/html"
@@ -117,35 +119,63 @@ func loadFromURL(url string, year, day int, lang string) (*Exercise, error) {
 }
 
 func getExercisePath(year, day int) (string, bool) {
-	// it may be better to use filepath.WalkDir here...
-	dirEntries, err := os.ReadDir(strconv.Itoa(year))
+	logger.Debug("searching for exercise directory",
+		slog.Int("year", year),
+		slog.Int("day", day),
+		slog.String("dir", exerciseBaseDir))
+
+	var exPath string
+	dayPrefix := fmt.Sprintf("%02d-", day)
+
+	err := filepath.WalkDir(exerciseBaseDir, func(path string, d fs.DirEntry, err error) error {
+		switch {
+		case err != nil:
+			return err
+
+		case !d.IsDir():
+			logger.Debug("skipping non-directory", slog.String("path", path))
+			fallthrough
+		case path == exerciseBaseDir:
+			return nil
+
+		case strings.HasPrefix(d.Name(), dayPrefix):
+			logger.Info("found exercise directory", slog.String("path", path))
+			exPath = path
+
+			// we found the directory we're looking for, stop walking
+			return filepath.SkipAll
+
+		case d.Name() == strconv.Itoa(year):
+			logger.Debug("found year directory", slog.String("path", path))
+			return nil
+
+		default:
+			logger.Debug("skipping non-year directory", slog.String("path", path))
+			// we only recurse into the specified year directory until we find the wanted day
+			return filepath.SkipDir
+		}
+	})
 	if err != nil {
+		logger.Error("walking exercise directory", slog.Int("year", year), slog.Int("day", day), tint.Err(err))
 		return "", false
 	}
 
-	for _, entry := range dirEntries {
-		if entry.IsDir() && entry.Name()[:2] == fmt.Sprintf("%02d-", day) {
-			fp, fpErr := filepath.Abs(filepath.Join(strconv.Itoa(year), entry.Name()))
-			return fp, fpErr == nil
-		}
-	}
-
-	return "", false
+	return exPath, exPath != ""
 }
 
 func extractTitle(page []byte) (string, error) {
 	doc, _ := html.Parse(bytes.NewReader(page))
 
-	tn, err := H2(doc)
+	extract, err := H2(doc)
 	if err != nil {
 		return "", fmt.Errorf("extracting title: %w", err)
 	}
 
-	tt := renderNode(tn)
+	rendNode := renderNode(extract)
 
 	re := regexp.MustCompile(`--- Day \d{1,2}: (.*) ---`)
 
-	matches := re.FindStringSubmatch(tt)
+	matches := re.FindStringSubmatch(rendNode)
 	if len(matches) != 2 { //nolint:gomnd // we expect 2 matches
 		return "", fmt.Errorf("getting title from page data: no match")
 	}
@@ -154,10 +184,13 @@ func extractTitle(page []byte) (string, error) {
 }
 
 func getPage(year, day int) ([]byte, error) {
-	d, err := getCachedPuzzlePage(year, day)
+	pageData, err := getCachedPuzzlePage(year, day)
 	if err == nil {
-		logger.Debug("using cached puzzle page", slog.Int("year", year), slog.Int("day", day), slog.Int("size", len(d)))
-		return d, nil
+		logger.Debug("using cached puzzle page",
+			slog.Int("year", year),
+			slog.Int("day", day),
+			slog.Int("size", len(pageData)))
+		return pageData, nil
 	}
 
 	logger.Info("downloading puzzle page", slog.Int("year", year), slog.Int("day", day))
