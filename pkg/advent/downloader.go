@@ -314,13 +314,23 @@ func downloadPuzzlePage(year, day int) ([]byte, error) {
 }
 
 func (e *Exercise) downloadInput() ([]byte, error) {
+	if cfgDir == "" {
+		return nil, fmt.Errorf("cache directory not set")
+	}
+
 	err := appFs.MkdirAll(filepath.Join(cfgDir, "inputs"), 0o750)
 	if err != nil {
 		return nil, fmt.Errorf("creating inputs directory: %w", err)
 	}
 
+	logger.Info("downloading input",
+		slog.String("file", filepath.Join(cfgDir, "inputs", e.ID)))
+
 	resp, err := rClient.R().
-		SetOutput(filepath.Join("inputs", e.ID)).
+		SetPathParams(map[string]string{
+			"year": strconv.Itoa(e.Year),
+			"day":  strconv.Itoa(e.Day),
+		}).
 		SetCookie(&http.Cookie{
 			Name:   "session",
 			Value:  os.Getenv("ELF_SESSION"),
@@ -343,7 +353,16 @@ func (e *Exercise) downloadInput() ([]byte, error) {
 		return nil, fmt.Errorf("downloading input data: %s", resp.Status())
 	}
 
-	return bytes.TrimSpace(resp.Body()), nil
+	data := bytes.TrimSpace(resp.Body())
+
+	// write response to disk
+	err = os.WriteFile(filepath.Join(cfgDir, "inputs", e.ID), data, 0o600)
+	if err != nil {
+		logger.Error("writing to cache", slog.String("url", resp.Request.URL), tint.Err(err))
+		return nil, fmt.Errorf("writing cached input: %w", err)
+	}
+
+	return data, nil
 }
 
 func (e *Exercise) getInput() ([]byte, error) {

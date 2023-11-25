@@ -479,3 +479,56 @@ func Test_getExercisePath(t *testing.T) {
 		})
 	}
 }
+
+func TestExercise_downloadInput(t *testing.T) {
+	tests := []struct {
+		name          string
+		e             *Exercise
+		pageResponder httpmock.Responder
+		golden        string
+		assertion     assert.ErrorAssertionFunc
+		errText       string
+	}{
+		{
+			name:          "new download",
+			pageResponder: httpmock.NewStringResponder(http.StatusOK, respBodyInput),
+			e:             &Exercise{ID: "2015-01", Year: 2015, Day: 1},
+			golden:        filepath.Join("testdata", "golden", "input.golden"),
+			assertion:     assert.NoError,
+		},
+		{
+			name:          "404 response",
+			pageResponder: NotFoundResponder,
+			e:             &Exercise{ID: "2015-01", Year: 2015, Day: 1},
+			assertion:     assert.Error,
+			errText:       "downloading input data",
+		},
+	}
+
+	teardownTestCase := setupTestCase(t, true)
+	defer teardownTestCase(t)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			teardownSubTest := setupSubTest(t)
+			defer teardownSubTest(t)
+
+			httpmock.RegisterResponder("GET",
+				`=~input$`,
+				tt.pageResponder)
+
+			httpmock.RegisterNoResponder(httpmock.NewNotFoundResponder(t.Error))
+
+			got, err := tt.e.downloadInput()
+
+			tt.assertion(t, err)
+			if err != nil {
+				require.ErrorContains(t, err, tt.errText)
+			} else {
+				want := goldenValue(t, tt.golden)
+				assert.Equal(t, want, got)
+				assert.FileExists(t, filepath.Join(cfgDir, "inputs", tt.e.ID))
+			}
+		})
+	}
+}
