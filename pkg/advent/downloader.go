@@ -153,10 +153,6 @@ func extractTitle(page []byte) (string, error) {
 	return matches[1], nil
 }
 
-func (e *Exercise) PuzzlePage() ([]byte, error) {
-	return getPage(e.Year, e.Day)
-}
-
 func getPage(year, day int) ([]byte, error) {
 	d, err := getCachedPuzzlePage(year, day)
 	if err == nil {
