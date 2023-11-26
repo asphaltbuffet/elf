@@ -1,12 +1,130 @@
 package advent
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
+	"github.com/asphaltbuffet/elf/mocks"
 	"github.com/asphaltbuffet/elf/pkg/runners"
 )
+
+func Test_Test(t *testing.T) {
+	mockRunner := new(mocks.MockRunner)
+	mockRunner.On("String").Return("MOCK")
+	mockRunner.On("Stop").Return(nil)
+	mockRunner.On("Cleanup").Return(nil)
+
+	tests := []struct {
+		name      string
+		e         *Exercise
+		mock1     func() *mock.Call
+		mock2     func() *mock.Call
+		assertion require.ErrorAssertionFunc
+	}{
+		{
+			name:      "error on empty exercise",
+			e:         &Exercise{},
+			mock1:     func() *mock.Call { return mockRunner.On("Start").Return(t.Fatal) },
+			mock2:     func() *mock.Call { return mockRunner.On("Run").Return(t.Fatal) },
+			assertion: require.Error,
+		},
+		{
+			name: "start error",
+			e: &Exercise{
+				ID:       "2015-01",
+				Title:    "Fake Title",
+				Language: "go",
+				Year:     2015,
+				Day:      1,
+				URL:      "https://fake.url/",
+				Data:     &Data{},
+				path:     "/fake/path/here",
+				runner:   mockRunner,
+			},
+			mock1:     func() *mock.Call { return mockRunner.On("Start").Return(fmt.Errorf("fake start error")) },
+			mock2:     func() *mock.Call { return mockRunner.On("Run").Return(t.Fatal) },
+			assertion: require.Error,
+		},
+		{
+			name: "run error",
+			e: &Exercise{
+				ID:       "2015-01",
+				Title:    "Fake Title",
+				Language: "go",
+				Year:     2015,
+				Day:      1,
+				URL:      "https://fake.url/",
+				Data: &Data{
+					Input:     "FAKE\nINPUT",
+					InputFile: "input.txt",
+					TestCases: TestCase{
+						One: []*Test{{Input: "", Expected: ""}},
+						Two: []*Test{{Input: "", Expected: ""}},
+					},
+				},
+				path:   "/fake/path/here",
+				runner: mockRunner,
+			},
+			mock1: func() *mock.Call { return mockRunner.On("Start").Return(nil) },
+			mock2: func() *mock.Call {
+				return mockRunner.On("Run", &runners.Task{
+					TaskID:    "test.1.1",
+					Part:      1,
+					Input:     "",
+					OutputDir: "",
+				}).Return(&runners.Result{TaskID: "test.1.1"}, fmt.Errorf("fake run error"))
+			},
+			assertion: require.NoError,
+		},
+		{
+			name: "success",
+			e: &Exercise{
+				ID:       "2015-01",
+				Title:    "Fake Title",
+				Language: "go",
+				Year:     2015,
+				Day:      1,
+				URL:      "https://fake.url/",
+				Data: &Data{
+					Input:     "FAKE\nINPUT",
+					InputFile: "input.txt",
+					TestCases: TestCase{
+						One: []*Test{{Input: "fake", Expected: "fake"}},
+						Two: []*Test{{Input: "fake", Expected: "fake"}},
+					},
+				},
+				path:   "/fake/path/here",
+				runner: mockRunner,
+			},
+			mock1: func() *mock.Call { return mockRunner.On("Start").Return(nil) },
+			mock2: func() *mock.Call {
+				return mockRunner.On("Run", mock.Anything).Return(&runners.Result{
+					TaskID:   "test.1.1",
+					Ok:       true,
+					Output:   "fake",
+					Duration: 0.06942,
+				}, nil)
+			},
+			assertion: require.NoError,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m1 := tt.mock1()
+			m2 := tt.mock2()
+
+			tt.assertion(t, tt.e.Test())
+
+			// reset mock calls
+			m1.Unset()
+			m2.Unset()
+		})
+	}
+}
 
 func Test_makeTestID(t *testing.T) {
 	type args struct {
