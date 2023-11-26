@@ -3,8 +3,6 @@ package advent
 import (
 	"fmt"
 	"log/slog"
-	"strconv"
-	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/dustin/go-humanize"
@@ -46,16 +44,15 @@ func makeTestID(part runners.Part, n int) string {
 }
 
 func parseTestID(id string) (runners.Part, int) {
-	tokens := strings.Split(id, ".")
+	var a runners.Part
+	var b int
 
-	p, err := strconv.ParseUint(tokens[1], 10, 8)
+	_, err := fmt.Sscanf(id, "test.%d.%d", &a, &b)
 	if err != nil {
 		panic(err)
 	}
 
-	n, _ := strconv.Atoi(tokens[2])
-
-	return runners.Part(uint8(p)), n
+	return a, b
 }
 
 func runTests(runner runners.Runner, exInfo *Data) error {
