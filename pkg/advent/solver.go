@@ -5,8 +5,6 @@ import (
 	"io"
 	"log/slog"
 	"os"
-	"strconv"
-	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/dustin/go-humanize"
@@ -21,16 +19,14 @@ func (e *Exercise) Solve() error {
 
 	input := e.Data.Input
 
-	runner := e.runner
-
-	if err := runner.Start(); err != nil {
+	if err := e.runner.Start(); err != nil {
 		solverLog.Error("starting runner", slog.String("path", e.Data.InputFile), tint.Err(err))
 		return err
 	}
 
 	defer func() {
-		_ = runner.Stop()
-		_ = runner.Cleanup()
+		_ = e.runner.Stop()
+		_ = e.runner.Cleanup()
 	}()
 
 	headerStyle := lipgloss.NewStyle().
@@ -40,12 +36,12 @@ func (e *Exercise) Solve() error {
 
 	fmt.Println(headerStyle.Render(e.String()))
 
-	if err := runTests(runner, e.Data); err != nil {
+	if err := runTests(e.runner, e.Data); err != nil {
 		solverLog.Error("running tests", tint.Err(err))
 		return err
 	}
 
-	if err := runMainTasks(runner, input); err != nil {
+	if err := runMainTasks(e.runner, input); err != nil {
 		solverLog.Error("running main tasks", tint.Err(err))
 		return err
 	}
@@ -58,15 +54,15 @@ func makeMainID(part runners.Part) string {
 }
 
 func parseMainID(id string) runners.Part {
-	tokens := strings.Split(id, ".")
+	var p runners.Part
 
-	p, err := strconv.ParseUint(tokens[1], 10, 8)
+	_, err := fmt.Sscanf(id, "main.%d", &p)
 	if err != nil {
-		slog.Error("parsing part from main id", slog.Group("task", "id", id, "tokens", tokens), tint.Err(err))
+		slog.Error("parsing main id", slog.Group("task", "id", id), tint.Err(err))
 		panic(err)
 	}
 
-	return runners.Part(uint8(p))
+	return p
 }
 
 func runMainTasks(runner runners.Runner, input string) error {

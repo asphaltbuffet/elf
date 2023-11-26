@@ -3,8 +3,6 @@ package advent
 import (
 	"fmt"
 	"log/slog"
-	"strconv"
-	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/dustin/go-humanize"
@@ -14,26 +12,29 @@ import (
 )
 
 func (e *Exercise) Test() error {
-	testerLog := slog.With(slog.String("fn", "Solve"), slog.String("exercise", e.Title))
+	if e == nil || *e == (Exercise{}) {
+		slog.Error("exercise is nil")
+		return fmt.Errorf("exercise is nil")
+	}
+
+	testerLog := slog.With(slog.String("fn", "Test"), slog.String("exercise", e.Title))
 	testerLog.Debug("solving", slog.String("language", e.Language))
 
-	runner := runners.Available[e.Language](e.path)
-
-	if err := runner.Start(); err != nil {
+	if err := e.runner.Start(); err != nil {
 		testerLog.Error("starting runner", slog.String("path", e.Data.InputFile), tint.Err(err))
 		return err
 	}
 
 	defer func() {
-		_ = runner.Stop()
-		_ = runner.Cleanup()
+		_ = e.runner.Stop()
+		_ = e.runner.Cleanup()
 	}()
 
 	headerStyle := lipgloss.NewStyle().Bold(true).BorderStyle(lipgloss.NormalBorder()).Foreground(lipgloss.Color("5"))
 
 	fmt.Println(headerStyle.Render(e.String()))
 
-	if err := runTests(runner, e.Data); err != nil {
+	if err := runTests(e.runner, e.Data); err != nil {
 		testerLog.Error("running tests", tint.Err(err))
 		return err
 	}
@@ -46,16 +47,15 @@ func makeTestID(part runners.Part, n int) string {
 }
 
 func parseTestID(id string) (runners.Part, int) {
-	tokens := strings.Split(id, ".")
+	var a runners.Part
+	var b int
 
-	p, err := strconv.ParseUint(tokens[1], 10, 8)
+	_, err := fmt.Sscanf(id, "test.%d.%d", &a, &b)
 	if err != nil {
 		panic(err)
 	}
 
-	n, _ := strconv.Atoi(tokens[2])
-
-	return runners.Part(uint8(p)), n
+	return a, b
 }
 
 func runTests(runner runners.Runner, exInfo *Data) error {

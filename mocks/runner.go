@@ -31,3 +31,8 @@ func (m *MockRunner) Cleanup() error {
 	args := m.Called()
 	return args.Error(0)
 }
+
+func (m *MockRunner) String() string {
+	args := m.Called()
+	return args.String(0)
+}
