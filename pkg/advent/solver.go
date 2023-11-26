@@ -58,15 +58,15 @@ func makeMainID(part runners.Part) string {
 }
 
 func parseMainID(id string) runners.Part {
-	tokens := strings.Split(id, ".")
+	var p runners.Part
 
-	p, err := strconv.ParseUint(tokens[1], 10, 8)
+	_, err := fmt.Sscanf(id, "main.%d", &p)
 	if err != nil {
-		slog.Error("parsing part from main id", slog.Group("task", "id", id, "tokens", tokens), tint.Err(err))
+		slog.Error("parsing main id", slog.Group("task", "id", id), tint.Err(err))
 		panic(err)
 	}
 
-	return runners.Part(uint8(p))
+	return p
 }
 
 func runMainTasks(runner runners.Runner, input string) error {
