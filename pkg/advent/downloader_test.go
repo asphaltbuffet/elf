@@ -2,6 +2,7 @@ package advent
 
 import (
 	_ "embed"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -112,6 +113,19 @@ func TestDownload(t *testing.T) {
 			assertion: assert.Error,
 			errText:   "processing page response",
 		},
+		{
+			name:           "bad url",
+			pageResponder:  NotFoundResponder,
+			inputResponder: NotFoundResponder,
+			args: args{
+				url:       "fake/url",
+				lang:      "go",
+				overwrite: false,
+			},
+			callCount: 0,
+			assertion: assert.Error,
+			errText:   "creating exercise from URL",
+		},
 	}
 
 	teardownTestCase := setupTestCase(t, false)
@@ -150,6 +164,37 @@ func TestDownload(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_noCacheDir(t *testing.T) {
+	teardownTestCase := setupTestCase(t, false)
+	defer teardownTestCase(t)
+
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+
+	cfgDir = ""
+
+	_, err := Download("https://adventofcode.com/2015/day/1", "go", false)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "cache directory")
+
+	_, err = getPage(2015, 1)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "cache directory")
+
+	_, err = getCachedPuzzlePage(2015, 1)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "cache directory")
+
+	e := &Exercise{ID: "2015-01", Year: 2015, Day: 1}
+	_, err = e.getCachedInput()
+	require.Error(t, err)
+	require.ErrorContains(t, err, "cache directory")
+
+	_, err = e.downloadInput()
+	require.Error(t, err)
+	require.ErrorContains(t, err, "cache directory")
 }
 
 func Test_extractTitle(t *testing.T) {
@@ -520,6 +565,87 @@ func TestExercise_downloadInput(t *testing.T) {
 			httpmock.RegisterNoResponder(httpmock.NewNotFoundResponder(t.Error))
 
 			got, err := tt.e.downloadInput()
+
+			tt.assertion(t, err)
+			if err != nil {
+				require.ErrorContains(t, err, tt.errText)
+			} else {
+				want := goldenValue(t, tt.golden)
+				assert.Equal(t, want, got)
+				assert.FileExists(t, filepath.Join(cfgDir, "inputs", tt.e.ID))
+			}
+		})
+	}
+}
+
+func TestExercise_getInput(t *testing.T) {
+	tests := []struct {
+		name          string
+		e             *Exercise
+		pageResponder httpmock.Responder
+		golden        string
+		callCount     int
+		assertion     require.ErrorAssertionFunc
+		errText       string
+	}{
+		{
+			name:          "new download",
+			pageResponder: httpmock.NewStringResponder(http.StatusOK, respBodyInput),
+			e:             &Exercise{ID: "2015-03", Year: 2015, Day: 3},
+			golden:        filepath.Join("testdata", "golden", "input.golden"),
+			callCount:     1,
+			assertion:     require.NoError,
+		},
+		{
+			name:          "cached file exists",
+			pageResponder: NotFoundResponder,
+			e:             &Exercise{ID: "2015-01", Year: 2015, Day: 1},
+			golden:        filepath.Join("testdata", "golden", "input.golden"),
+			callCount:     0,
+			assertion:     require.NoError,
+			errText:       "downloading input data",
+		},
+		{
+			name:          "not cached, 404 response",
+			pageResponder: NotFoundResponder,
+			e:             &Exercise{ID: "2015-01", Year: 2015, Day: 4},
+			golden:        filepath.Join("testdata", "golden", "input.golden"),
+			callCount:     0,
+			assertion:     require.NoError,
+			errText:       "downloading input data",
+		},
+	}
+
+	teardownTestCase := setupTestCase(t, true)
+	defer teardownTestCase(t)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			teardownSubTest := setupSubTest(t)
+			defer teardownSubTest(t)
+
+			// copy input file to temp dir if it exists
+			_, err := appFs.Stat(filepath.Join("testdata", "inputs", tt.e.ID))
+			if err == nil {
+				src, tmpFsErr := appFs.Open(filepath.Join("testdata", "inputs", tt.e.ID))
+				require.NoError(t, tmpFsErr, "unable to open testdata input file")
+				defer src.Close()
+
+				dst, tmpFsErr := appFs.Create(filepath.Join(cfgDir, "inputs", tt.e.ID))
+				require.NoError(t, tmpFsErr, "unable to create temp input file")
+				defer dst.Close()
+
+				_, tmpFsErr = io.Copy(dst, src)
+				require.NoError(t, tmpFsErr, "unable to copy testdata input file")
+			}
+
+			httpmock.RegisterResponder("GET",
+				`=~input$`,
+				tt.pageResponder)
+
+			httpmock.RegisterNoResponder(httpmock.NewNotFoundResponder(t.Error))
+
+			got, err := tt.e.getInput()
 
 			tt.assertion(t, err)
 			if err != nil {

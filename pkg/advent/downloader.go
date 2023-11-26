@@ -235,6 +235,10 @@ func findNamedMatches(re *regexp.Regexp, s string) map[string]string {
 }
 
 func getCachedPuzzlePage(year, day int) ([]byte, error) {
+	if cfgDir == "" {
+		return nil, fmt.Errorf("cache directory not set")
+	}
+
 	fp := filepath.Join(cfgDir, "pages", makeExerciseID(year, day))
 
 	f, err := afero.ReadFile(appFs, fp)
@@ -247,6 +251,10 @@ func getCachedPuzzlePage(year, day int) ([]byte, error) {
 }
 
 func (e *Exercise) getCachedInput() ([]byte, error) {
+	if cfgDir == "" {
+		return nil, fmt.Errorf("cache directory not set")
+	}
+
 	fp := filepath.Join(cfgDir, "inputs", e.ID)
 
 	f, err := afero.ReadFile(appFs, fp)
@@ -368,9 +376,11 @@ func (e *Exercise) downloadInput() ([]byte, error) {
 func (e *Exercise) getInput() ([]byte, error) {
 	d, err := e.getCachedInput()
 	if err == nil {
+		logger.Debug("using cached input", "exercise", e)
 		return d, nil
 	}
 
+	logger.Debug("no cached input found; downloading input data", "exercise", e)
 	return e.downloadInput()
 }
 
