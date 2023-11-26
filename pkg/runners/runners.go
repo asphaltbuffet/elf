@@ -20,6 +20,8 @@ type Runner interface {
 	Cleanup() error
 	// Run executes a given task and returns the result or an error.
 	Run(task *Task) (*Result, error)
+
+	String() string
 }
 
 // ResultOrError holds either the result of a task or an error.
@@ -40,11 +42,4 @@ type RunnerCreator func(dir string) Runner
 var Available = map[string]RunnerCreator{
 	"go": newGolangRunner,
 	"py": newPythonRunner,
-}
-
-// RunnerNames maps runner type strings (like "go" or "py") to more
-// human-friendly names (like "Golang" or "Python").
-var RunnerNames = map[string]string{
-	"go": "Go",
-	"py": "Python",
 }

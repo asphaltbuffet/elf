@@ -1,5 +1,10 @@
 version: '3'
 
+output:
+  group:
+    begin: '::group::{{.TASK}}'
+    end: '::endgroup::'
+
 tasks:
   check:
     desc: test and lint
@@ -42,6 +47,8 @@ tasks:
     cmds:
       - go mod tidy
     sources:
+      - "**/*.go"
+    generates:
       - go.mod
       - go.sum
 
@@ -66,8 +73,9 @@ tasks:
     cmds:
       - go build -o dist/ ./...
 
-  snapshot: 
+  snapshot:
     desc: goreleaser build snapshot
+    deps: [install, mod-tidy]
     aliases: [ss]
     cmds:
       - goreleaser build --clean --single-target --snapshot
@@ -81,9 +89,12 @@ tasks:
     desc: go test
     cmds:
       - mkdir -p bin
-      - gotestsum --format=dots-v2 -- -race -covermode=atomic -coverprofile=bin/coverage.out ./...
+      - gotestsum --debug -- -race -covermode=atomic -coverprofile=bin/coverage.out $(go list ./... | grep -v /mocks)
       - go tool cover -html=bin/coverage.out -o bin/coverage.html
       - go tool cover -func=bin/coverage.out
+    sources:
+      - "**/*.go"
+      - "**/testdata/**"
     generates:
       - bin/coverage.out
       - bin/coverage.html
@@ -92,4 +103,4 @@ tasks:
     desc: git diff
     cmds:
       - git diff --exit-code
-      - RES=$$(git status --porcelain) ; if [ -n "$$RES" ]; then echo $$RES && exit 1 ; fi
+      - RES="$(git status --porcelain)" ; if [ -n "$RES" ]; then echo $RES && exit 1 ; fi

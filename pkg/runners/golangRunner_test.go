@@ -1,7 +1,6 @@
 package runners
 
 import (
-	_ "embed"
 	"os"
 	"path/filepath"
 	"testing"
@@ -28,8 +27,8 @@ func Test_newGolangRunner(t *testing.T) {
 			want: &golangRunner{
 				dir:                filepath.Join("testdata", "2015", "01-testDayOne", "go"),
 				cmd:                nil,
-				wrapperFilepath:    "",
-				executableFilepath: "",
+				wrapperFilepath:    filepath.Join("testdata", "2015", "01-testDayOne", "go", "runtime-wrapper.go"),
+				executableFilepath: filepath.Join("testdata", "2015", "01-testDayOne", "go", "runtime-wrapper"),
 				stdin:              nil,
 			},
 		},
@@ -125,4 +124,14 @@ func Test_golangRunner_Stop(t *testing.T) {
 			tt.assertion(t, tt.g.Stop())
 		})
 	}
+}
+
+func Test_golangRunner_String(t *testing.T) {
+	t.Parallel()
+
+	g := &golangRunner{}
+	assert.Equal(t, "Go", g.String())
+
+	g = nil
+	assert.Equal(t, "Go", g.String(), "nil runner should return the name of the runner")
 }

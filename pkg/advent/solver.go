@@ -15,6 +15,44 @@ import (
 	"github.com/asphaltbuffet/elf/pkg/runners"
 )
 
+func (e *Exercise) Solve() error {
+	solverLog := slog.With(slog.String("fn", "Solve"), slog.String("exercise", e.Title))
+	solverLog.Debug("solving", slog.String("language", e.Language))
+
+	input := e.Data.Input
+
+	runner := e.runner
+
+	if err := runner.Start(); err != nil {
+		solverLog.Error("starting runner", slog.String("path", e.Data.InputFile), tint.Err(err))
+		return err
+	}
+
+	defer func() {
+		_ = runner.Stop()
+		_ = runner.Cleanup()
+	}()
+
+	headerStyle := lipgloss.NewStyle().
+		Bold(true).
+		BorderStyle(lipgloss.NormalBorder()).
+		Foreground(lipgloss.Color("5"))
+
+	fmt.Println(headerStyle.Render(e.String()))
+
+	if err := runTests(runner, e.Data); err != nil {
+		solverLog.Error("running tests", tint.Err(err))
+		return err
+	}
+
+	if err := runMainTasks(runner, input); err != nil {
+		solverLog.Error("running main tasks", tint.Err(err))
+		return err
+	}
+
+	return nil
+}
+
 func makeMainID(part runners.Part) string {
 	return fmt.Sprintf("main.%d", part)
 }

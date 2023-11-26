@@ -5,12 +5,14 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
+	"strings"
 	"text/template"
 
 	"golang.org/x/net/html"
@@ -24,16 +26,14 @@ var (
 	rClient = resty.New().SetBaseURL("https://adventofcode.com")
 	cfgDir  string
 	appFs   = afero.NewOsFs()
-	logger  *slog.Logger
+	logger  = slog.With(slog.String("action", "download"))
 )
 
-const cacheFileExt = ".txt"
-
 func Download(url string, lang string, _ bool) (string, error) {
-	logger = slog.With(slog.String("action", "download"))
-
-	cfgDir, _ = os.UserConfigDir()
-	cfgDir = filepath.Join(cfgDir, "elf")
+	if cfgDir == "" {
+		logger.Error("no config directory")
+		return "", fmt.Errorf("cache directory not set")
+	}
 
 	year, day, err := ParseURL(url)
 	if err != nil {
@@ -72,31 +72,6 @@ func Download(url string, lang string, _ bool) (string, error) {
 	logger.Info("exercise added", slog.String("url", e.URL), slog.String("dir", e.Dir()))
 
 	return e.path, nil
-}
-
-func loadExisting(path string) (*Exercise, error) {
-	var (
-		err error
-		e   *Exercise
-	)
-
-	infoPath := filepath.Join(path, "info.json")
-
-	_, err = appFs.Stat(infoPath)
-	if err == nil {
-		// exercise exists, we may need to update it
-		logger.Info("update existing exercise", slog.String("dir", path))
-
-		// TODO: a bad info.json will cause this to behave unpredictably
-		// TODO: if this fails, try to create a new exercise, or tell user to delete file(s)
-		e, err = NewExerciseFromInfo(path)
-		if err != nil {
-			logger.Error("creating exercise from info", slog.String("dir", path), tint.Err(err))
-			return nil, fmt.Errorf("loading exercise from info: %w", err)
-		}
-	}
-
-	return e, nil
 }
 
 func loadFromURL(url string, year, day int, lang string) (*Exercise, error) {
@@ -144,35 +119,63 @@ func loadFromURL(url string, year, day int, lang string) (*Exercise, error) {
 }
 
 func getExercisePath(year, day int) (string, bool) {
-	// it may be better to use filepath.WalkDir here...
-	dirEntries, err := os.ReadDir(strconv.Itoa(year))
+	logger.Debug("searching for exercise directory",
+		slog.Int("year", year),
+		slog.Int("day", day),
+		slog.String("dir", exerciseBaseDir))
+
+	var exPath string
+	dayPrefix := fmt.Sprintf("%02d-", day)
+
+	err := filepath.WalkDir(exerciseBaseDir, func(path string, d fs.DirEntry, err error) error {
+		switch {
+		case err != nil:
+			return err
+
+		case !d.IsDir():
+			logger.Debug("skipping non-directory", slog.String("path", path))
+			fallthrough
+		case path == exerciseBaseDir:
+			return nil
+
+		case strings.HasPrefix(d.Name(), dayPrefix):
+			logger.Info("found exercise directory", slog.String("path", path))
+			exPath = path
+
+			// we found the directory we're looking for, stop walking
+			return filepath.SkipAll
+
+		case d.Name() == strconv.Itoa(year):
+			logger.Debug("found year directory", slog.String("path", path))
+			return nil
+
+		default:
+			logger.Debug("skipping non-year directory", slog.String("path", path))
+			// we only recurse into the specified year directory until we find the wanted day
+			return filepath.SkipDir
+		}
+	})
 	if err != nil {
+		logger.Error("walking exercise directory", slog.Int("year", year), slog.Int("day", day), tint.Err(err))
 		return "", false
 	}
 
-	for _, entry := range dirEntries {
-		if entry.IsDir() && entry.Name()[:2] == fmt.Sprintf("%02d-", day) {
-			fp, fpErr := filepath.Abs(filepath.Join(strconv.Itoa(year), entry.Name()))
-			return fp, fpErr == nil
-		}
-	}
-
-	return "", false
+	return exPath, exPath != ""
 }
 
 func extractTitle(page []byte) (string, error) {
 	doc, _ := html.Parse(bytes.NewReader(page))
 
-	tn, err := H2(doc)
+	extract, err := H2(doc)
 	if err != nil {
 		return "", fmt.Errorf("extracting title: %w", err)
 	}
 
-	tt := renderNode(tn)
+	rendNode := renderNode(extract)
 
 	re := regexp.MustCompile(`--- Day \d{1,2}: (.*) ---`)
 
-	matches := re.FindStringSubmatch(tt)
+	matches := re.FindStringSubmatch(rendNode)
 	if len(matches) != 2 { //nolint:gomnd // we expect 2 matches
 		return "", fmt.Errorf("getting title from page data: no match")
 	}
@@ -180,15 +183,14 @@ func extractTitle(page []byte) (string, error) {
 	return matches[1], nil
 }
 
-func (e *Exercise) PuzzlePage() ([]byte, error) {
-	return getPage(e.Year, e.Day)
-}
-
 func getPage(year, day int) ([]byte, error) {
-	d, err := getCachedPuzzlePage(year, day)
+	pageData, err := getCachedPuzzlePage(year, day)
 	if err == nil {
-		logger.Debug("using cached puzzle page", slog.Int("year", year), slog.Int("day", day), slog.Int("size", len(d)))
-		return d, nil
+		logger.Debug("using cached puzzle page",
+			slog.Int("year", year),
+			slog.Int("day", day),
+			slog.Int("size", len(pageData)))
+		return pageData, nil
 	}
 
 	logger.Info("downloading puzzle page", slog.Int("year", year), slog.Int("day", day))
@@ -217,6 +219,10 @@ func ParseURL(url string) (int, int, error) {
 
 func findNamedMatches(re *regexp.Regexp, s string) map[string]string {
 	match := re.FindStringSubmatch(s)
+	if len(match) == 0 {
+		return nil
+	}
+
 	result := make(map[string]string)
 
 	for i, name := range re.SubexpNames() {
@@ -229,7 +235,11 @@ func findNamedMatches(re *regexp.Regexp, s string) map[string]string {
 }
 
 func getCachedPuzzlePage(year, day int) ([]byte, error) {
-	fp := filepath.Join(cfgDir, "pages", makeExerciseID(year, day)+cacheFileExt)
+	if cfgDir == "" {
+		return nil, fmt.Errorf("cache directory not set")
+	}
+
+	fp := filepath.Join(cfgDir, "pages", makeExerciseID(year, day))
 
 	f, err := afero.ReadFile(appFs, fp)
 	if err != nil {
@@ -241,7 +251,11 @@ func getCachedPuzzlePage(year, day int) ([]byte, error) {
 }
 
 func (e *Exercise) getCachedInput() ([]byte, error) {
-	fp := filepath.Join(cfgDir, "inputs", e.ID+cacheFileExt)
+	if cfgDir == "" {
+		return nil, fmt.Errorf("cache directory not set")
+	}
+
+	fp := filepath.Join(cfgDir, "inputs", e.ID)
 
 	f, err := afero.ReadFile(appFs, fp)
 	if err != nil {
@@ -253,19 +267,23 @@ func (e *Exercise) getCachedInput() ([]byte, error) {
 }
 
 func downloadPuzzlePage(year, day int) ([]byte, error) {
+	if cfgDir == "" {
+		return nil, fmt.Errorf("cache directory not set")
+	}
+
 	// make sure we can write the cached file before we download it
 	err := appFs.MkdirAll(filepath.Join(cfgDir, "pages"), 0o750)
 	if err != nil {
 		return nil, fmt.Errorf("creating cache directory: %w", err)
 	}
 
-	logger.Info(
-		"downloading puzzle page",
-		slog.String("file",
-			filepath.Join(cfgDir, "pages", makeExerciseID(year, day)+cacheFileExt)))
+	logger.Info("downloading puzzle page",
+		slog.String("file", filepath.Join(cfgDir, "pages", makeExerciseID(year, day))))
 
-	// unfortunately this will save "404 Not Found" or other error responses to this location too...
-	req := rClient.R().SetOutput(filepath.Join("pages", makeExerciseID(year, day)+cacheFileExt))
+	req := rClient.R().SetPathParams(map[string]string{
+		"year": strconv.Itoa(year),
+		"day":  strconv.Itoa(day),
+	})
 
 	resp, err := req.Get("/{year}/day/{day}")
 	if err != nil {
@@ -275,26 +293,52 @@ func downloadPuzzlePage(year, day int) ([]byte, error) {
 	}
 
 	if resp.StatusCode() != http.StatusOK {
-		logger.Error(
-			"download page response",
+		logger.Error("download page response",
 			slog.String("url", resp.Request.URL),
-			slog.String("status", resp.Status()),
+			slog.String("status", http.StatusText(resp.StatusCode())),
 			slog.Int("code", resp.StatusCode()))
 
-		return nil, fmt.Errorf("processing page response: %s", resp.Status())
+		return nil, fmt.Errorf("processing page response: %s", http.StatusText(resp.StatusCode()))
 	}
 
-	return resp.Body(), nil
+	// only keep relevant parts of the page
+	re := regexp.MustCompile(`(?s)<article.*?>(.*)</article>`)
+	matches := re.FindSubmatch(resp.Body())
+	if len(matches) != 2 { //nolint:gomnd // we expect 2 matches
+		logger.Error("extracting page data", slog.String("url", resp.Request.URL), slog.Any("found", matches))
+		return nil, fmt.Errorf("extracting page data: no match")
+	}
+
+	pd := bytes.TrimSpace(matches[1])
+
+	// write response to disk
+	err = os.WriteFile(filepath.Join(cfgDir, "pages", makeExerciseID(year, day)), pd, 0o600)
+	if err != nil {
+		logger.Error("writing to cache", slog.String("url", resp.Request.URL), tint.Err(err))
+		return nil, fmt.Errorf("writing cached puzzle page: %w", err)
+	}
+
+	return pd, nil
 }
 
 func (e *Exercise) downloadInput() ([]byte, error) {
+	if cfgDir == "" {
+		return nil, fmt.Errorf("cache directory not set")
+	}
+
 	err := appFs.MkdirAll(filepath.Join(cfgDir, "inputs"), 0o750)
 	if err != nil {
 		return nil, fmt.Errorf("creating inputs directory: %w", err)
 	}
 
+	logger.Info("downloading input",
+		slog.String("file", filepath.Join(cfgDir, "inputs", e.ID)))
+
 	resp, err := rClient.R().
-		SetOutput(filepath.Join("inputs", e.ID+cacheFileExt)).
+		SetPathParams(map[string]string{
+			"year": strconv.Itoa(e.Year),
+			"day":  strconv.Itoa(e.Day),
+		}).
 		SetCookie(&http.Cookie{
 			Name:   "session",
 			Value:  os.Getenv("ELF_SESSION"),
@@ -302,7 +346,7 @@ func (e *Exercise) downloadInput() ([]byte, error) {
 		}).
 		Get("/{year}/day/{day}/input")
 	if err != nil {
-		return nil, fmt.Errorf("accessing input site: %w", err)
+		return nil, fmt.Errorf("accessing input data page: %w", err)
 	}
 
 	if resp.StatusCode() != http.StatusOK {
@@ -310,23 +354,33 @@ func (e *Exercise) downloadInput() ([]byte, error) {
 			slog.Group("request",
 				slog.String("method", resp.Request.Method),
 				slog.String("url", resp.Request.URL),
-				// slog.String("headers", resp.Request.Header),
 				slog.Any("cookies", resp.Request.Cookies)),
 			slog.String("status", resp.Status()),
 			slog.Int("code", resp.StatusCode()))
 
-		return nil, fmt.Errorf("getting input data: %s", resp.Status())
+		return nil, fmt.Errorf("downloading input data: %s", resp.Status())
 	}
 
-	return bytes.TrimSpace(resp.Body()), nil
+	data := bytes.TrimSpace(resp.Body())
+
+	// write response to disk
+	err = os.WriteFile(filepath.Join(cfgDir, "inputs", e.ID), data, 0o600)
+	if err != nil {
+		logger.Error("writing to cache", slog.String("url", resp.Request.URL), tint.Err(err))
+		return nil, fmt.Errorf("writing cached input: %w", err)
+	}
+
+	return data, nil
 }
 
-func (e *Exercise) Input() ([]byte, error) {
+func (e *Exercise) getInput() ([]byte, error) {
 	d, err := e.getCachedInput()
 	if err == nil {
+		logger.Debug("using cached input", "exercise", e)
 		return d, nil
 	}
 
+	logger.Debug("no cached input found; downloading input data", "exercise", e)
 	return e.downloadInput()
 }
 
@@ -360,16 +414,6 @@ func (t *tmplFile) LogValue() slog.Value {
 	)
 }
 
-func (e *Exercise) LogValue() slog.Value {
-	return slog.GroupValue(
-		slog.String("id", e.ID),
-		slog.String("title", e.Title),
-		slog.String("url", e.URL),
-		slog.String("dir", e.Dir()),
-		slog.String("lang", e.Language),
-	)
-}
-
 func (e *Exercise) addMissingFiles() error {
 	var (
 		err             error
@@ -397,13 +441,13 @@ func (e *Exercise) addMissingFiles() error {
 
 	if replaceInput { // TODO: should be if replacing OR if it doesn't exist
 		// read cached data or download puzzle input
-		inputFile, inErr := e.Input()
+		inputFile, inErr := e.getInput()
 		if inErr != nil {
 			addLogger.Error("load input data", tint.Err(inErr))
 			return fmt.Errorf("loading input: %w", inErr)
 		}
 
-		inErr = afero.WriteFile(appFs, filepath.Join(e.Dir(), "input"+cacheFileExt), inputFile, 0o600)
+		inErr = afero.WriteFile(appFs, filepath.Join(e.Dir(), "input.txt"), inputFile, 0o600)
 		if inErr != nil {
 			addLogger.Error("write input file", tint.Err(inErr))
 			return fmt.Errorf("writing input file: %w", inErr)

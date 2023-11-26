@@ -15,20 +15,22 @@ import (
 )
 
 const (
-	python3Installation   = "python3"
-	pythonWrapperFilename = "runtime-wrapper.py"
+	pythonRunnerName      string = "Python"
+	python3Installation   string = "python3"
+	pythonWrapperFilename string = "runtime-wrapper.py"
 )
 
 type pythonRunner struct {
-	dir             string
 	cmd             *exec.Cmd
-	wrapperFilepath string
+	dir             string
 	stdin           io.WriteCloser
+	wrapperFilepath string
 }
 
 func newPythonRunner(dir string) Runner {
 	return &pythonRunner{
-		dir: dir,
+		dir:             dir,
+		wrapperFilepath: filepath.Join(dir, pythonWrapperFilename),
 	}
 }
 
@@ -36,8 +38,6 @@ func newPythonRunner(dir string) Runner {
 var pythonInterface []byte
 
 func (p *pythonRunner) Start() error {
-	p.wrapperFilepath = filepath.Join(p.dir, pythonWrapperFilename)
-
 	// Save interaction code
 	if err := os.WriteFile(p.wrapperFilepath, pythonInterface, 0o600); err != nil {
 		return err
@@ -110,31 +110,33 @@ func (p *pythonRunner) Stop() error {
 func (p *pythonRunner) Cleanup() error {
 	err := os.Remove(p.wrapperFilepath)
 
-	switch {
-	case errors.Is(err, os.ErrNotExist):
+	if errors.Is(err, os.ErrNotExist) {
 		// already gone, maybe log this?
-		fallthrough
-
-	case err == nil:
 		return nil
-
-	default:
-		return err
 	}
+
+	return err
 }
 
 func (p *pythonRunner) Run(task *Task) (*Result, error) {
 	taskJSON, err := json.Marshal(task)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("marshalling task to json: %w", err)
 	}
 
-	_, _ = p.stdin.Write(append(taskJSON, '\n'))
+	_, err = p.stdin.Write(append(taskJSON, '\n'))
+	if err != nil {
+		return nil, fmt.Errorf("writing task to stdin: %w", err)
+	}
 
-	res := new(Result)
-	if jsonErr := readJSONFromCommand(res, p.cmd); jsonErr != nil {
+	r := new(Result)
+	if jsonErr := readJSONFromCommand(r, p.cmd); jsonErr != nil {
 		return nil, jsonErr
 	}
 
-	return res, nil
+	return r, nil
+}
+
+func (p *pythonRunner) String() string {
+	return pythonRunnerName
 }

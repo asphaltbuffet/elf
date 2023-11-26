@@ -5,7 +5,6 @@ go 1.21
 require (
 	github.com/dustin/go-humanize v1.0.1
 	github.com/go-resty/resty/v2 v2.10.0
-	github.com/logrusorgru/aurora v2.0.3+incompatible
 	github.com/spf13/afero v1.10.0
 	github.com/spf13/cobra v1.8.0
 	github.com/stretchr/testify v1.8.4
@@ -37,6 +36,7 @@ require (
 	github.com/charmbracelet/lipgloss v0.9.1
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
+	github.com/jarcoal/httpmock v1.3.1
 	github.com/lmittmann/tint v1.0.3
 	github.com/mattn/go-isatty v0.0.19 // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect
