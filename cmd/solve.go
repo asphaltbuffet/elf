@@ -36,7 +36,7 @@ func GetSolveCmd() *cobra.Command {
 		}
 
 		solveCmd.Flags().BoolVarP(&noTest, "no-test", "X", false, "skip tests")
-		solveCmd.Flags().StringVarP(&language, "lang", "l", "", "solution language")
+		solveCmd.Flags().StringVarP(&language, "lang", "l", "go", "solution language")
 	}
 
 	return solveCmd
