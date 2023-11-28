@@ -60,31 +60,37 @@ func initialize(fs afero.Fs) error {
 
 	slog.SetDefault(slog.New(
 		tint.NewHandler(w, &tint.Options{
-			Level:      slog.LevelDebug,
+			Level:      slog.LevelInfo,
 			TimeFormat: time.StampMilli,
 		}),
 	))
 
-	cfg = viper.New()
-	cfg.SetDefault("advent.token", "")
-	cfg.SetDefault("advent.user", "")
-	cfg.SetDefault("advent.dir", "exercises")
-	cfg.SetDefault("euler.dir", "problems")
-	cfg.SetDefault("language", "go")
+	viper.SetEnvPrefix("elf")
 
-	cfg.SetFs(fs)
-	cfg.SetConfigName("elf.toml")
-	cfg.SetConfigType("toml")
+	_ = viper.BindEnv("advent.token", "ELF_ADVENT_TOKEN")
+	viper.SetDefault("advent.token", "")
+
+	viper.SetDefault("advent.user", "")
+	viper.SetDefault("advent.dir", "exercises")
+	viper.SetDefault("euler.dir", "problems")
+
+	_ = viper.BindEnv("language", "ELF_LANGUAGE")
+	viper.SetDefault("language", "go")
+
+	viper.SetFs(fs)
+
+	viper.SetConfigName("elf.toml")
+	viper.SetConfigType("toml")
 
 	userCfg, err := os.UserConfigDir()
 	if err == nil {
-		cfg.AddConfigPath(userCfg)
+		viper.AddConfigPath(userCfg)
 	}
 
-	cfg.AddConfigPath(".")
-	cfg.AddConfigPath("$HOME/.config/elf")
+	viper.AddConfigPath(".")
+	viper.AddConfigPath("$HOME/.config/elf")
 
-	err = cfg.ReadInConfig()
+	err = viper.ReadInConfig()
 	if err != nil {
 		if !errors.As(err, &viper.ConfigFileNotFoundError{}) {
 			// only return error if it's not a missing config file
@@ -94,7 +100,7 @@ func initialize(fs afero.Fs) error {
 
 		slog.Warn("no config file found")
 	} else {
-		slog.Info("starting elf", "version", Version, "config", cfg.ConfigFileUsed())
+		slog.Debug("starting elf", "version", Version, "config", viper.ConfigFileUsed())
 	}
 
 	return nil
