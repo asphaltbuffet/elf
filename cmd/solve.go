@@ -36,14 +36,14 @@ func GetSolveCmd() *cobra.Command {
 		}
 
 		solveCmd.Flags().BoolVarP(&noTest, "no-test", "X", false, "skip tests")
-		solveCmd.Flags().StringVarP(&language, "lang", "l", "go", "solution language")
+		solveCmd.Flags().StringVarP(&language, "lang", "l", "", "solution language")
 	}
 
 	return solveCmd
 }
 
 type Challenge interface {
-	Solve() error
+	Solve(bool) error
 	String() string
 }
 
@@ -71,13 +71,13 @@ func runSolveCmd(cmd *cobra.Command, _ []string) error {
 
 	slog.Debug("solving exercise", slog.Group("exercise", "dir", dir, "language", language, "type", info.ChallengeType))
 
-	ch, err = advent.NewFromDir(dir, language)
+	ch, err = advent.New(language, advent.WithDir(dir))
 	if err != nil {
 		slog.Error("creating exercise", tint.Err(err))
 		return err
 	}
 
-	if solveErr := ch.Solve(); solveErr != nil {
+	if solveErr := ch.Solve(noTest); solveErr != nil {
 		slog.Error("solving exercise", tint.Err(solveErr))
 		cmd.PrintErrln("Failed to solve: ", solveErr)
 	}

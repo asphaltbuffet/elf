@@ -50,11 +50,12 @@ func Download(url string, lang string, _ bool) (string, error) {
 			"day":  strconv.Itoa(day),
 		})
 
-	var e *Exercise
+	e := &Exercise{}
 
 	exPath, ok := getExercisePath(year, day)
 	if ok {
-		e, err = loadExisting(exPath)
+		e.path = exPath
+		err = e.loadInfo()
 	} else {
 		e, err = loadFromURL(url, year, day, lang)
 	}
