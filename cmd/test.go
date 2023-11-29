@@ -15,7 +15,6 @@ var testCmd *cobra.Command
 type ChallengeTester interface {
 	Test() error
 	String() string
-	SetLanguage(string)
 }
 
 const exampleTestText = `  elf test --lang=go
@@ -53,13 +52,11 @@ func runTestCmd(cmd *cobra.Command, _ []string) error {
 
 	slog.Debug("testing exercise", slog.Any("challenge", ch))
 
-	ch, err = advent.NewExerciseFromInfo(dir)
+	ch, err = advent.New(language, advent.WithDir(dir))
 	if err != nil {
 		slog.Error("loading exercise", tint.Err(err))
 		return err
 	}
-
-	ch.SetLanguage(language)
 
 	if testErr := ch.Test(); testErr != nil {
 		slog.Error("testing exercise", tint.Err(testErr))

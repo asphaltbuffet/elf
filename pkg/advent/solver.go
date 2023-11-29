@@ -13,13 +13,19 @@ import (
 	"github.com/asphaltbuffet/elf/pkg/runners"
 )
 
-func (e *Exercise) Solve() error {
+func (e *Exercise) Solve(skipTests bool) error {
 	solverLog := slog.With(slog.String("fn", "Solve"), slog.String("exercise", e.Title))
 	solverLog.Debug("solving", slog.String("language", e.Language))
 
-	input := e.Data.Input
+	input, err := os.ReadFile(e.Data.InputFile)
+	if err != nil {
+		solverLog.Error("reading input file", slog.String("path", e.Data.InputFile), tint.Err(err))
+		return err
+	}
 
-	if err := e.runner.Start(); err != nil {
+	e.Data.Input = string(input)
+
+	if err = e.runner.Start(); err != nil {
 		solverLog.Error("starting runner", slog.String("path", e.Data.InputFile), tint.Err(err))
 		return err
 	}
@@ -36,12 +42,14 @@ func (e *Exercise) Solve() error {
 
 	fmt.Println(headerStyle.Render(e.String()))
 
-	if err := runTests(e.runner, e.Data); err != nil {
-		solverLog.Error("running tests", tint.Err(err))
-		return err
+	if !skipTests {
+		if err = runTests(e.runner, e.Data); err != nil {
+			solverLog.Error("running tests", tint.Err(err))
+			return err
+		}
 	}
 
-	if err := runMainTasks(e.runner, input); err != nil {
+	if err = runMainTasks(e.runner, e.Data.Input); err != nil {
 		solverLog.Error("running main tasks", tint.Err(err))
 		return err
 	}

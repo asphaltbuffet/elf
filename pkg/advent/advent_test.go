@@ -3,32 +3,35 @@ package advent
 import (
 	"bytes"
 	"log/slog"
-	"path"
 	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestNewFromDir(t *testing.T) {
+func TestNewWithOpts(t *testing.T) {
 	var b bytes.Buffer
-	tlog := slog.New(slog.NewTextHandler(&b, nil))
+	tlog := slog.New(slog.NewTextHandler(&b, &slog.HandlerOptions{Level: slog.LevelError}))
 	slog.SetDefault(tlog)
 
 	type args struct {
-		dir  string
-		lang string
+		language string
+		opts     []func(*Exercise)
 	}
 
 	tests := []struct {
 		name      string
 		args      args
 		want      *Exercise
-		assertion assert.ErrorAssertionFunc
+		assertion require.ErrorAssertionFunc
 	}{
 		{
 			name: "valid exercise",
-			args: args{dir: "../../testdata/exercises/2015/01-fakeTestDayOne", lang: "go"},
+			args: args{
+				language: "go",
+				opts:     []func(*Exercise){WithDir("../../testdata/exercises/2015/01-fakeTestDayOne")},
+			},
 			want: &Exercise{
 				ID:       "2015-01",
 				Title:    "Fake Test Day One",
@@ -38,31 +41,64 @@ func TestNewFromDir(t *testing.T) {
 				URL:      "https://fake.fk/2015/day/1",
 				Data:     &Data{},
 			},
-			assertion: assert.NoError,
+			assertion: require.NoError,
 		},
 		{
-			name:      "missing exercise directory",
-			args:      args{dir: "../../testdata/exercises/2016/01-fakeTestDayOne", lang: "go"},
+			name: "invalid language",
+			args: args{
+				language: "fake",
+				opts:     []func(*Exercise){WithDir("../../testdata/exercises/2015/01-fakeTestDayOne")},
+			},
 			want:      nil,
-			assertion: assert.Error,
+			assertion: require.Error,
 		},
 		{
-			name:      "missing year directory",
-			args:      args{dir: "../../testdata/exercises/2017/01-fakeTestDayOne", lang: "go"},
+			name: "no opts",
+			args: args{
+				language: "go",
+				opts:     nil,
+			},
 			want:      nil,
-			assertion: assert.Error,
+			assertion: require.Error,
+		},
+		{
+			name: "empty language",
+			args: args{
+				language: "",
+				opts:     []func(*Exercise){WithDir("../../testdata/exercises/2016/01-fakeTestDayOne")},
+			},
+			want:      nil,
+			assertion: require.Error,
+		},
+		{
+			name: "missing exercise directory",
+			args: args{
+				language: "go",
+				opts:     []func(*Exercise){WithDir("../../testdata/exercises/2016/01-fakeTestDayOne")},
+			},
+			want:      nil,
+			assertion: require.Error,
+		},
+		{
+			name: "missing year directory",
+			args: args{
+				language: "go",
+				opts:     []func(*Exercise){WithDir("../../testdata/exercises/2017/01-fakeTestDayOne")},
+			},
+			want:      nil,
+			assertion: require.Error,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewFromDir(path.Clean(tt.args.dir), tt.args.lang)
+			got, err := New(tt.args.language, tt.args.opts...)
 
 			tt.assertion(t, err)
 
 			if err != nil {
 				assert.Nil(t, got)
-				assert.NotEmpty(t, b.String())
+				assert.NotEmpty(t, b.String(), "expected log output at ERROR level")
 			} else {
 				assert.Equal(t, tt.want.ID, got.ID)
 				assert.Equal(t, tt.want.Title, got.Title)

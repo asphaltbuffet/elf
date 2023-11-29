@@ -11,19 +11,42 @@ import (
 
 	"github.com/lmittmann/tint"
 
+	"github.com/asphaltbuffet/elf/pkg/runners"
 	"github.com/asphaltbuffet/elf/pkg/utilities"
 )
 
 var exerciseBaseDir = "exercises"
 
-func New(options ...func(*Exercise)) *Exercise {
-	e := &Exercise{}
+func New(lang string, options ...func(*Exercise)) (*Exercise, error) {
+	e := &Exercise{Language: lang}
 
 	for _, option := range options {
 		option(e)
 	}
 
-	return e
+	switch {
+	case e.Language == "":
+		slog.Error("no language specified")
+		return nil, fmt.Errorf("no language specified")
+
+	case e.path != "":
+		if err := e.loadInfo(); err != nil {
+			slog.Error("filling exercise from info file", tint.Err(err))
+			return nil, err
+		}
+
+	case e.URL != "":
+		if err := e.loadFromURL(); err != nil {
+			slog.Error("filling exercise from URL", tint.Err(err))
+			return nil, err
+		}
+
+	default:
+		slog.Error("no exercise path or URL specified")
+		return nil, fmt.Errorf("no exercise path or URL specified")
+	}
+
+	return e, nil
 }
 
 func WithDir(dir string) func(*Exercise) {
@@ -32,77 +55,48 @@ func WithDir(dir string) func(*Exercise) {
 	}
 }
 
-func WithLanguage(lang string) func(*Exercise) {
+func WithURL(url string) func(*Exercise) {
 	return func(e *Exercise) {
-		e.Language = lang
+		e.URL = url
 	}
 }
 
-func NewFromDir(dir, lang string) (*Exercise, error) {
-	logger := slog.With(slog.String("src", "NewFromDir"))
-	logger.Debug("creating new advent exercise", "dir", dir, "language", lang)
+func (e *Exercise) loadInfo() error {
+	slog.Debug("populating exercise from info file", "path", e.path)
 
-	e, err := NewExerciseFromInfo(dir)
-	if err != nil {
-		return nil, err
-	}
-
-	e.Language = lang
-	e.path = dir
-
-	slog.Debug("new advent exercise", slog.Any("exercise", e))
-
-	return e, nil
-}
-
-func NewExerciseFromInfo(dir string) (*Exercise, error) {
-	fn := filepath.Join(dir, "info.json")
+	// populate exercise info from info.json
+	fn := filepath.Join(e.path, "info.json")
 
 	data, err := os.ReadFile(path.Clean(fn))
 	if err != nil {
 		slog.Error("reading info file", tint.Err(err), slog.String("path", fn))
-		return nil, fmt.Errorf("read info file %q: %w", fn, err)
+		return fmt.Errorf("read info file %q: %w", fn, err)
 	}
 
-	d := &Exercise{}
-
-	err = json.Unmarshal(data, d)
+	err = json.Unmarshal(data, e)
 	if err != nil {
 		slog.Error("unmarshal json into info struct", tint.Err(err), slog.String("path", fn))
-		return nil, fmt.Errorf("unmarshal info file %s: %w", fn, err)
+		return fmt.Errorf("unmarshal info file %s: %w", fn, err)
 	}
 
-	if d.Day == 0 || d.Year == 0 || d.Title == "" || d.URL == "" {
-		slog.Error("incomplete info data", slog.Any("data", d))
-		return nil, fmt.Errorf("incomplete info data: %v", d)
+	if e.Day == 0 || e.Year == 0 || e.Title == "" || e.URL == "" {
+		slog.Error("incomplete info data", slog.Any("data", e))
+		return fmt.Errorf("incomplete info data: %v", e)
 	}
 
-	return d, nil
+	// instatiate runner for language
+	rc, ok := runners.Available[e.Language]
+	if !ok {
+		return fmt.Errorf("no runner available for language %q", e.Language)
+	}
+
+	e.runner = rc(e.path)
+
+	return nil
 }
 
-func loadExisting(path string) (*Exercise, error) {
-	var (
-		err error
-		e   *Exercise
-	)
-
-	infoPath := filepath.Join(path, "info.json")
-
-	_, err = appFs.Stat(infoPath)
-	if err == nil {
-		// exercise exists, we may need to update it
-		logger.Info("update existing exercise", slog.String("dir", path))
-
-		// TODO: a bad info.json will cause this to behave unpredictably
-		// TODO: if this fails, try to create a new exercise, or tell user to delete file(s)
-		e, err = NewExerciseFromInfo(path)
-		if err != nil {
-			logger.Error("creating exercise from info", slog.String("dir", path), tint.Err(err))
-			return nil, fmt.Errorf("loading exercise from info: %w", err)
-		}
-	}
-
-	return e, nil
+func (e *Exercise) loadFromURL() error {
+	return fmt.Errorf("not implemented")
 }
 
 // Dir returns the path to the exercise directory.
@@ -112,7 +106,7 @@ func loadExisting(path string) (*Exercise, error) {
 func (e *Exercise) Dir() string {
 	if e == nil || e.path == "" {
 		slog.Error("nil exercise or no path available")
-		panic("no exercise path available")
+		return ""
 	}
 
 	return filepath.Join(exerciseBaseDir, strconv.Itoa(e.Year), filepath.Base(e.path))
