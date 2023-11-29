@@ -17,8 +17,8 @@ import (
 
 var exerciseBaseDir = "exercises"
 
-func New(lang string, options ...func(*Exercise)) (*Exercise, error) {
-	e := &Exercise{Language: lang}
+func New(options ...func(*Exercise)) (*Exercise, error) {
+	e := &Exercise{}
 
 	for _, option := range options {
 		option(e)
@@ -58,6 +58,12 @@ func WithDir(dir string) func(*Exercise) {
 func WithURL(url string) func(*Exercise) {
 	return func(e *Exercise) {
 		e.URL = url
+	}
+}
+
+func WithLanguage(lang string) func(*Exercise) {
+	return func(e *Exercise) {
+		e.Language = lang
 	}
 }
 

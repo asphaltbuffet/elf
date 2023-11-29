@@ -52,7 +52,7 @@ func runTestCmd(cmd *cobra.Command, _ []string) error {
 
 	slog.Debug("testing exercise", slog.Any("challenge", ch))
 
-	ch, err = advent.New(language, advent.WithDir(dir))
+	ch, err = advent.New(advent.WithLanguage(language), advent.WithDir(dir))
 	if err != nil {
 		slog.Error("loading exercise", tint.Err(err))
 		return err

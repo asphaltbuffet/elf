@@ -16,8 +16,7 @@ func TestNewWithOpts(t *testing.T) {
 	slog.SetDefault(tlog)
 
 	type args struct {
-		language string
-		opts     []func(*Exercise)
+		opts []func(*Exercise)
 	}
 
 	tests := []struct {
@@ -29,8 +28,10 @@ func TestNewWithOpts(t *testing.T) {
 		{
 			name: "valid exercise",
 			args: args{
-				language: "go",
-				opts:     []func(*Exercise){WithDir("../../testdata/exercises/2015/01-fakeTestDayOne")},
+				opts: []func(*Exercise){
+					WithDir("../../testdata/exercises/2015/01-fakeTestDayOne"),
+					WithLanguage("go"),
+				},
 			},
 			want: &Exercise{
 				ID:       "2015-01",
@@ -46,8 +47,10 @@ func TestNewWithOpts(t *testing.T) {
 		{
 			name: "invalid language",
 			args: args{
-				language: "fake",
-				opts:     []func(*Exercise){WithDir("../../testdata/exercises/2015/01-fakeTestDayOne")},
+				opts: []func(*Exercise){
+					WithDir("../../testdata/exercises/2015/01-fakeTestDayOne"),
+					WithLanguage("fake"),
+				},
 			},
 			want:      nil,
 			assertion: require.Error,
@@ -55,8 +58,7 @@ func TestNewWithOpts(t *testing.T) {
 		{
 			name: "no opts",
 			args: args{
-				language: "go",
-				opts:     nil,
+				opts: nil,
 			},
 			want:      nil,
 			assertion: require.Error,
@@ -64,8 +66,10 @@ func TestNewWithOpts(t *testing.T) {
 		{
 			name: "empty language",
 			args: args{
-				language: "",
-				opts:     []func(*Exercise){WithDir("../../testdata/exercises/2016/01-fakeTestDayOne")},
+				opts: []func(*Exercise){
+					WithDir("../../testdata/exercises/2016/01-fakeTestDayOne"),
+					WithLanguage(""),
+				},
 			},
 			want:      nil,
 			assertion: require.Error,
@@ -73,8 +77,10 @@ func TestNewWithOpts(t *testing.T) {
 		{
 			name: "missing exercise directory",
 			args: args{
-				language: "go",
-				opts:     []func(*Exercise){WithDir("../../testdata/exercises/2016/01-fakeTestDayOne")},
+				opts: []func(*Exercise){
+					WithDir("../../testdata/exercises/2016/01-fakeTestDayOne"),
+					WithLanguage("go"),
+				},
 			},
 			want:      nil,
 			assertion: require.Error,
@@ -82,8 +88,10 @@ func TestNewWithOpts(t *testing.T) {
 		{
 			name: "missing year directory",
 			args: args{
-				language: "go",
-				opts:     []func(*Exercise){WithDir("../../testdata/exercises/2017/01-fakeTestDayOne")},
+				opts: []func(*Exercise){
+					WithDir("../../testdata/exercises/2017/01-fakeTestDayOne"),
+					WithLanguage("go"),
+				},
 			},
 			want:      nil,
 			assertion: require.Error,
@@ -92,7 +100,7 @@ func TestNewWithOpts(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := New(tt.args.language, tt.args.opts...)
+			got, err := New(tt.args.opts...)
 
 			tt.assertion(t, err)
 

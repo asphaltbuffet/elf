@@ -71,7 +71,7 @@ func runSolveCmd(cmd *cobra.Command, _ []string) error {
 
 	slog.Debug("solving exercise", slog.Group("exercise", "dir", dir, "language", language, "type", info.ChallengeType))
 
-	ch, err = advent.New(language, advent.WithDir(dir))
+	ch, err = advent.New(advent.WithLanguage(language), advent.WithDir(dir))
 	if err != nil {
 		slog.Error("creating exercise", tint.Err(err))
 		return err
