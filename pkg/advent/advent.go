@@ -8,6 +8,7 @@ import (
 	"path"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/lmittmann/tint"
 
@@ -124,4 +125,28 @@ func makeExerciseID(year, day int) string {
 
 func makeExercisePath(year, day int, title string) string {
 	return filepath.Join(exerciseBaseDir, strconv.Itoa(year), fmt.Sprintf("%02d-%s", day, utilities.ToCamel(title)))
+}
+
+// GetImplementations returns a list of available implementations for the exercise.
+func (e *Exercise) GetImplementations() ([]string, error) {
+	dirEntries, err := os.ReadDir(e.path)
+	if err != nil {
+		return nil, fmt.Errorf("checking %s: %w", e.path, err)
+	}
+
+	impls := []string{}
+
+	for _, entry := range dirEntries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		name := strings.ToLower(entry.Name())
+
+		if _, ok := runners.Available[name]; ok {
+			impls = append(impls, name)
+		}
+	}
+
+	return impls, nil
 }
