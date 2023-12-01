@@ -5,6 +5,7 @@ go 1.21
 require (
 	github.com/dustin/go-humanize v1.0.1
 	github.com/go-resty/resty/v2 v2.10.0
+	github.com/sagikazarmark/slog-shim v0.1.0
 	github.com/spf13/afero v1.10.0
 	github.com/spf13/cobra v1.8.0
 	github.com/stretchr/testify v1.8.4
@@ -22,7 +23,6 @@ require (
 	github.com/muesli/termenv v0.15.2 // indirect
 	github.com/pelletier/go-toml/v2 v2.1.0 // indirect
 	github.com/sagikazarmark/locafero v0.3.0 // indirect
-	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
 	github.com/spf13/cast v1.5.1 // indirect
 	github.com/stretchr/objx v0.5.0 // indirect

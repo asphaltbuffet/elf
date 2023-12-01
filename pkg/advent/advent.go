@@ -87,8 +87,8 @@ func (e *Exercise) loadInfo() error {
 	}
 
 	if e.Day == 0 || e.Year == 0 || e.Title == "" || e.URL == "" {
-		slog.Error("incomplete info data", slog.Any("data", e))
-		return fmt.Errorf("incomplete info data: %v", e)
+		slog.Error("incomplete info data", slog.Any("data", e.LogValue()))
+		return fmt.Errorf("loading data: %s", fn)
 	}
 
 	// instatiate runner for language
