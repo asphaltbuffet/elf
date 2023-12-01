@@ -6,9 +6,12 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/lmittmann/tint"
+	"github.com/montanaflynn/stats"
+	"github.com/schollz/progressbar/v3"
 
 	"github.com/asphaltbuffet/elf/pkg/runners"
 )
@@ -61,16 +64,19 @@ func (e *Exercise) Benchmark(iterations int) error {
 		benchmarkLog.Debug("benchmarking complete", "lang", impl, "iterations", iterations)
 	}
 
-	benchmarkData := &BenchmarkData{
+	var benchmarkData []BenchmarkData
+	benchmarkData = append(benchmarkData, BenchmarkData{
 		Date:            time.Now().UTC(),
 		Day:             e.Day,
 		Dir:             e.Dir(),
 		Year:            e.Year,
 		Runs:            iterations,
 		Implementations: benchmarks,
-	}
+	})
 
 	outfile := filepath.Join(e.path, "benchmark.json")
+
+	// TODO: add flag to append/overwrite/fail?
 
 	jsonData, err := json.MarshalIndent(benchmarkData, "", "  ")
 	if err != nil {
@@ -90,5 +96,103 @@ func makeBenchmarkID(part runners.Part, subPart int) string {
 }
 
 func (e *Exercise) runBenchmark(iterations int) (*ImplementationData, error) {
-	panic("not implemented")
+	var (
+		tasks   []*runners.Task
+		results = make(map[runners.Part][]float64, 2*iterations)
+	)
+
+	// generate all the tasks needed for this benchmark run
+	for i := 0; i < iterations; i++ {
+		tasks = append(
+			tasks,
+			&runners.Task{
+				TaskID: makeBenchmarkID(runners.PartOne, i),
+				Part:   runners.PartOne,
+				Input:  e.Data.Input,
+			},
+			&runners.Task{
+				TaskID: makeBenchmarkID(runners.PartOne, i),
+				Part:   runners.PartTwo,
+				Input:  e.Data.Input,
+			})
+	}
+
+	progBar := progressbar.NewOptions(
+		len(tasks),
+		progressbar.OptionSetDescription(
+			fmt.Sprintf("Running %s benchmarks", e.runner.String()),
+		),
+	)
+
+	if err := e.runner.Start(); err != nil {
+		benchmarkLog.Error("starting runner", tint.Err(err))
+		return nil, err
+	}
+
+	defer func() {
+		_ = e.runner.Stop()
+		_ = e.runner.Cleanup()
+	}()
+
+	for _, task := range tasks {
+		r, err := e.runner.Run(task)
+		if err != nil {
+			benchmarkLog.Error("running benchmark", tint.Err(err))
+			return nil, err
+		}
+
+		p := idToPart(r.TaskID)
+		results[p] = append(results[p], r.Duration)
+
+		progBar.Add(1)
+	}
+
+	stats, err := resultsToStats(results)
+	if err != nil {
+		benchmarkLog.Error("getting stats from results", tint.Err(err))
+		return nil, err
+	}
+
+	return &ImplementationData{
+		Name:    e.runner.String(),
+		PartOne: stats[runners.PartOne],
+		PartTwo: stats[runners.PartTwo],
+	}, nil
+}
+
+func idToPart(id string) runners.Part {
+	parts := strings.Split(id, ".")
+	if len(parts) == 3 {
+		return runners.PartOne
+	}
+
+	return runners.PartTwo
+}
+
+func resultsToStats(results map[runners.Part][]float64) (map[runners.Part]*PartData, error) {
+	metrics := make(map[runners.Part]*PartData)
+
+	if len(results[runners.PartOne]) == 0 {
+		return nil, fmt.Errorf("no results for part one")
+	}
+
+	if len(results[runners.PartTwo]) == 0 {
+		return nil, fmt.Errorf("no results for part two")
+	}
+
+	for part, durations := range results {
+		data := stats.LoadRawData(durations)
+
+		mean, _ := data.Mean()
+		max, _ := data.Max()
+		min, _ := data.Min()
+
+		metrics[part] = &PartData{
+			Mean: mean,
+			Min:  min,
+			Max:  max,
+		}
+	}
+
+	return metrics, nil
 }

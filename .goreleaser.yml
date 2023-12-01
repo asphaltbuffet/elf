@@ -4,7 +4,7 @@ before:
     - go mod download
 builds:
   - ldflags:
-      - -s -w -X '{{.ModulePath}}/cmd.Version={{.Summary}}'
+      - -s -w -X {{.ModulePath}}/cmd.Version={{.Summary}} -X {{.ModulePath}}/cmd.Date={{.Date}}
     env:
       - CGO_ENABLED=0
     goos:
@@ -47,7 +47,7 @@ archives:
 checksum:
   name_template: 'checksums.txt'
 snapshot:
-  name_template: "{{ incpatch .Version }}-next"
+  name_template: "{{ incpatch .Version }}-next-{{ .Now.Format \"0102-150405\" }}"
 changelog:
   skip: true
 release:

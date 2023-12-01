@@ -20,19 +20,26 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/lmittmann/tint"
 	"github.com/spf13/afero"
+	"github.com/spf13/viper"
 )
 
 var (
-	rClient = resty.New().SetBaseURL("https://adventofcode.com")
-	cfgDir  string
-	appFs   = afero.NewOsFs()
-	logger  = slog.With(slog.String("action", "download"))
+	rClient  = resty.New().SetBaseURL("https://adventofcode.com")
+	cfgDir   = viper.GetString("configDir")
+	cacheDir = viper.GetString("cacheDir")
+	appFs    = afero.NewOsFs()
+	logger   = slog.With(slog.String("action", "download"))
 )
 
 func Download(url string, lang string, _ bool) (string, error) {
-	if cfgDir == "" {
-		logger.Error("no config directory")
+	if cacheDir == "" {
+		slog.Error("empty cache directory path", slog.String("url", url), slog.String("lang", lang), slog.String("defaultCacheDir", viper.GetString("cache_dir")))
 		return "", fmt.Errorf("cache directory not set")
+	}
+
+	if viper.GetString("advent.token") == "" {
+		logger.Error("empty session token")
+		return "", fmt.Errorf("session token not set")
 	}
 
 	year, day, err := ParseURL(url)
@@ -43,7 +50,6 @@ func Download(url string, lang string, _ bool) (string, error) {
 
 	// update client with exercise-specific data
 	rClient.
-		SetOutputDirectory(cfgDir).
 		SetHeader("User-Agent", "github.com/asphaltbuffet/elf").
 		SetPathParams(map[string]string{
 			"year": strconv.Itoa(year),
@@ -236,11 +242,11 @@ func findNamedMatches(re *regexp.Regexp, s string) map[string]string {
 }
 
 func getCachedPuzzlePage(year, day int) ([]byte, error) {
-	if cfgDir == "" {
+	if cacheDir == "" {
 		return nil, fmt.Errorf("cache directory not set")
 	}
 
-	fp := filepath.Join(cfgDir, "pages", makeExerciseID(year, day))
+	fp := filepath.Join(cacheDir, "pages", makeExerciseID(year, day))
 
 	f, err := afero.ReadFile(appFs, fp)
 	if err != nil {
@@ -252,11 +258,11 @@ func getCachedPuzzlePage(year, day int) ([]byte, error) {
 }
 
 func (e *Exercise) getCachedInput() ([]byte, error) {
-	if cfgDir == "" {
+	if cacheDir == "" {
 		return nil, fmt.Errorf("cache directory not set")
 	}
 
-	fp := filepath.Join(cfgDir, "inputs", e.ID)
+	fp := filepath.Join(cacheDir, "inputs", e.ID)
 
 	f, err := afero.ReadFile(appFs, fp)
 	if err != nil {
@@ -268,18 +274,18 @@ func (e *Exercise) getCachedInput() ([]byte, error) {
 }
 
 func downloadPuzzlePage(year, day int) ([]byte, error) {
-	if cfgDir == "" {
+	if cacheDir == "" {
 		return nil, fmt.Errorf("cache directory not set")
 	}
 
 	// make sure we can write the cached file before we download it
-	err := appFs.MkdirAll(filepath.Join(cfgDir, "pages"), 0o750)
+	err := appFs.MkdirAll(filepath.Join(cacheDir, "pages"), 0o750)
 	if err != nil {
 		return nil, fmt.Errorf("creating cache directory: %w", err)
 	}
 
 	logger.Info("downloading puzzle page",
-		slog.String("file", filepath.Join(cfgDir, "pages", makeExerciseID(year, day))))
+		slog.String("file", filepath.Join(cacheDir, "pages", makeExerciseID(year, day))))
 
 	req := rClient.R().SetPathParams(map[string]string{
 		"year": strconv.Itoa(year),
@@ -313,7 +319,7 @@ func downloadPuzzlePage(year, day int) ([]byte, error) {
 	pd := bytes.TrimSpace(matches[1])
 
 	// write response to disk
-	err = os.WriteFile(filepath.Join(cfgDir, "pages", makeExerciseID(year, day)), pd, 0o600)
+	err = os.WriteFile(filepath.Join(cacheDir, "pages", makeExerciseID(year, day)), pd, 0o600)
 	if err != nil {
 		logger.Error("writing to cache", slog.String("url", resp.Request.URL), tint.Err(err))
 		return nil, fmt.Errorf("writing cached puzzle page: %w", err)
@@ -323,17 +329,17 @@ func downloadPuzzlePage(year, day int) ([]byte, error) {
 }
 
 func (e *Exercise) downloadInput() ([]byte, error) {
-	if cfgDir == "" {
+	if cacheDir == "" {
 		return nil, fmt.Errorf("cache directory not set")
 	}
 
-	err := appFs.MkdirAll(filepath.Join(cfgDir, "inputs"), 0o750)
+	err := appFs.MkdirAll(filepath.Join(cacheDir, "inputs"), 0o750)
 	if err != nil {
 		return nil, fmt.Errorf("creating inputs directory: %w", err)
 	}
 
 	logger.Info("downloading input",
-		slog.String("file", filepath.Join(cfgDir, "inputs", e.ID)))
+		slog.String("file", filepath.Join(cacheDir, "inputs", e.ID)))
 
 	resp, err := rClient.R().
 		SetPathParams(map[string]string{
@@ -342,7 +348,7 @@ func (e *Exercise) downloadInput() ([]byte, error) {
 		}).
 		SetCookie(&http.Cookie{
 			Name:   "session",
-			Value:  os.Getenv("ELF_SESSION"),
+			Value:  viper.GetString("advent.token"),
 			Domain: ".adventofcode.com",
 		}).
 		Get("/{year}/day/{day}/input")
@@ -365,7 +371,7 @@ func (e *Exercise) downloadInput() ([]byte, error) {
 	data := bytes.TrimSpace(resp.Body())
 
 	// write response to disk
-	err = os.WriteFile(filepath.Join(cfgDir, "inputs", e.ID), data, 0o600)
+	err = os.WriteFile(filepath.Join(cacheDir, "inputs", e.ID), data, 0o600)
 	if err != nil {
 		logger.Error("writing to cache", slog.String("url", resp.Request.URL), tint.Err(err))
 		return nil, fmt.Errorf("writing cached input: %w", err)

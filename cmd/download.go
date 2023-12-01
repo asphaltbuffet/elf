@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
 	"github.com/asphaltbuffet/elf/pkg/advent"
@@ -39,6 +40,10 @@ func GetDownloadCmd() *cobra.Command {
 			Args:    cobra.ExactArgs(1),
 			Short:   "download a challenge",
 			RunE:    runDownloadCmd,
+			PreRunE: func(cmd *cobra.Command, args []string) error {
+				appFs = afero.NewOsFs()
+				return initialize(appFs)
+			},
 		}
 
 		downloadCmd.Flags().StringVarP(&language, "lang", "l", "", "solution language")
