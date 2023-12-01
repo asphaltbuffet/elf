@@ -8,6 +8,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/asphaltbuffet/elf/pkg/krampus"
 	"github.com/lmittmann/tint"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
@@ -22,7 +23,7 @@ var (
 
 var (
 	rootCmd *cobra.Command
-	cfg     = viper.New()
+	cfg     *viper.Viper
 	appFs   afero.Fs
 )
 
@@ -43,14 +44,16 @@ func GetRootCommand() *cobra.Command {
 			Version: fmt.Sprintf("%s\n%s", Version, Date),
 			Short:   "elf is a programming challenge helper application",
 			PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-				appFs = afero.NewOsFs()
-
-				return initialize(appFs)
+				var err error
+				cfg, err = krampus.New()
+				return err
+				// appFs = afero.NewOsFs()
+				// return initialize(appFs)
 			},
 			Run: func(cmd *cobra.Command, args []string) {
-				cmd.Println("config file:", viper.ConfigFileUsed())
-				cmd.Println("language:", viper.GetString("language"))
-				cmd.Println("token:", viper.GetString("advent.token"))
+				cmd.Println("config file:", cfg.ConfigFileUsed())
+				cmd.Println("language:", cfg.GetString("language"))
+				cmd.Println("token:", cfg.GetString("advent.token"))
 			},
 		}
 	}

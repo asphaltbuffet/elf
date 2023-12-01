@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	_ "embed"
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"log/slog"
@@ -17,34 +18,44 @@ import (
 
 	"golang.org/x/net/html"
 
+	"github.com/asphaltbuffet/elf/pkg/krampus"
 	"github.com/go-resty/resty/v2"
 	"github.com/lmittmann/tint"
 	"github.com/spf13/afero"
 	"github.com/spf13/viper"
 )
 
+var cfg *viper.Viper
 var (
 	rClient  = resty.New().SetBaseURL("https://adventofcode.com")
-	cfgDir   = viper.GetString("configDir")
-	cacheDir = viper.GetString("cacheDir")
+	cfgDir   string
+	cacheDir string
 	appFs    = afero.NewOsFs()
-	logger   = slog.With(slog.String("action", "download"))
 )
 
 func Download(url string, lang string, _ bool) (string, error) {
+	var err error
+	cfg, err = krampus.New()
+	if err != nil {
+		return "", err
+	}
+
+	cfgDir = cfg.GetString("config-dir")
+	cacheDir = cfg.GetString("cache-dir")
+
 	if cacheDir == "" {
-		slog.Error("empty cache directory path", slog.String("url", url), slog.String("lang", lang), slog.String("defaultCacheDir", viper.GetString("cache_dir")))
+		slog.Error("empty cache directory path", slog.String("url", url), slog.String("lang", lang), slog.String("defaultCacheDir", cfg.GetString("cache_dir")))
 		return "", fmt.Errorf("cache directory not set")
 	}
 
-	if viper.GetString("advent.token") == "" {
-		logger.Error("empty session token")
+	if cfg.GetString("advent.token") == "" {
+		slog.Error("empty session token")
 		return "", fmt.Errorf("session token not set")
 	}
 
 	year, day, err := ParseURL(url)
 	if err != nil {
-		logger.Error("creating exercise from URL", slog.String("url", url), slog.String("lang", lang), tint.Err(err))
+		slog.Error("creating exercise from URL", slog.String("url", url), slog.String("lang", lang), tint.Err(err))
 		return "", fmt.Errorf("creating exercise from URL: %w", err)
 	}
 
@@ -66,17 +77,17 @@ func Download(url string, lang string, _ bool) (string, error) {
 		e, err = loadFromURL(url, year, day, lang)
 	}
 	if err != nil {
-		logger.Error("loading exercise", slog.String("url", url), slog.String("lang", lang), tint.Err(err))
+		slog.Error("loading exercise", slog.String("url", url), slog.String("lang", lang), tint.Err(err))
 		return "", fmt.Errorf("loading exercise: %w", err)
 	}
 
 	// the basic exercise information is here; add missing elements
 	if err = e.addMissingFiles(); err != nil {
-		logger.Error("adding missing files", slog.Any("exercise", e), tint.Err(err))
+		slog.Error("adding missing files", slog.Any("exercise", e), tint.Err(err))
 		return "", fmt.Errorf("adding missing files: %w", err)
 	}
 
-	logger.Info("exercise added", slog.String("url", e.URL), slog.String("dir", e.Dir()))
+	slog.Info("exercise added", slog.String("url", e.URL), slog.String("dir", e.Dir()))
 
 	return e.path, nil
 }
@@ -91,7 +102,7 @@ func loadFromURL(url string, year, day int, lang string) (*Exercise, error) {
 
 	page, err = getPage(year, day)
 	if err != nil {
-		logger.Error("getting page data",
+		slog.Error("getting page data",
 			slog.String("url", url),
 			slog.Int("year", year),
 			slog.Int("day", day),
@@ -102,7 +113,7 @@ func loadFromURL(url string, year, day int, lang string) (*Exercise, error) {
 
 	title, err = extractTitle(page)
 	if err != nil {
-		logger.Error("extracting title from page data",
+		slog.Error("extracting title from page data",
 			slog.String("url", url),
 			slog.Int("year", year),
 			slog.Int("day", day),
@@ -126,7 +137,7 @@ func loadFromURL(url string, year, day int, lang string) (*Exercise, error) {
 }
 
 func getExercisePath(year, day int) (string, bool) {
-	logger.Debug("searching for exercise directory",
+	slog.Debug("searching for exercise directory",
 		slog.Int("year", year),
 		slog.Int("day", day),
 		slog.String("dir", exerciseBaseDir))
@@ -140,30 +151,30 @@ func getExercisePath(year, day int) (string, bool) {
 			return err
 
 		case !d.IsDir():
-			logger.Debug("skipping non-directory", slog.String("path", path))
+			slog.Debug("skipping non-directory", slog.String("path", path))
 			fallthrough
 		case path == exerciseBaseDir:
 			return nil
 
 		case strings.HasPrefix(d.Name(), dayPrefix):
-			logger.Info("found exercise directory", slog.String("path", path))
+			slog.Info("found exercise directory", slog.String("path", path))
 			exPath = path
 
 			// we found the directory we're looking for, stop walking
 			return filepath.SkipAll
 
 		case d.Name() == strconv.Itoa(year):
-			logger.Debug("found year directory", slog.String("path", path))
+			slog.Debug("found year directory", slog.String("path", path))
 			return nil
 
 		default:
-			logger.Debug("skipping non-year directory", slog.String("path", path))
+			slog.Debug("skipping non-year directory", slog.String("path", path))
 			// we only recurse into the specified year directory until we find the wanted day
 			return filepath.SkipDir
 		}
 	})
 	if err != nil {
-		logger.Error("walking exercise directory", slog.Int("year", year), slog.Int("day", day), tint.Err(err))
+		slog.Error("walking exercise directory", slog.Int("year", year), slog.Int("day", day), tint.Err(err))
 		return "", false
 	}
 
@@ -193,14 +204,14 @@ func extractTitle(page []byte) (string, error) {
 func getPage(year, day int) ([]byte, error) {
 	pageData, err := getCachedPuzzlePage(year, day)
 	if err == nil {
-		logger.Debug("using cached puzzle page",
+		slog.Debug("using cached puzzle page",
 			slog.Int("year", year),
 			slog.Int("day", day),
 			slog.Int("size", len(pageData)))
 		return pageData, nil
 	}
 
-	logger.Info("downloading puzzle page", slog.Int("year", year), slog.Int("day", day))
+	slog.Info("downloading puzzle page", slog.Int("year", year), slog.Int("day", day))
 
 	return downloadPuzzlePage(year, day)
 }
@@ -250,7 +261,7 @@ func getCachedPuzzlePage(year, day int) ([]byte, error) {
 
 	f, err := afero.ReadFile(appFs, fp)
 	if err != nil {
-		logger.Warn("reading cached puzzle page", slog.String("file", fp), tint.Err(err))
+		slog.Warn("reading cached puzzle page", slog.String("file", fp), tint.Err(err))
 		return nil, fmt.Errorf("reading puzzle page: %w", err)
 	}
 
@@ -266,7 +277,7 @@ func (e *Exercise) getCachedInput() ([]byte, error) {
 
 	f, err := afero.ReadFile(appFs, fp)
 	if err != nil {
-		logger.Warn("read cached input", slog.String("file", fp), tint.Err(err))
+		slog.Warn("read cached input", slog.String("file", fp), tint.Err(err))
 		return nil, fmt.Errorf("read cached input: %w", err)
 	}
 
@@ -284,7 +295,7 @@ func downloadPuzzlePage(year, day int) ([]byte, error) {
 		return nil, fmt.Errorf("creating cache directory: %w", err)
 	}
 
-	logger.Info("downloading puzzle page",
+	slog.Info("downloading puzzle page",
 		slog.String("file", filepath.Join(cacheDir, "pages", makeExerciseID(year, day))))
 
 	req := rClient.R().SetPathParams(map[string]string{
@@ -294,13 +305,13 @@ func downloadPuzzlePage(year, day int) ([]byte, error) {
 
 	resp, err := req.Get("/{year}/day/{day}")
 	if err != nil {
-		logger.Error("getting puzzle page", tint.Err(err))
+		slog.Error("getting puzzle page", tint.Err(err))
 
 		return nil, fmt.Errorf("requesting page: %w", err)
 	}
 
 	if resp.StatusCode() != http.StatusOK {
-		logger.Error("download page response",
+		slog.Error("download page response",
 			slog.String("url", resp.Request.URL),
 			slog.String("status", http.StatusText(resp.StatusCode())),
 			slog.Int("code", resp.StatusCode()))
@@ -312,7 +323,7 @@ func downloadPuzzlePage(year, day int) ([]byte, error) {
 	re := regexp.MustCompile(`(?s)<article.*?>(.*)</article>`)
 	matches := re.FindSubmatch(resp.Body())
 	if len(matches) != 2 { //nolint:gomnd // we expect 2 matches
-		logger.Error("extracting page data", slog.String("url", resp.Request.URL), slog.Any("found", matches))
+		slog.Error("extracting page data", slog.String("url", resp.Request.URL), slog.Any("found", matches))
 		return nil, fmt.Errorf("extracting page data: no match")
 	}
 
@@ -321,7 +332,7 @@ func downloadPuzzlePage(year, day int) ([]byte, error) {
 	// write response to disk
 	err = os.WriteFile(filepath.Join(cacheDir, "pages", makeExerciseID(year, day)), pd, 0o600)
 	if err != nil {
-		logger.Error("writing to cache", slog.String("url", resp.Request.URL), tint.Err(err))
+		slog.Error("writing to cache", slog.String("url", resp.Request.URL), tint.Err(err))
 		return nil, fmt.Errorf("writing cached puzzle page: %w", err)
 	}
 
@@ -338,7 +349,7 @@ func (e *Exercise) downloadInput() ([]byte, error) {
 		return nil, fmt.Errorf("creating inputs directory: %w", err)
 	}
 
-	logger.Info("downloading input",
+	slog.Info("downloading input",
 		slog.String("file", filepath.Join(cacheDir, "inputs", e.ID)))
 
 	resp, err := rClient.R().
@@ -348,7 +359,7 @@ func (e *Exercise) downloadInput() ([]byte, error) {
 		}).
 		SetCookie(&http.Cookie{
 			Name:   "session",
-			Value:  viper.GetString("advent.token"),
+			Value:  cfg.GetString("advent.token"),
 			Domain: ".adventofcode.com",
 		}).
 		Get("/{year}/day/{day}/input")
@@ -357,7 +368,7 @@ func (e *Exercise) downloadInput() ([]byte, error) {
 	}
 
 	if resp.StatusCode() != http.StatusOK {
-		logger.Error("getting input data",
+		slog.Error("getting input data",
 			slog.Group("request",
 				slog.String("method", resp.Request.Method),
 				slog.String("url", resp.Request.URL),
@@ -373,7 +384,7 @@ func (e *Exercise) downloadInput() ([]byte, error) {
 	// write response to disk
 	err = os.WriteFile(filepath.Join(cacheDir, "inputs", e.ID), data, 0o600)
 	if err != nil {
-		logger.Error("writing to cache", slog.String("url", resp.Request.URL), tint.Err(err))
+		slog.Error("writing to cache", slog.String("url", resp.Request.URL), tint.Err(err))
 		return nil, fmt.Errorf("writing cached input: %w", err)
 	}
 
@@ -383,11 +394,11 @@ func (e *Exercise) downloadInput() ([]byte, error) {
 func (e *Exercise) getInput() ([]byte, error) {
 	d, err := e.getCachedInput()
 	if err == nil {
-		logger.Debug("using cached input", "exercise", e)
+		slog.Debug("using cached input", "exercise", e)
 		return d, nil
 	}
 
-	logger.Debug("no cached input found; downloading input data", "exercise", e)
+	slog.Debug("no cached input found; downloading input data", "exercise", e)
 	return e.downloadInput()
 }
 
@@ -430,11 +441,9 @@ func (e *Exercise) addMissingFiles() error {
 		replaceLanguage = true // TODO: use flag value
 	)
 
-	addLogger := logger.With(slog.Any("exercise", e))
-
 	if e.Language == "" || e.Dir() == "" {
 		err = fmt.Errorf("incomplete exercise: missing language or directory")
-		addLogger.Error("add files", tint.Err(err))
+		slog.Error("add files", tint.Err(err))
 
 		return err
 	}
@@ -442,7 +451,7 @@ func (e *Exercise) addMissingFiles() error {
 	implPath := filepath.Join(e.Dir(), e.Language)
 
 	if err = appFs.MkdirAll(implPath, 0o750); err != nil {
-		addLogger.Error("add exercise implementation path", tint.Err(err))
+		slog.Error("add exercise implementation path", tint.Err(err))
 		return fmt.Errorf("creating %s implementation directory: %w", e.Language, err)
 	}
 
@@ -450,25 +459,48 @@ func (e *Exercise) addMissingFiles() error {
 		// read cached data or download puzzle input
 		inputFile, inErr := e.getInput()
 		if inErr != nil {
-			addLogger.Error("load input data", tint.Err(inErr))
+			slog.Error("load input data", tint.Err(inErr))
 			return fmt.Errorf("loading input: %w", inErr)
 		}
 
+		e.Data = &Data{
+			Input:     string(inputFile),
+			InputFile: "input.txt",
+			TestCases: TestCase{
+				One: []*Test{&Test{Input: "", Expected: ""}},
+				Two: []*Test{&Test{Input: "", Expected: ""}},
+			}}
+
 		inErr = afero.WriteFile(appFs, filepath.Join(e.Dir(), "input.txt"), inputFile, 0o600)
 		if inErr != nil {
-			addLogger.Error("write input file", tint.Err(inErr))
+			slog.Error("write input file", tint.Err(inErr))
 			return fmt.Errorf("writing input file: %w", inErr)
 		}
 	}
 
+	// marshall info to file
+	if replaceInfo {
+		j, err := json.MarshalIndent(e, "", "  ")
+		if err != nil {
+			slog.Warn("could not marshall exercise data")
+		} else {
+			outfile := filepath.Join(e.Dir(), "info.json")
+			if err = afero.WriteFile(appFs, outfile, j, 0o600); err != nil {
+				slog.Warn("failed to write info.json", slog.String("path", outfile))
+			}
+
+			slog.Info("wrote info file", slog.String("path", outfile))
+		}
+	}
+
 	tmpls := []tmplFile{
-		{
-			Name:     "info",
-			Path:     "",
-			Data:     infoTemplate,
-			FileName: "info.json",
-			Replace:  replaceInfo,
-		},
+		// {
+		// 	Name:     "info",
+		// 	Path:     "",
+		// 	Data:     infoTemplate,
+		// 	FileName: "info.json",
+		// 	Replace:  replaceInfo,
+		// },
 		{
 			Name:     "readme",
 			Path:     "",
@@ -497,11 +529,11 @@ func (e *Exercise) addMissingFiles() error {
 	}
 
 	for _, t := range tmpls {
-		addLogger.LogAttrs(context.TODO(), slog.LevelDebug, "add template file", slog.Any("template", t.LogValue()))
+		slog.LogAttrs(context.TODO(), slog.LevelDebug, "add template file", slog.Any("template", t.LogValue()))
 
 		err = e.addTemplatedFile(appFs, t)
 		if err != nil {
-			addLogger.Error("adding template", slog.Any("template", t), tint.Err(err))
+			slog.Error("adding template", slog.Any("template", t), tint.Err(err))
 			return fmt.Errorf("adding %s template: %w", t.FileName, err)
 		}
 	}
@@ -515,7 +547,7 @@ func (e *Exercise) addTemplatedFile(fs afero.Fs, tf tmplFile) error {
 
 	exists, _ := afero.Exists(fs, fp)
 	if exists && !tf.Replace {
-		logger.Info("file exists, skipping", "template", tf.LogValue())
+		slog.Info("file exists, skipping", "template", tf.LogValue())
 
 		fmt.Printf("%s already exists, overwrite by using --force\n", fp)
 
