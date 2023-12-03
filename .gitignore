@@ -162,3 +162,4 @@ bin/
 
 # taskfile fingerprints
 .task/
+elf.toml

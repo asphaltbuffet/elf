@@ -18,11 +18,12 @@ import (
 
 	"golang.org/x/net/html"
 
-	"github.com/asphaltbuffet/elf/pkg/krampus"
 	"github.com/go-resty/resty/v2"
 	"github.com/lmittmann/tint"
 	"github.com/spf13/afero"
 	"github.com/spf13/viper"
+
+	"github.com/asphaltbuffet/elf/pkg/krampus"
 )
 
 var cfg *viper.Viper
@@ -402,9 +403,6 @@ func (e *Exercise) getInput() ([]byte, error) {
 	return e.downloadInput()
 }
 
-//go:embed templates/info.tmpl
-var infoTemplate []byte
-
 //go:embed templates/readme.tmpl
 var readmeTemplate []byte
 
@@ -433,19 +431,10 @@ func (t *tmplFile) LogValue() slog.Value {
 }
 
 func (e *Exercise) addMissingFiles() error {
-	var (
-		err             error
-		replaceInfo     = true // TODO: use flag value
-		replaceReadme   = true // TODO: use flag value
-		replaceInput    = true // TODO: use flag value
-		replaceLanguage = true // TODO: use flag value
-	)
+	var err error
 
 	if e.Language == "" || e.Dir() == "" {
-		err = fmt.Errorf("incomplete exercise: missing language or directory")
-		slog.Error("add files", tint.Err(err))
-
-		return err
+		return fmt.Errorf("incomplete exercise: missing language or directory")
 	}
 
 	implPath := filepath.Join(e.Dir(), e.Language)
@@ -455,58 +444,23 @@ func (e *Exercise) addMissingFiles() error {
 		return fmt.Errorf("creating %s implementation directory: %w", e.Language, err)
 	}
 
-	if replaceInput { // TODO: should be if replacing OR if it doesn't exist
-		// read cached data or download puzzle input
-		inputFile, inErr := e.getInput()
-		if inErr != nil {
-			slog.Error("load input data", tint.Err(inErr))
-			return fmt.Errorf("loading input: %w", inErr)
-		}
-
-		e.Data = &Data{
-			Input:     string(inputFile),
-			InputFile: "input.txt",
-			TestCases: TestCase{
-				One: []*Test{&Test{Input: "", Expected: ""}},
-				Two: []*Test{&Test{Input: "", Expected: ""}},
-			}}
-
-		inErr = afero.WriteFile(appFs, filepath.Join(e.Dir(), "input.txt"), inputFile, 0o600)
-		if inErr != nil {
-			slog.Error("write input file", tint.Err(inErr))
-			return fmt.Errorf("writing input file: %w", inErr)
-		}
+	// TODO: give user option to overwrite existing files
+	if err = e.writeInputFile(appFs, false); err != nil {
+		return fmt.Errorf("writing input file: %w", err)
 	}
 
-	// marshall info to file
-	if replaceInfo {
-		j, err := json.MarshalIndent(e, "", "  ")
-		if err != nil {
-			slog.Warn("could not marshall exercise data")
-		} else {
-			outfile := filepath.Join(e.Dir(), "info.json")
-			if err = afero.WriteFile(appFs, outfile, j, 0o600); err != nil {
-				slog.Warn("failed to write info.json", slog.String("path", outfile))
-			}
-
-			slog.Info("wrote info file", slog.String("path", outfile))
-		}
+	// TODO: give user option to overwrite existing files
+	if err = e.writeInfoFile(appFs, false); err != nil {
+		return fmt.Errorf("writing info file: %w", err)
 	}
 
 	tmpls := []tmplFile{
-		// {
-		// 	Name:     "info",
-		// 	Path:     "",
-		// 	Data:     infoTemplate,
-		// 	FileName: "info.json",
-		// 	Replace:  replaceInfo,
-		// },
 		{
 			Name:     "readme",
 			Path:     "",
 			Data:     readmeTemplate,
 			FileName: "README.md",
-			Replace:  replaceReadme,
+			Replace:  false,
 		},
 	}
 
@@ -516,7 +470,7 @@ func (e *Exercise) addMissingFiles() error {
 			Path:     "go",
 			Data:     goTemplate,
 			FileName: "exercise.go",
-			Replace:  replaceLanguage,
+			Replace:  false,
 		})
 	} else if e.Language == "py" {
 		tmpls = append(tmpls, tmplFile{
@@ -524,7 +478,7 @@ func (e *Exercise) addMissingFiles() error {
 			Path:     "py",
 			Data:     pyTemplate,
 			FileName: "__init__.py",
-			Replace:  replaceLanguage,
+			Replace:  false,
 		})
 	}
 
@@ -537,6 +491,72 @@ func (e *Exercise) addMissingFiles() error {
 			return fmt.Errorf("adding %s template: %w", t.FileName, err)
 		}
 	}
+
+	return nil
+}
+
+func (e *Exercise) writeInputFile(fs afero.Fs, replace bool) error {
+	fp := filepath.Join(e.Dir(), "input.txt")
+
+	// check if the file exists already
+	exists, err := afero.Exists(fs, fp)
+	if err != nil {
+		return fmt.Errorf("checking for input file: %w", err)
+	}
+
+	if exists && !replace {
+		fmt.Fprintln(os.Stderr, "input file already exists, overwrite by using --force")
+		return nil
+	}
+
+	inputFile, err := e.getInput()
+	if err != nil {
+		return fmt.Errorf("loading input: %w", err)
+	}
+
+	e.Data = &Data{
+		Input:     string(inputFile),
+		InputFile: "input.txt",
+		TestCases: TestCase{
+			One: []*Test{{Input: "", Expected: ""}},
+			Two: []*Test{{Input: "", Expected: ""}},
+		},
+	}
+
+	if err = afero.WriteFile(appFs, fp, inputFile, 0o600); err != nil {
+		return fmt.Errorf("writing input file: %w", err)
+	}
+
+	slog.Debug("wrote input file", slog.String("path", fp))
+
+	return nil
+}
+
+func (e *Exercise) writeInfoFile(fs afero.Fs, replace bool) error {
+	fp := filepath.Join(e.Dir(), "info.json")
+
+	// check if the file exists already
+	exists, err := afero.Exists(fs, fp)
+	if err != nil {
+		return fmt.Errorf("checking for info file: %w", err)
+	}
+
+	if exists && !replace {
+		fmt.Fprintln(os.Stderr, "info file already exists, overwrite by using --force")
+		return nil
+	}
+
+	// marshall exercise data
+	data, err := json.MarshalIndent(e, "", "  ")
+	if err != nil {
+		return fmt.Errorf("could not marshal exercise data: %w", err)
+	}
+
+	if err = afero.WriteFile(appFs, fp, data, 0o600); err != nil {
+		return fmt.Errorf("write info file: %w", err)
+	}
+
+	slog.Debug("wrote info file", slog.String("path", fp))
 
 	return nil
 }
