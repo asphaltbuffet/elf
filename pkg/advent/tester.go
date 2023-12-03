@@ -127,31 +127,31 @@ func handleTestResult(r *runners.Result, testCase *Test) {
 
 	switch {
 	case missing:
-		status = lipgloss.NewStyle().Faint(true).SetString("EMPTY")
+		status = lipgloss.NewStyle().Faint(true).Foreground(lipgloss.Color("1")).SetString("EMPTY")
 
 	case !r.Ok:
 		status = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("202")).
+			Foreground(lipgloss.Color("3")).
 			SetString("DID NOT COMPLETE")
 
-		followUpText = lipgloss.NewStyle().
-			Faint(true).
-			Italic(true).
-			Foreground(lipgloss.Color("242")).
-			SetString(fmt.Sprintf("saying %q", r.Output))
+// 		followUpText = lipgloss.NewStyle().
+// 			Faint(true).
+// 			Italic(true).
+// 			Foreground(lipgloss.Color("7")).
+// 			SetString(fmt.Sprintf("saying %q", r.Output))
 
-	case passed:
-		status = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("48")).SetString("PASS")
+// 	case passed:
+// 		status = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("2")).SetString("PASS")
 
-	default:
-		status = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("161")).SetString("FAIL")
-	}
+// 	default:
+// 		status = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("9")).SetString("FAIL")
+// 	}
 
 	if followUpText.String() == "" && !missing {
 		followUpText = lipgloss.NewStyle().
 			Faint(true).
 			Italic(true).
-			Foreground(lipgloss.Color("242")).
+			Foreground(lipgloss.Color("7")).
 			SetString(fmt.Sprintf("in %s", humanize.SIWithDigits(r.Duration, 1, "s")))
 	}
 
@@ -160,7 +160,7 @@ func handleTestResult(r *runners.Result, testCase *Test) {
 	if !passed && r.Ok {
 		extra := lipgloss.NewStyle().
 			Bold(true).
-			Foreground(lipgloss.Color("161")).
+			Foreground(lipgloss.Color("1")).
 			PaddingLeft(4). //nolint:gomnd // hard-coded padding for now
 			SetString(fmt.Sprintf("⤷ expected %q, got %q", testCase.Expected, r.Output))
 

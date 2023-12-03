@@ -37,10 +37,15 @@ func (e *Exercise) Solve(skipTests bool) error {
 
 	headerStyle := lipgloss.NewStyle().
 		Bold(true).
-		BorderStyle(lipgloss.NormalBorder()).
+		BorderStyle(lipgloss.Border{
+			Top:    "─",
+			Bottom: "─",
+		}).
 		Foreground(lipgloss.Color("5"))
 
-	fmt.Println(headerStyle.Render(e.String()))
+	fmt.Fprintln(os.Stdout, headerStyle.Render(
+		fmt.Sprintf("ADVENT OF CODE %d\nDay %d: %s", e.Year, e.Day, e.Title)),
+	)
 
 	if !skipTests {
 		if err = runTests(e.runner, e.Data); err != nil {
@@ -98,30 +103,19 @@ func runMainTasks(runner runners.Runner, input string) error {
 func handleMainResult(w io.Writer, r *runners.Result) {
 	part := parseMainID(r.TaskID)
 
-	mainStyle := lipgloss.NewStyle().
-		PaddingLeft(2). //nolint:gomnd // hard-coded padding for now
-		Foreground(lipgloss.Color("57")).
-		SetString(fmt.Sprintf("Part %d:", part))
+	name := taskStyle(int(part), -1)
 
 	var status, followUpText lipgloss.Style
 
 	if r.Ok {
-		status = lipgloss.NewStyle().Bold(true).SetString(r.Output)
-		followUpText = lipgloss.NewStyle().
-			Faint(true).
-			Italic(true).
-			Foreground(lipgloss.Color("242")).
-			SetString(fmt.Sprintf("in %s", humanize.SIWithDigits(r.Duration, 1, "s")))
+		status = mainResultStyle(r.Output, r.Ok)
+		followUpText = mainNoteStyle(humanize.SIWithDigits(r.Duration, 1, "s"), r.Ok)
 	} else {
-		status = lipgloss.NewStyle().Faint(true).Foreground(lipgloss.Color("227")).SetString("did not complete")
-		followUpText = lipgloss.NewStyle().
-			Faint(true).
-			Italic(true).
-			Foreground(lipgloss.Color("242")).
-			SetString(fmt.Sprintf("saying %q", r.Output))
+		status = mainResultStyle("did not complete", r.Ok)
+		followUpText = mainNoteStyle(r.Output, r.Ok)
 	}
 
 	slog.Debug("handling main result", slog.Group("result", "id", r.TaskID, "ok", r.Ok, "output", r.Output))
 
-	fmt.Fprintln(w, mainStyle, status, followUpText)
+	fmt.Fprintln(w, name, status, followUpText)
 }
