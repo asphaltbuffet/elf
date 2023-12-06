@@ -17,42 +17,64 @@ var (
 	theme = lipgloss.AdaptiveColor{Light: "#800080", Dark: "#ff00ff"} // magenta
 )
 
-func mainResultStyle(status string, success bool) lipgloss.Style {
-	style := lipgloss.NewStyle().Bold(true)
+func headerStyle(s string) lipgloss.Style {
+	headerStyle := lipgloss.NewStyle().
+		Bold(true).
+		Align(lipgloss.Center).
+		BorderStyle(lipgloss.Border{
+			Top:    "─",
+			Bottom: "─",
+		}).
+		Foreground(lipgloss.Color("5"))
 
-	switch {
-	case status == "":
-		status = "..."
-		fallthrough
-	case !success:
-		style.Foreground(bad)
-	case success:
-		style.Foreground(good)
-	}
-
-	return style.SetString(status)
+	return headerStyle.SetString(s)
 }
 
-func mainNoteStyle(note string, success bool) lipgloss.Style {
-	style := lipgloss.NewStyle().Faint(true).Italic(true)
+// func taskHeaderStyle(s string) lipgloss.Style {
+// 	headerStyle := lipgloss.NewStyle().
+// 		Italic(true).
+// 		MarginTop(1).
+// 		Foreground(lipgloss.Color("5"))
 
-	if success {
-		style = style.Foreground(minor).SetString("in", note)
-	} else {
-		style = style.Foreground(warn).SetString("saying", note)
-	}
+// 	return headerStyle.SetString(s)
+// }
 
-	return style.SetString(note)
-}
+// func mainResultStyle(status string, success bool) lipgloss.Style {
+// 	style := lipgloss.NewStyle().Bold(true)
+
+// 	switch {
+// 	case status == "":
+// 		status = "..."
+// 		fallthrough
+// 	case !success:
+// 		style.Foreground(bad)
+// 	case success:
+// 		style.Foreground(good)
+// 	}
+
+// 	return style.SetString(status)
+// }
+
+// func mainNoteStyle(note string, success bool) lipgloss.Style {
+// 	style := lipgloss.NewStyle().Faint(true).Italic(true)
+
+// 	if success {
+// 		style = style.Foreground(minor).SetString("in", note)
+// 	} else {
+// 		style = style.Foreground(warn).SetString("saying", note)
+// 	}
+
+// 	return style.SetString(note)
+// }
 
 func taskStyle(part, subpart int) lipgloss.Style {
-	style := lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("6"))
+	style := lipgloss.NewStyle().Align(lipgloss.Right).Width(6).Foreground(lipgloss.Color("6"))
 
 	// TODO: return a []style so "Part" is different formatting from numbers
 	if subpart >= 0 {
-		style = style.SetString(fmt.Sprintf("Test %d.%d:", part, subpart+1))
+		style = style.SetString(fmt.Sprintf("%d.%d:", part, subpart+1))
 	} else {
-		style = style.SetString(fmt.Sprintf("  Part %d:", part, subpart+1))
+		style = style.SetString(fmt.Sprintf("%d:", part))
 	}
 
 	return style

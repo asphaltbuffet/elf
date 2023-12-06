@@ -23,12 +23,19 @@ type Data struct {
 	Input     string   `json:"-"`
 	InputFile string   `json:"inputFile"`
 	TestCases TestCase `json:"testCases"`
+	Answers   Answer   `json:"answers,omitempty"`
 }
 
 // TestCase contains the test case for each part of an exercise.
 type TestCase struct {
 	One []*Test `json:"one"`
 	Two []*Test `json:"two"`
+}
+
+// Answer contains the answer for each part of an exercise.
+type Answer struct {
+	One string `json:"a"`
+	Two string `json:"b"`
 }
 
 // Test contains the input and expected output for a test case.

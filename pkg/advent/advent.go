@@ -27,24 +27,22 @@ func New(options ...func(*Exercise)) (*Exercise, error) {
 
 	switch {
 	case e.Language == "":
-		slog.Error("no language specified")
 		return nil, fmt.Errorf("no language specified")
 
 	case e.path != "":
 		if err := e.loadInfo(); err != nil {
-			slog.Error("filling exercise from info file", tint.Err(err))
 			return nil, err
 		}
 
 	case e.URL != "":
 		if err := e.loadFromURL(); err != nil {
-			slog.Error("filling exercise from URL", tint.Err(err))
 			return nil, err
 		}
 
 	default:
-		slog.Error("no exercise path or URL specified")
-		return nil, fmt.Errorf("no exercise path or URL specified")
+		err := fmt.Errorf("no exercise path or URL specified")
+		slog.Error("instantiating exercise", tint.Err(err), slog.Any("options", options))
+		return nil, err
 	}
 
 	return e, nil
