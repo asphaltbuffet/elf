@@ -85,7 +85,7 @@ func Test_runMainTasks(t *testing.T) {
 		Duration: 0.042,
 	}, nil)
 
-	err := runMainTasks(runner, "FAKE INPUT")
+	err := runMainTasks(runner, &Data{Input: "FAKE INPUT"})
 
 	runner.AssertExpectations(t)
 	require.NoError(t, err)
@@ -93,7 +93,7 @@ func Test_runMainTasks(t *testing.T) {
 	mockCall.Unset()
 
 	runner.On("Run", mock.Anything).Return(&runners.Result{}, fmt.Errorf("FAKE ERROR"))
-	err = runMainTasks(runner, "FAKE INPUT")
+	err = runMainTasks(runner, &Data{Input: "FAKE INPUT"})
 
 	runner.AssertExpectations(t)
 	require.Error(t, err)
@@ -136,7 +136,7 @@ func Test_handleMainResult(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			w := &bytes.Buffer{}
-			handleMainResult(w, tt.args.r)
+			handleMainResult(w, tt.args.r, "HACK: FIX THIS IN THE TEST INPUT")
 			assert.Equal(t, tt.wantW, w.String())
 		})
 	}

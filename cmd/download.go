@@ -82,6 +82,10 @@ func runDownloadCmd(cmd *cobra.Command, args []string) error {
 		err  error
 	)
 
+	if language == "" {
+		language = cfg.GetString("language")
+	}
+
 	// // https://adventofcode.com/2022/day/1
 	// reAdvent := `^https?://(www\.)?adventofcode\.com/(?P<year>\d{4})/day/(?P<day>\d{1,2})$`
 	// // https://projecteuler.net/problem=1
