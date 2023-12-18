@@ -38,7 +38,7 @@ jobs:
         run: task ci -f
 
       - name: Archive code coverage results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: code-coverage-report
           path: bin
@@ -104,7 +104,7 @@ jobs:
           # GORELEASER_KEY: ${{ secrets.GORELEASER_KEY }}
 
       - name: Archive dist
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: snapshot
           path: dist
