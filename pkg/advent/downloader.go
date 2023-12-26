@@ -262,7 +262,6 @@ func getCachedPuzzlePage(year, day int) ([]byte, error) {
 
 	f, err := afero.ReadFile(appFs, fp)
 	if err != nil {
-		slog.Warn("reading cached puzzle page", slog.String("file", fp), tint.Err(err))
 		return nil, fmt.Errorf("reading puzzle page: %w", err)
 	}
 
@@ -278,7 +277,6 @@ func (e *Exercise) getCachedInput() ([]byte, error) {
 
 	f, err := afero.ReadFile(appFs, fp)
 	if err != nil {
-		slog.Warn("read cached input", slog.String("file", fp), tint.Err(err))
 		return nil, fmt.Errorf("read cached input: %w", err)
 	}
 
@@ -487,7 +485,6 @@ func (e *Exercise) addMissingFiles() error {
 
 		err = e.addTemplatedFile(appFs, t)
 		if err != nil {
-			slog.Error("adding template", slog.Any("template", t), tint.Err(err))
 			return fmt.Errorf("adding %s template: %w", t.FileName, err)
 		}
 	}
