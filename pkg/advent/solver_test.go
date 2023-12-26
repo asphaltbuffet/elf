@@ -136,7 +136,7 @@ func Test_handleMainResult(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			w := &bytes.Buffer{}
-			handleMainResult(w, tt.args.r, "HACK: FIX THIS IN THE TEST INPUT")
+			handleTaskResult(w, tt.args.r, "HACK: FIX THIS IN THE TEST INPUT")
 			assert.Equal(t, tt.wantW, w.String())
 		})
 	}

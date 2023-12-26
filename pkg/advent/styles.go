@@ -7,23 +7,33 @@ import (
 )
 
 var (
-	good = lipgloss.AdaptiveColor{Light: "#008000", Dark: "#00ff00"} // green
-	warn = lipgloss.AdaptiveColor{Light: "#808000", Dark: "#ffff00"} // yellow
-	bad  = lipgloss.AdaptiveColor{Light: "#800000", Dark: "#ff0000"} // red
+	// good   = lipgloss.AdaptiveColor{Light: "#008000", Dark: "#00ff00"} // green
+	// warn   = lipgloss.AdaptiveColor{Light: "#808000", Dark: "#ffff00"} // yellow.
+	bad    = lipgloss.Color("9")                                       // red
+	newAns = lipgloss.AdaptiveColor{Light: "#000080", Dark: "#0000ff"} // blue
 
 	minor = lipgloss.AdaptiveColor{Light: "#808080", Dark: "#808080"} // gray
 	// info  = lipgloss.AdaptiveColor{Light: "#000080", Dark: "#0000ff"} // blue.
 
-	theme = lipgloss.AdaptiveColor{Light: "#800080", Dark: "#ff00ff"} // magenta
+	// theme = lipgloss.AdaptiveColor{Light: "#800080", Dark: "#ff00ff"} // magenta.
+
+	statusStyle = lipgloss.NewStyle().Bold(true).Width(4)
+	extraStyle  = lipgloss.NewStyle().Italic(true).PaddingLeft(6)
+	timeStyle   = lipgloss.NewStyle().Faint(true).Italic(true).Foreground(minor).Width(20).Align(lipgloss.Right)
 )
 
 func headerStyle(s string) lipgloss.Style {
 	headerStyle := lipgloss.NewStyle().
+		Width(40).
 		Bold(true).
 		Align(lipgloss.Center).
 		BorderStyle(lipgloss.Border{
-			Top:    "─",
-			Bottom: "─",
+			Top:         "─",
+			TopLeft:     "─",
+			TopRight:    "─",
+			Bottom:      "─",
+			BottomLeft:  "─",
+			BottomRight: "─",
 		}).
 		Foreground(lipgloss.Color("5"))
 
