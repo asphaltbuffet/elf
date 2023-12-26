@@ -52,7 +52,7 @@ func (e *Exercise) Benchmark(iterations int) error {
 		}
 
 		e.Language = impl
-		e.runner = r(e.path)
+		e.runner = r(e.Path)
 
 		var d *ImplementationData
 		d, err = e.runBenchmark(iterations)
@@ -68,13 +68,13 @@ func (e *Exercise) Benchmark(iterations int) error {
 	benchmarkData = append(benchmarkData, BenchmarkData{
 		Date:            time.Now().UTC(),
 		Day:             e.Day,
-		Dir:             e.Dir(),
+		Dir:             e.Path,
 		Year:            e.Year,
 		Runs:            iterations,
 		Implementations: benchmarks,
 	})
 
-	outfile := filepath.Join(e.path, "benchmark.json")
+	outfile := filepath.Join(e.Path, "benchmark.json")
 
 	// TODO: add flag to append/overwrite/fail?
 

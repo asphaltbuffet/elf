@@ -14,7 +14,7 @@ type Exercise struct {
 	Day      int            `json:"day"`
 	URL      string         `json:"url"`
 	Data     *Data          `json:"data"`
-	path     string         `json:"-"`
+	Path     string         `json:"-"`
 	runner   runners.Runner `json:"-"`
 }
 

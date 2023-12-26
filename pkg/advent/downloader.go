@@ -72,7 +72,7 @@ func Download(url string, lang string, _ bool) (string, error) {
 
 	exPath, ok := getExercisePath(year, day)
 	if ok {
-		e.path = exPath
+		e.Path = exPath
 		err = e.loadInfo()
 	} else {
 		e, err = loadFromURL(url, year, day, lang)
@@ -90,7 +90,7 @@ func Download(url string, lang string, _ bool) (string, error) {
 
 	slog.Info("exercise added", slog.String("url", e.URL), slog.String("dir", e.Dir()))
 
-	return e.path, nil
+	return e.Path, nil
 }
 
 func loadFromURL(url string, year, day int, lang string) (*Exercise, error) {
@@ -131,7 +131,7 @@ func loadFromURL(url string, year, day int, lang string) (*Exercise, error) {
 		Day:      day,
 		URL:      url,
 		Data:     nil, // this should be empty, we only load this from info.json
-		path:     makeExercisePath(year, day, title),
+		Path:     makeExercisePath(year, day, title),
 	}
 
 	return e, nil
@@ -437,7 +437,7 @@ func (e *Exercise) addMissingFiles() error {
 		return fmt.Errorf("incomplete exercise: missing language or directory")
 	}
 
-	implPath := filepath.Join(e.Dir(), e.Language)
+	implPath := filepath.Join(e.Path, e.Language)
 
 	if err = appFs.MkdirAll(implPath, 0o750); err != nil {
 		slog.Error("add exercise implementation path", tint.Err(err))
@@ -496,7 +496,7 @@ func (e *Exercise) addMissingFiles() error {
 }
 
 func (e *Exercise) writeInputFile(fs afero.Fs, replace bool) error {
-	fp := filepath.Join(e.Dir(), "input.txt")
+	fp := filepath.Join(e.Path, "input.txt")
 
 	// check if the file exists already
 	exists, err := afero.Exists(fs, fp)
@@ -533,7 +533,7 @@ func (e *Exercise) writeInputFile(fs afero.Fs, replace bool) error {
 }
 
 func (e *Exercise) writeInfoFile(fs afero.Fs, replace bool) error {
-	fp := filepath.Join(e.Dir(), "info.json")
+	fp := filepath.Join(e.Path, "info.json")
 
 	// check if the file exists already
 	exists, err := afero.Exists(fs, fp)
@@ -563,7 +563,7 @@ func (e *Exercise) writeInfoFile(fs afero.Fs, replace bool) error {
 
 func (e *Exercise) addTemplatedFile(fs afero.Fs, tf tmplFile) error {
 	// only write if file doesn't exist or if we're replacing it
-	fp := filepath.Join(e.Dir(), tf.Path, tf.FileName)
+	fp := filepath.Join(e.Path, tf.Path, tf.FileName)
 
 	exists, _ := afero.Exists(fs, fp)
 	if exists && !tf.Replace {
