@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/dustin/go-humanize"
 	"github.com/lmittmann/tint"
 
 	"github.com/asphaltbuffet/elf/pkg/runners"
@@ -89,7 +88,7 @@ func runMainTasks(runner runners.Runner, data *Data) error {
 			return err
 		}
 
-		handleMainResult(os.Stdout, result, t.expected)
+		handleTaskResult(os.Stdout, result, t.expected)
 	}
 
 	return nil
@@ -175,12 +174,12 @@ const (
 	resultTypeError
 )
 
-func handleMainResult(w io.Writer, r *runners.Result, expected string) {
+func handleTaskResult(w io.Writer, r *runners.Result, expected string) {
 	var status resultType
 
-	_, part, _ := parseTaskID(r.TaskID)
+	taskType, part, subpart := parseTaskID(r.TaskID)
 
-	name := taskStyle(int(part), -1)
+	name := taskStyle(int(part), subpart)
 
 	if r.Ok && r.Output == expected {
 		status = resultTypePassed
@@ -194,39 +193,51 @@ func handleMainResult(w io.Writer, r *runners.Result, expected string) {
 		status = resultTypeUnknown // shouldn't be able to get here
 	}
 
-	var output, followUpText lipgloss.Style
+	var output, extra, followUpText lipgloss.Style
+	var printExtra bool
 
 	switch status {
 	case resultTypeError:
-		output = mainResultStyle("did not complete", r.Ok)
-		followUpText = mainNoteStyle(r.Output, r.Ok)
+		output = lipgloss.NewStyle().
+			Bold(true).Align(lipgloss.Center).
+			Foreground(lipgloss.Color("9")).
+			SetString("ERROR")
 
-	case resultTypeNew: // TODO: differentiate between new and passed
-		output = lipgloss.NewStyle().Bold(true).SetString(r.Output)
-		followUpText = mainNoteStyle(humanize.SIWithDigits(r.Duration, 1, "s"), r.Ok)
+		extra = extraStyle.Foreground(bad).SetString("⤷ saying: " + r.Output)
+		printExtra = true
+
+	case resultTypeNew:
+		output = statusStyle.Foreground(newAns).Background(lipgloss.Color("0")).SetString("NEW")
+		// followUpText = timeStyle.SetString(humanize.SIWithDigits(r.Duration, 1, "s"))
+		followUpText = timeStyle.SetString(fmt.Sprintf("%.2f ms", r.Duration*1000))
+
+		extra = extraStyle.SetString("⤷ " + r.Output)
+		printExtra = true
 
 	case resultTypePassed:
-		output = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("46")).SetString(r.Output)
-		followUpText = mainNoteStyle(humanize.SIWithDigits(r.Duration, 1, "s"), r.Ok)
+		output = lipgloss.NewStyle().Bold(true).Align(lipgloss.Right).Foreground(lipgloss.Color("46")).SetString("PASS")
+		// followUpText = timeStyle.SetString(humanize.SIWithDigits(r.Duration, 1, "s"))
+		followUpText = timeStyle.SetString(fmt.Sprintf("%.2f ms", r.Duration*1000))
+
+		if taskType == TaskMain {
+			extra = extraStyle.Foreground(lipgloss.Color("7")).SetString("⤷ " + r.Output)
+			printExtra = true
+		}
 
 	case resultTypeFailed:
-		output = mainResultStyle(r.Output, r.Ok)
-		followUpText = mainNoteStyle(humanize.SIWithDigits(r.Duration, 1, "s"), r.Ok)
+		output = statusStyle.Foreground(bad).SetString("FAIL")
+		// followUpText = mainNoteStyle(humanize.SIWithDigits(r.Duration, 1, "s"), r.Ok)
+
+		extra = extraStyle.Foreground(bad).SetString(fmt.Sprintf("⤷ got %q, but expected %q", r.Output, expected))
+		printExtra = true
 	}
 
-	slog.Debug("handling main result", slog.Group("result", "id", r.TaskID, "ok", r.Ok, "output", r.Output))
+	slog.Debug("handling result", slog.Group("result", "id", r.TaskID, "ok", r.Ok, "output", r.Output))
 
 	fmt.Fprintln(w, name, output, followUpText)
 
-	// show extra info for failures
-	if status == resultTypeFailed {
-		extra := lipgloss.NewStyle().
-			Bold(true).
-			Background(lipgloss.Color("1")).
-			Foreground(lipgloss.Color("0")).
-			PaddingLeft(4). //nolint:gomnd // hard-coded padding for now
-			SetString(fmt.Sprintf("⤷ accepted answer is %q", expected))
-
-		fmt.Println(extra)
+	// show extra info
+	if printExtra {
+		fmt.Fprintln(w, extra)
 	}
 }

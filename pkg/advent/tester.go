@@ -74,7 +74,7 @@ func runTests(runner runners.Runner, data *Data) error {
 			return err
 		}
 
-		handleTestResult(result, t.expected)
+		handleTaskResult(os.Stdout, result, t.expected)
 	}
 
 	return nil
