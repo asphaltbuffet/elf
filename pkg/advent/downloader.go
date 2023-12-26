@@ -88,7 +88,7 @@ func Download(url string, lang string, _ bool) (string, error) {
 		return "", fmt.Errorf("adding missing files: %w", err)
 	}
 
-	slog.Info("exercise added", slog.String("url", e.URL), slog.String("dir", e.Dir()))
+	slog.Debug("exercise added", slog.String("url", e.URL), slog.String("dir", e.Dir()))
 
 	return e.Path, nil
 }
@@ -212,7 +212,7 @@ func getPage(year, day int) ([]byte, error) {
 		return pageData, nil
 	}
 
-	slog.Info("downloading puzzle page", slog.Int("year", year), slog.Int("day", day))
+	slog.Debug("downloading puzzle page", slog.Int("year", year), slog.Int("day", day))
 
 	return downloadPuzzlePage(year, day)
 }
@@ -225,7 +225,7 @@ func ParseURL(url string) (int, int, error) {
 
 	matches := findNamedMatches(re, url)
 	if len(matches) != 2 { //nolint:gomnd // we expect 2 matches
-		slog.Error("parsing URL", slog.String("url", url), slog.Any("found", matches))
+		slog.Debug("parsing URL", slog.String("url", url), slog.Any("found", matches))
 		return 0, 0, fmt.Errorf("parsing %s: invalid URL format", url)
 	}
 
@@ -294,7 +294,7 @@ func downloadPuzzlePage(year, day int) ([]byte, error) {
 		return nil, fmt.Errorf("creating cache directory: %w", err)
 	}
 
-	slog.Info("downloading puzzle page",
+	slog.Debug("downloading puzzle page",
 		slog.String("file", filepath.Join(cacheDir, "pages", makeExerciseID(year, day))))
 
 	req := rClient.R().SetPathParams(map[string]string{
@@ -348,7 +348,7 @@ func (e *Exercise) downloadInput() ([]byte, error) {
 		return nil, fmt.Errorf("creating inputs directory: %w", err)
 	}
 
-	slog.Info("downloading input",
+	slog.Debug("downloading input",
 		slog.String("file", filepath.Join(cacheDir, "inputs", e.ID)))
 
 	resp, err := rClient.R().
@@ -564,7 +564,7 @@ func (e *Exercise) addTemplatedFile(fs afero.Fs, tf tmplFile) error {
 
 	exists, _ := afero.Exists(fs, fp)
 	if exists && !tf.Replace {
-		slog.Info("file exists, skipping", "template", tf.LogValue())
+		slog.Debug("file exists, skipping", "template", tf.LogValue())
 
 		fmt.Printf("%s already exists, overwrite by using --force\n", fp)
 
