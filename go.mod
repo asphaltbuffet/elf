@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	github.com/dustin/go-humanize v1.0.1
-	github.com/go-resty/resty/v2 v2.10.0
+	github.com/go-resty/resty/v2 v2.11.0
 	github.com/spf13/afero v1.10.0
 	github.com/spf13/cobra v1.8.0
 	github.com/stretchr/testify v1.8.4
