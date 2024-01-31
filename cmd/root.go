@@ -8,11 +8,12 @@ import (
 	"os"
 	"time"
 
-	"github.com/asphaltbuffet/elf/pkg/krampus"
 	"github.com/lmittmann/tint"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	"github.com/asphaltbuffet/elf/pkg/krampus"
 )
 
 // application build information set by the linker.
@@ -61,7 +62,7 @@ func GetRootCommand() *cobra.Command {
 	rootCmd.AddCommand(GetSolveCmd())
 	rootCmd.AddCommand(GetTestCmd())
 	rootCmd.AddCommand(GetDownloadCmd())
-	// rootCmd.AddCommand(GetBenchmarkCmd())
+	rootCmd.AddCommand(GetBenchmarkCmd())
 
 	return rootCmd
 }
