@@ -43,7 +43,7 @@ func GetSolveCmd() *cobra.Command {
 }
 
 type Challenge interface {
-	Solve(bool) error
+	Solve(bool) ([]advent.TaskResult, error)
 	String() string
 }
 
@@ -81,9 +81,15 @@ func runSolveCmd(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	if solveErr := ch.Solve(noTest); solveErr != nil {
+	results, solveErr := ch.Solve(noTest)
+	if solveErr != nil {
 		slog.Error("solving exercise", tint.Err(solveErr))
 		cmd.PrintErrln("Failed to solve: ", solveErr)
+	}
+
+	for _, result := range results {
+		r := result
+		fmt.Printf("%+v\n", r)
 	}
 
 	return nil

@@ -33,7 +33,8 @@ func (e *Exercise) Test() error {
 
 	fmt.Fprintln(os.Stdout, headerStyle(fmt.Sprintf("ADVENT OF CODE %d\nDay %d: %s", e.Year, e.Day, e.Title)))
 
-	if err := runTests(e.runner, e.Data); err != nil {
+	_, err := runTests(e.runner, e.Data)
+	if err != nil {
 		testerLog.Error("running tests", tint.Err(err))
 		return err
 	}
@@ -62,22 +63,25 @@ type testTask struct {
 	expected string
 }
 
-func runTests(runner runners.Runner, data *Data) error {
+func runTests(runner runners.Runner, data *Data) ([]TaskResult, error) {
 	var tasks []testTask
 
 	tasks = append(tasks, makeTestTasks(runners.PartOne, data.TestCases.One)...)
 	tasks = append(tasks, makeTestTasks(runners.PartTwo, data.TestCases.Two)...)
 
+	results := make([]TaskResult, 0, len(tasks))
+
 	for _, t := range tasks {
 		result, err := runner.Run(t.task)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
-		handleTaskResult(os.Stdout, result, t.expected)
+		r := handleTaskResult(os.Stdout, result, t.expected)
+		results = append(results, r)
 	}
 
-	return nil
+	return results, nil
 }
 
 func makeTestTasks(p runners.Part, tests []*Test) []testTask {

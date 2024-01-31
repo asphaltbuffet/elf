@@ -107,7 +107,7 @@ func (e *Exercise) loadFromURL() error {
 // Dir returns the path to the exercise directory.
 // It will return an empty string if the exercise does not exist.
 //
-// Example: exercises/2020/01-someExerciseTitle.
+// Example: 01-someExerciseTitle.
 func (e *Exercise) Dir() string {
 	if e == nil || e.Path == "" {
 		slog.Error("nil exercise or no path available")

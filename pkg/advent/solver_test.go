@@ -85,7 +85,7 @@ func Test_runMainTasks(t *testing.T) {
 		Duration: 0.042,
 	}, nil)
 
-	err := runMainTasks(runner, &Data{Input: "FAKE INPUT"})
+	_, err := runMainTasks(runner, &Data{Input: "FAKE INPUT"})
 
 	runner.AssertExpectations(t)
 	require.NoError(t, err)
@@ -93,7 +93,7 @@ func Test_runMainTasks(t *testing.T) {
 	mockCall.Unset()
 
 	runner.On("Run", mock.Anything).Return(&runners.Result{}, fmt.Errorf("FAKE ERROR"))
-	err = runMainTasks(runner, &Data{Input: "FAKE INPUT"})
+	_, err = runMainTasks(runner, &Data{Input: "FAKE INPUT"})
 
 	runner.AssertExpectations(t)
 	require.Error(t, err)
