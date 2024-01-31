@@ -28,14 +28,14 @@ func GetBenchmarkCmd() *cobra.Command {
 			RunE:    runBenchmarkCmd,
 		}
 
-		benchmarkCmd.Flags().IntVarP(&iterations, "num", "n", 1, "number of iterations")
+		benchmarkCmd.Flags().IntVarP(&iterations, "num", "n", 3, "number of iterations")
 	}
 
-	return solveCmd
+	return benchmarkCmd
 }
 
 type Benchmarker interface {
-	Benchmark(int) error
+	Benchmark(int) ([]advent.TaskResult, error)
 	String() string
 }
 
@@ -53,15 +53,21 @@ func runBenchmarkCmd(cmd *cobra.Command, _ []string) error {
 
 	slog.Debug("benchmarking exercise", slog.Group("exercise", "dir", dir))
 
-	ex, err = advent.New(advent.WithDir(dir))
+	ex, err = advent.New(advent.WithDir(dir), advent.WithLanguage("go")) // TODO: make language configurable
 	if err != nil {
 		slog.Error("creating exercise", tint.Err(err))
 		return err
 	}
 
-	if solveErr := ex.Benchmark(iterations); solveErr != nil {
-		slog.Error("solving exercise", tint.Err(solveErr))
-		cmd.PrintErrln("Failed to solve: ", solveErr)
+	results, err := ex.Benchmark(iterations)
+	if err != nil {
+		slog.Error("solving exercise", tint.Err(err))
+		cmd.PrintErrln("Failed to solve: ", err)
+	}
+
+	for _, result := range results {
+		r := result
+		cmd.Printf("%+v\n", r)
 	}
 
 	return nil
