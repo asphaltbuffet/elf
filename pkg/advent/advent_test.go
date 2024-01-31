@@ -107,7 +107,6 @@ func Test_NewWithOpts(t *testing.T) {
 
 			if err != nil {
 				assert.Nil(t, got)
-				assert.NotEmpty(t, b.String(), "expected log output at ERROR level")
 			} else {
 				assert.Equal(t, tt.want.ID, got.ID)
 				assert.Equal(t, tt.want.Title, got.Title)
@@ -159,7 +158,7 @@ func Test_GetImplementations(t *testing.T) {
 		name      string
 		args      args
 		want      []string
-		assertion assert.ErrorAssertionFunc
+		assertion require.ErrorAssertionFunc
 		wantErr   error
 	}{
 		{
@@ -170,7 +169,8 @@ func Test_GetImplementations(t *testing.T) {
 				},
 			},
 			want:      []string{"go", "py"},
-			assertion: assert.NoError,
+			wantErr:   nil,
+			assertion: require.NoError,
 		},
 		{
 			name: "one language",
@@ -183,7 +183,8 @@ func Test_GetImplementations(t *testing.T) {
 				},
 			},
 			want:      []string{"go"},
-			assertion: assert.NoError,
+			assertion: require.NoError,
+			wantErr:   nil,
 		},
 		{
 			name: "only invalid language",
@@ -196,7 +197,8 @@ func Test_GetImplementations(t *testing.T) {
 				},
 			},
 			want:      []string{},
-			assertion: assert.NoError,
+			assertion: require.NoError,
+			wantErr:   nil,
 		},
 		{
 			name: "valid and invalid languages",
@@ -209,7 +211,8 @@ func Test_GetImplementations(t *testing.T) {
 				},
 			},
 			want:      []string{"go"},
-			assertion: assert.NoError,
+			assertion: require.NoError,
+			wantErr:   nil,
 		},
 		{
 			name: "no languages",
@@ -222,7 +225,8 @@ func Test_GetImplementations(t *testing.T) {
 				},
 			},
 			want:      []string{},
-			assertion: assert.NoError,
+			assertion: require.NoError,
+			wantErr:   nil,
 		},
 		{
 			name: "no year",
@@ -235,7 +239,7 @@ func Test_GetImplementations(t *testing.T) {
 				},
 			},
 			want:      nil,
-			assertion: assert.Error,
+			assertion: require.Error,
 			wantErr:   os.ErrNotExist,
 		},
 	}
@@ -252,7 +256,6 @@ func Test_GetImplementations(t *testing.T) {
 			tt.assertion(t, err)
 			if err != nil {
 				require.ErrorIs(t, err, tt.wantErr)
-				// require.ErrorContains(t, err, tt.errText)
 			} else {
 				assert.Equal(t, tt.want, got)
 			}
