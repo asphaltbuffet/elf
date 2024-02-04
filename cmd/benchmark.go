@@ -59,16 +59,16 @@ func runBenchmarkCmd(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	results, err := ex.Benchmark(iterations)
+	_, err = ex.Benchmark(iterations)
 	if err != nil {
 		slog.Error("solving exercise", tint.Err(err))
 		cmd.PrintErrln("Failed to solve: ", err)
 	}
 
-	for _, result := range results {
-		r := result
-		cmd.Printf("%+v\n", r)
-	}
+	// for _, result := range results {
+	// 	r := result
+	// 	cmd.Printf("%+v\n", r)
+	// }
 
 	return nil
 }
