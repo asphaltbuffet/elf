@@ -4,12 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"math"
 	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/lmittmann/tint"
 	"github.com/montanaflynn/stats"
+	"github.com/schollz/progressbar/v3"
 
 	"github.com/asphaltbuffet/elf/pkg/runners"
 )
@@ -21,6 +23,7 @@ type BenchmarkData struct {
 	Year            int                   `json:"year,omitempty"`
 	Day             int                   `json:"day"`
 	Runs            int                   `json:"numRuns"`
+	Normalization   float64               `json:"normalization,omitempty"`
 	Implementations []*ImplementationData `json:"implementations"`
 }
 
@@ -31,18 +34,24 @@ type ImplementationData struct {
 }
 
 type PartData struct {
-	Mean float64 `json:"mean"`
-	Min  float64 `json:"min"`
-	Max  float64 `json:"max"`
+	Mean float64   `json:"mean"`
+	Min  float64   `json:"min"`
+	Max  float64   `json:"max"`
+	Data []float64 `json:"data,omitempty"`
 }
 
 var benchmarkLog = slog.With(slog.String("fn", "Benchmark"))
 
 func (e *Exercise) Benchmark(iterations int) ([]TaskResult, error) {
-	impls, err := e.GetImplementations()
-	if err != nil {
-		return nil, err
-	}
+	normFactor := getNormalizationFactor()
+	// fmt.Printf("Normalization factor: %f\n", normFactor)
+
+	// temporary hack since python isn't working
+	// impls, err := e.GetImplementations()
+	// if err != nil {
+	// 	return nil, err
+	// }
+	impls := []string{"go"}
 
 	input, err := os.ReadFile(e.Data.InputFile)
 	if err != nil {
@@ -88,6 +97,7 @@ func (e *Exercise) Benchmark(iterations int) ([]TaskResult, error) {
 		Year:            e.Year,
 		Runs:            iterations,
 		Implementations: benchmarks,
+		Normalization:   normFactor,
 	})
 
 	outfile := filepath.Join(e.Path, "benchmark.json")
@@ -101,6 +111,23 @@ func (e *Exercise) Benchmark(iterations int) ([]TaskResult, error) {
 	}
 
 	return results, os.WriteFile(outfile, jsonData, 0o600)
+}
+
+func getNormalizationFactor() float64 {
+	start := time.Now()
+	m := map[int]string{}
+
+	for i := 1; i < math.MaxInt16; i++ {
+		m[i] = fmt.Sprintf("%2.3f", 1/float64(i))
+
+		if _, ok := m[i/3]; ok {
+			delete(m, i/2)
+		}
+	}
+
+	elapsed := time.Since(start)
+
+	return elapsed.Seconds()
 }
 
 func makeBenchmarkID(part runners.Part, subPart int) string {
@@ -130,13 +157,14 @@ func (e *Exercise) runBenchmark(iterations int) ([]TaskResult, *ImplementationDa
 			})
 	}
 
-	fmt.Printf("Benchmarking (%s)\n", e.runner)
-	// progBar := progressbar.NewOptions(
-	// 	len(tasks),
-	// 	progressbar.OptionSetDescription(
-	// 		fmt.Sprintf("Running %s benchmarks", e.runner.String()),
-	// 	),
-	// )
+	// fmt.Printf("Benchmarking %q (%s)\n", e.Title, e.runner)
+	progBar := progressbar.NewOptions(
+		len(tasks),
+		progressbar.OptionSetPredictTime(true),
+		progressbar.OptionSetDescription(
+			fmt.Sprintf("Benchmarking %q (%s)", e.Title, e.runner),
+		),
+	)
 
 	if err := e.runner.Start(); err != nil {
 		benchmarkLog.Error("starting runner", tint.Err(err))
@@ -155,19 +183,20 @@ func (e *Exercise) runBenchmark(iterations int) ([]TaskResult, *ImplementationDa
 			return nil, nil, err
 		}
 
-		if !benchResult.Ok || benchResult.Output == "" {
-			continue
+		if benchResult.Ok && benchResult.Output != "" {
+			r := handleTaskResult(os.Stdout, benchResult, "")
+			results = append(results, r)
+
+			metricsResults[runners.Part(r.Part)] = append(metricsResults[runners.Part(r.Part)], benchResult.Duration)
 		}
 
-		r := handleTaskResult(os.Stdout, benchResult, "")
-		results = append(results, r)
-
-		metricsResults[runners.Part(r.Part)] = append(metricsResults[runners.Part(r.Part)], benchResult.Duration)
-
-		// progBar.Add(1)
+		if err = progBar.Add(1); err != nil {
+			benchmarkLog.Error("updating progress bar", tint.Err(err))
+			return nil, nil, err
+		}
 	}
 
-	stats, err := resultsToStats(metricsResults)
+	stats, err := calculateMetrics(metricsResults)
 	if err != nil {
 		benchmarkLog.Error("getting stats from results", tint.Err(err))
 		return results, nil, err
@@ -181,7 +210,7 @@ func (e *Exercise) runBenchmark(iterations int) ([]TaskResult, *ImplementationDa
 		}, nil
 }
 
-func resultsToStats(results map[runners.Part][]float64) (map[runners.Part]*PartData, error) {
+func calculateMetrics(results map[runners.Part][]float64) (map[runners.Part]*PartData, error) {
 	metrics := make(map[runners.Part]*PartData)
 
 	benchmarkLog.Debug("calculating stats", "results", results)
@@ -189,19 +218,38 @@ func resultsToStats(results map[runners.Part][]float64) (map[runners.Part]*PartD
 	for part, durations := range results {
 		data := stats.LoadRawData(durations)
 
-		mean, _ := data.Mean()
-		rmean, _ := stats.Round(mean, 9)
-		max, _ := data.Max()
-		rmax, _ := stats.Round(max, 9)
-		min, _ := data.Min()
-		rmin, _ := stats.Round(min, 9)
+		mean, err := data.Mean()
+		if err != nil {
+			return nil, err
+		}
+
+		max, err := data.Max()
+		if err != nil {
+			return nil, err
+		}
+
+		min, err := data.Min()
+		if err != nil {
+			return nil, err
+		}
 
 		metrics[part] = &PartData{
-			Mean: rmean,
-			Min:  rmin,
-			Max:  rmax,
+			Mean: mean,
+			Min:  min,
+			Max:  max,
+			Data: durations,
 		}
 	}
 
 	return metrics, nil
+}
+
+func (b *BenchmarkData) String() string {
+	return fmt.Sprintf("BenchmarkData{Date: %s, AOC %d/%02d, Runs: %3d, Normalization: %.6f, Implementations: %s}",
+		b.Date.Local().Format(time.DateOnly), b.Year, b.Day, b.Runs, b.Normalization, b.Implementations)
+}
+
+func (i *ImplementationData) String() string {
+	return fmt.Sprintf("%s{%d PartOne, %d PartTwo}",
+		i.Name, len(i.PartOne.Data), len(i.PartTwo.Data))
 }
