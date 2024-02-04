@@ -1,0 +1,12 @@
+---
+with-expecter: true
+packages:
+    github.com/asphaltbuffet/elf:
+        # place your package-specific config here
+        config:
+        interfaces:
+            # select the interfaces you want mocked
+            Runner:
+                # Modify package-level config for this specific interface (if applicable)
+                config:
+                  log-level: "warn"

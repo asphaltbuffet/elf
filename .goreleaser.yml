@@ -2,6 +2,7 @@
 before:
   hooks:
     - go mod download
+    - go generate ./...
 builds:
   - ldflags:
       - -s -w -X {{.ModulePath}}/cmd.Version={{.Summary}} -X {{.ModulePath}}/cmd.Date={{.Date}}
