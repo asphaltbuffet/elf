@@ -150,6 +150,8 @@ func Test_makeExercisePath(t *testing.T) {
 }
 
 func Test_GetImplementations(t *testing.T) {
+	t.Parallel()
+
 	type args struct {
 		e *Exercise
 	}

@@ -5,8 +5,6 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/charmbracelet/lipgloss"
-	"github.com/dustin/go-humanize"
 	"github.com/lmittmann/tint"
 
 	"github.com/asphaltbuffet/elf/pkg/runners"
@@ -109,7 +107,7 @@ func makeTestTasks(p runners.Part, tests []*Test) []testTask {
 
 // 	passed := r.Output == expected
 
-	var status, followUpText lipgloss.Style
+// 	var status, followUpText lipgloss.Style
 
 	switch {
 	case !r.Ok:
@@ -147,6 +145,6 @@ func makeTestTasks(p runners.Part, tests []*Test) []testTask {
 // 			PaddingLeft(4). //nolint:gomnd // hard-coded padding for now
 // 			SetString(fmt.Sprintf("⤷ expected %q, got %q", expected, r.Output))
 
-		fmt.Println(extra)
-	}
-}
+// 		fmt.Println(extra)
+// 	}
+// }

@@ -45,7 +45,12 @@ func Download(url string, lang string, _ bool) (string, error) {
 	cacheDir = cfg.GetString("cache-dir")
 
 	if cacheDir == "" {
-		slog.Error("empty cache directory path", slog.String("url", url), slog.String("lang", lang), slog.String("defaultCacheDir", cfg.GetString("cache_dir")))
+		slog.Error("empty cache directory path",
+			slog.String("url", url),
+			slog.String("lang", lang),
+			slog.String("defaultCacheDir", cfg.GetString("cache_dir")),
+		)
+
 		return "", fmt.Errorf("cache directory not set")
 	}
 
