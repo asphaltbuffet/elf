@@ -10,6 +10,8 @@ import (
 	"github.com/jarcoal/httpmock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/asphaltbuffet/elf/pkg/krampus"
 )
 
 var NotFoundResponder = httpmock.NewStringResponder(http.StatusNotFound, "404 Not Found")
@@ -17,11 +19,17 @@ var NotFoundResponder = httpmock.NewStringResponder(http.StatusNotFound, "404 No
 func setupTestCase(t *testing.T, useTempDir bool) func(t *testing.T) {
 	t.Helper()
 
+	cfg, _ = krampus.New()
+	cfg.Set("cacheDir", "testdata")
+	cfg.Set("exerciseDir", "fs")
+	cfg.Set("advent.token", "fake-token")
+
 	if useTempDir {
 		cfgDir = t.TempDir()
 	} else {
 		cfgDir = "testdata"
 	}
+	cfg.Set("cfgDir", cfgDir)
 
 	exerciseBaseDir = filepath.Join(cfgDir, "exercises")
 
