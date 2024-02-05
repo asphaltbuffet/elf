@@ -1,7 +1,7 @@
----
 with-expecter: true
+outpkg: mocks
 packages:
-    github.com/asphaltbuffet/elf:
+    github.com/asphaltbuffet/elf/pkg/runners:
         # place your package-specific config here
         config:
         interfaces:
@@ -9,4 +9,5 @@ packages:
             Runner:
                 # Modify package-level config for this specific interface (if applicable)
                 config:
-                  log-level: "warn"
+                  log-level: "info"
+                  dir: "mocks/{{.InterfaceName}}"

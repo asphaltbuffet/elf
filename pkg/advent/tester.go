@@ -72,6 +72,9 @@ func runTests(runner runners.Runner, data *Data) ([]TaskResult, error) {
 	for _, t := range tasks {
 		result, err := runner.Run(t.task)
 		if err != nil {
+			slog.Error("running test task",
+				slog.Group("result", "id", result.TaskID, "ok", result.Ok, "output", result.Output),
+				tint.Err(err))
 			return nil, err
 		}
 
