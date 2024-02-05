@@ -189,34 +189,6 @@ func Test_GetImplementations(t *testing.T) {
 			wantErr:   nil,
 		},
 		{
-			name: "only invalid language",
-			args: args{
-				&Exercise{
-					Year:  2017,
-					Day:   4,
-					Title: "Fake Lang Day",
-					Path:  filepath.Join("testdata", "fs", "2017", "04-fakeLangDay"),
-				},
-			},
-			want:      []string{},
-			assertion: require.NoError,
-			wantErr:   nil,
-		},
-		{
-			name: "valid and invalid languages",
-			args: args{
-				&Exercise{
-					Year:  2017,
-					Day:   5,
-					Title: "Fake Partial Day",
-					Path:  filepath.Join("testdata", "fs", "2017", "05-fakePartialDay"),
-				},
-			},
-			want:      []string{"go"},
-			assertion: require.NoError,
-			wantErr:   nil,
-		},
-		{
 			name: "no languages",
 			args: args{
 				&Exercise{

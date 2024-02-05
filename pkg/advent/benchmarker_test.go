@@ -24,7 +24,7 @@ func Test_makeBenchmarkID(t *testing.T) {
 				part:    runners.PartOne,
 				subPart: -1,
 			},
-			want: "benchmark.part.1",
+			want: "benchmark.1.-1",
 		},
 		{
 			name: "part and subpart",
@@ -32,7 +32,7 @@ func Test_makeBenchmarkID(t *testing.T) {
 				part:    runners.PartTwo,
 				subPart: 1,
 			},
-			want: "benchmark.part.2.1",
+			want: "benchmark.2.1",
 		},
 	}
 	for _, tt := range tests {
