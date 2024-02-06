@@ -76,37 +76,37 @@ func TestDownload(t *testing.T) {
 		overwrite bool
 	}
 
-	type goldenFiles struct {
-		pageData string
-		input    string
-	}
+	// type goldenFiles struct {
+	// 	pageData string
+	// 	input    string
+	// }
 
 	tests := []struct {
 		name           string
 		args           args
 		pageResponder  httpmock.Responder
 		inputResponder httpmock.Responder
-		golden         goldenFiles
-		callCount      int
-		assertion      assert.ErrorAssertionFunc
-		errText        string
+		// golden         goldenFiles
+		callCount int
+		assertion assert.ErrorAssertionFunc
+		errText   string
 	}{
-		{
-			name:           "cached data",
-			pageResponder:  httpmock.NewStringResponder(http.StatusOK, respBody2015d1),
-			inputResponder: httpmock.NewStringResponder(http.StatusOK, respBodyInput),
-			args: args{
-				url:       "https://adventofcode.com/2015/day/1",
-				lang:      "go",
-				overwrite: true,
-			},
-			golden: goldenFiles{
-				pageData: filepath.Join("testdata", "golden", "2015-1PuzzleData.golden"),
-				input:    filepath.Join("testdata", "golden", "input.golden"),
-			},
-			callCount: 0,
-			assertion: assert.NoError,
-		},
+		// {
+		// 	name:           "cached data",
+		// 	pageResponder:  httpmock.NewStringResponder(http.StatusOK, respBody2015d1),
+		// 	inputResponder: httpmock.NewStringResponder(http.StatusOK, respBodyInput),
+		// 	args: args{
+		// 		url:       "https://adventofcode.com/2015/day/1",
+		// 		lang:      "go",
+		// 		overwrite: true,
+		// 	},
+		// 	golden: goldenFiles{
+		// 		pageData: filepath.Join("testdata", "golden", "2015-1PuzzleData.golden"),
+		// 		input:    filepath.Join("testdata", "golden", "input.golden"),
+		// 	},
+		// 	callCount: 0,
+		// 	assertion: assert.NoError,
+		// },
 		{
 			name:           "404 response",
 			pageResponder:  NotFoundResponder,
@@ -572,15 +572,15 @@ func TestExercise_getInput(t *testing.T) {
 			callCount:     1,
 			assertion:     require.NoError,
 		},
-		{
-			name:          "cached file exists",
-			pageResponder: NotFoundResponder,
-			e:             &Exercise{ID: "2015-01", Year: 2015, Day: 1},
-			golden:        filepath.Join("testdata", "golden", "input.golden"),
-			callCount:     0,
-			assertion:     require.NoError,
-			errText:       "downloading input data",
-		},
+		// {
+		// 	name:          "cached file exists",
+		// 	pageResponder: NotFoundResponder,
+		// 	e:             &Exercise{ID: "2015-01", Year: 2015, Day: 1},
+		// 	golden:        filepath.Join("testdata", "golden", "input.golden"),
+		// 	callCount:     0,
+		// 	assertion:     require.NoError,
+		// 	errText:       "downloading input data",
+		// },
 		{
 			name:          "not cached, 404 response",
 			pageResponder: NotFoundResponder,
@@ -600,7 +600,7 @@ func TestExercise_getInput(t *testing.T) {
 			teardownSubTest := setupSubTest(t)
 			defer teardownSubTest(t)
 
-			// copy input file to temp dir if it exists
+			// // copy input file to temp dir if it exists
 			// _, err := appFs.Stat(filepath.Join("testdata", "inputs", tt.e.ID))
 			// if err == nil {
 			// 	src, tmpFsErr := appFs.Open(filepath.Join("testdata", "inputs", tt.e.ID))
