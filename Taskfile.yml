@@ -55,19 +55,19 @@ tasks:
             - go install gotest.tools/gotestsum@latest
             - go install github.com/goreleaser/goreleaser@latest
             - go install github.com/vektra/mockery/v2@v2.40.1
-        status:
-            - test -f $(go env GOPATH)/bin/golangci-lint
-            - test -f $(go env GOPATH)/bin/gofumpt
-            - test -f $(go env GOPATH)/bin/gotestsum
-            - test -f $(go env GOPATH)/bin/goreleaser
-            - test -f $(go env GOPATH)/bin/mockery
+            - go install golang.org/x/tools/cmd/stringer@latest
 
     generate:
-        desc: go generate
+        desc: generate artifacts
         aliases: [gen]
         cmds:
-            - go install golang.org/x/tools/cmd/stringer@latest
             - go generate ./...
+            - mockery
+        preconditions:
+            - if ! command -v mockery &> /dev/null; then echo "mockery not found"; exit 1; fi
+            - if ! command -v stringer &> /dev/null; then echo "stringer not found"; exit 1; fi
+        generates:
+            - "mocks/**/*.go"
 
     build:
         desc: go build
