@@ -11,13 +11,14 @@ tasks:
         desc: dev build pipeline
         cmds:
             - task: generate
+            - task: mock
             - task: lint
             - task: test
             - task: snapshot
 
     ci:
         desc: ci build pipeline
-        deps: [mod-tidy, install, generate]
+        deps: [generate, mock]
         cmds:
             - task: mod-tidy
             - task: install
@@ -30,6 +31,7 @@ tasks:
         cmds:
             - rm -rf dist
             - rm -rf bin
+            - rm -rf mocks
 
     nuke:
         desc: go clean + remove build artifacts
@@ -75,11 +77,6 @@ tasks:
         deps: [install-mockery]
         cmds:
             - mockery --log-level=warn
-        sources:
-            - "**/*.go"
-            - ".mockery.yaml"
-        generates:
-            - "mocks/**/*.go"
 
     install-mockery:
         internal: true
@@ -102,7 +99,10 @@ tasks:
 
     lint:
         desc: golangci-lint
+        deps: [mod-tidy, generate, mock]
         cmds:
+            - cmd: mkdir -p bin
+              silent: true
             - golangci-lint run --fix --out-format=html:bin/golangci-lint.html,colored-line-number:stdout
         sources:
             - "**/*.go"
@@ -111,6 +111,7 @@ tasks:
 
     test:
         desc: go test
+        deps: [generate, install, mock]
         cmds:
             - cmd: mkdir -p bin
               silent: true
