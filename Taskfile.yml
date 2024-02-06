@@ -17,9 +17,10 @@ tasks:
 
     ci:
         desc: ci build pipeline
-        deps: [mod-tidy, install]
+        deps: [mod-tidy, install, generate]
         cmds:
-            - task: generate
+            - task: mod-tidy
+            - task: install
             - task: test
             - task: build
             - task: diff
@@ -54,20 +55,38 @@ tasks:
             - go install mvdan.cc/gofumpt@v0.4.0
             - go install gotest.tools/gotestsum@latest
             - go install github.com/goreleaser/goreleaser@latest
-            - go install github.com/vektra/mockery/v2@v2.40.1
-            - go install golang.org/x/tools/cmd/stringer@latest
 
     generate:
         desc: generate artifacts
+        deps: [install-stringer]
         aliases: [gen]
         cmds:
             - go generate ./...
-            - mockery
-        preconditions:
-            - if ! command -v mockery &> /dev/null; then echo "mockery not found"; exit 1; fi
-            - if ! command -v stringer &> /dev/null; then echo "stringer not found"; exit 1; fi
+
+    install-stringer:
+        internal: true
+        cmds:
+            - go install golang.org/x/tools/cmd/stringer@latest
+        status:
+            - if ! command -v mockery &> /dev/null; then exit 1; fi
+
+    mock:
+        desc: generate mocks
+        deps: [install-mockery]
+        cmds:
+            - mockery --log-level=warn
+        sources:
+            - "**/*.go"
+            - ".mockery.yaml"
         generates:
             - "mocks/**/*.go"
+
+    install-mockery:
+        internal: true
+        cmds:
+            - go install github.com/vektra/mockery/v2@v2.40.1
+        status:
+            - if ! command -v mockery &> /dev/null; then exit 1; fi
 
     build:
         desc: go build

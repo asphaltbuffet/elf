@@ -2,6 +2,8 @@
 before:
   hooks:
     - go mod download
+    - go install golang.org/x/tools/cmd/stringer@latest
+    - go generate ./...
 builds:
   - ldflags:
       - -s -w -X {{.ModulePath}}/cmd.Version={{.Summary}} -X {{.ModulePath}}/cmd.Date={{.Date}}
@@ -49,7 +51,7 @@ checksum:
 snapshot:
   name_template: "{{ incpatch .Version }}-next-{{ .Now.Format \"0102-150405\" }}"
 changelog:
-  skip: true
+  disable: true
 release:
   prerelease: auto
 announce:

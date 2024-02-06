@@ -2,17 +2,15 @@ package krampus
 
 import (
 	"errors"
+	"log/slog"
 	"os"
 	"time"
 
 	"github.com/lmittmann/tint"
-	"github.com/sagikazarmark/slog-shim"
 	"github.com/spf13/viper"
 )
 
-var (
-	cfg *viper.Viper
-)
+var cfg *viper.Viper
 
 func New() (*viper.Viper, error) {
 	if cfg != nil {
