@@ -3,6 +3,7 @@ package advent
 import (
 	"bytes"
 	"log/slog"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -10,14 +11,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewWithOpts(t *testing.T) {
+func Test_NewWithOpts(t *testing.T) {
 	var b bytes.Buffer
 	tlog := slog.New(slog.NewTextHandler(&b, &slog.HandlerOptions{Level: slog.LevelError}))
 	slog.SetDefault(tlog)
 
 	type args struct {
-		language string
-		opts     []func(*Exercise)
+		opts []func(*Exercise)
 	}
 
 	tests := []struct {
@@ -29,8 +29,10 @@ func TestNewWithOpts(t *testing.T) {
 		{
 			name: "valid exercise",
 			args: args{
-				language: "go",
-				opts:     []func(*Exercise){WithDir("../../testdata/exercises/2015/01-fakeTestDayOne")},
+				opts: []func(*Exercise){
+					WithDir("../../testdata/exercises/2015/01-fakeTestDayOne"),
+					WithLanguage("go"),
+				},
 			},
 			want: &Exercise{
 				ID:       "2015-01",
@@ -46,8 +48,10 @@ func TestNewWithOpts(t *testing.T) {
 		{
 			name: "invalid language",
 			args: args{
-				language: "fake",
-				opts:     []func(*Exercise){WithDir("../../testdata/exercises/2015/01-fakeTestDayOne")},
+				opts: []func(*Exercise){
+					WithDir("../../testdata/exercises/2015/01-fakeTestDayOne"),
+					WithLanguage("fake"),
+				},
 			},
 			want:      nil,
 			assertion: require.Error,
@@ -55,8 +59,7 @@ func TestNewWithOpts(t *testing.T) {
 		{
 			name: "no opts",
 			args: args{
-				language: "go",
-				opts:     nil,
+				opts: nil,
 			},
 			want:      nil,
 			assertion: require.Error,
@@ -64,8 +67,10 @@ func TestNewWithOpts(t *testing.T) {
 		{
 			name: "empty language",
 			args: args{
-				language: "",
-				opts:     []func(*Exercise){WithDir("../../testdata/exercises/2016/01-fakeTestDayOne")},
+				opts: []func(*Exercise){
+					WithDir("../../testdata/exercises/2016/01-fakeTestDayOne"),
+					WithLanguage(""),
+				},
 			},
 			want:      nil,
 			assertion: require.Error,
@@ -73,8 +78,10 @@ func TestNewWithOpts(t *testing.T) {
 		{
 			name: "missing exercise directory",
 			args: args{
-				language: "go",
-				opts:     []func(*Exercise){WithDir("../../testdata/exercises/2016/01-fakeTestDayOne")},
+				opts: []func(*Exercise){
+					WithDir("../../testdata/exercises/2016/01-fakeTestDayOne"),
+					WithLanguage("go"),
+				},
 			},
 			want:      nil,
 			assertion: require.Error,
@@ -82,8 +89,10 @@ func TestNewWithOpts(t *testing.T) {
 		{
 			name: "missing year directory",
 			args: args{
-				language: "go",
-				opts:     []func(*Exercise){WithDir("../../testdata/exercises/2017/01-fakeTestDayOne")},
+				opts: []func(*Exercise){
+					WithDir("../../testdata/exercises/2017/01-fakeTestDayOne"),
+					WithLanguage("go"),
+				},
 			},
 			want:      nil,
 			assertion: require.Error,
@@ -92,13 +101,12 @@ func TestNewWithOpts(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := New(tt.args.language, tt.args.opts...)
+			got, err := New(tt.args.opts...)
 
 			tt.assertion(t, err)
 
 			if err != nil {
 				assert.Nil(t, got)
-				assert.NotEmpty(t, b.String(), "expected log output at ERROR level")
 			} else {
 				assert.Equal(t, tt.want.ID, got.ID)
 				assert.Equal(t, tt.want.Title, got.Title)
@@ -137,6 +145,94 @@ func Test_makeExercisePath(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equal(t, tt.want, makeExercisePath(tt.args.year, tt.args.day, tt.args.title))
+		})
+	}
+}
+
+func Test_GetImplementations(t *testing.T) {
+	t.Parallel()
+
+	type args struct {
+		e *Exercise
+	}
+
+	tests := []struct {
+		name      string
+		args      args
+		want      []string
+		assertion require.ErrorAssertionFunc
+		wantErr   error
+	}{
+		{
+			name: "two languages",
+			args: args{
+				&Exercise{
+					Path: filepath.Join("testdata", "fs", "2017", "01-fakeFullDay"),
+				},
+			},
+			want:      []string{"go", "py"},
+			wantErr:   nil,
+			assertion: require.NoError,
+		},
+		{
+			name: "one language",
+			args: args{
+				&Exercise{
+					Year:  2017,
+					Day:   3,
+					Title: "Fake Go Day",
+					Path:  filepath.Join("testdata", "fs", "2017", "03-fakeGoDay"),
+				},
+			},
+			want:      []string{"go"},
+			assertion: require.NoError,
+			wantErr:   nil,
+		},
+		{
+			name: "no languages",
+			args: args{
+				&Exercise{
+					Year:  2017,
+					Day:   2,
+					Title: "Fake Empty Day",
+					Path:  filepath.Join("testdata", "fs", "2017", "02-fakeEmptyDay"),
+				},
+			},
+			want:      []string{},
+			assertion: require.NoError,
+			wantErr:   nil,
+		},
+		{
+			name: "no year",
+			args: args{
+				&Exercise{
+					Year:  2014,
+					Day:   14,
+					Title: "Fake Missing Year",
+					Path:  filepath.Join("testdata", "fs", "2014", "14-fakeMissingYear"),
+				},
+			},
+			want:      nil,
+			assertion: require.Error,
+			wantErr:   os.ErrNotExist,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := tt.args.e.GetImplementations()
+
+			require.ErrorIs(t, err, tt.wantErr)
+			tt.assertion(t, err)
+			if err != nil {
+				require.ErrorIs(t, err, tt.wantErr)
+			} else {
+				assert.Equal(t, tt.want, got)
+			}
 		})
 	}
 }

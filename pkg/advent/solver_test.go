@@ -9,15 +9,17 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/asphaltbuffet/elf/mocks"
+	mocks "github.com/asphaltbuffet/elf/mocks/Runner"
 	"github.com/asphaltbuffet/elf/pkg/runners"
 )
 
 func Test_makeMainID(t *testing.T) {
 	t.Parallel()
+
 	type args struct {
 		part runners.Part
 	}
+
 	tests := []struct {
 		name string
 		args args
@@ -26,6 +28,7 @@ func Test_makeMainID(t *testing.T) {
 		{"single digit", args{part: 1}, "main.1"},
 		{"double digit", args{part: 25}, "main.25"},
 	}
+
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
@@ -39,6 +42,7 @@ func Test_parseMainID(t *testing.T) {
 	type args struct {
 		id string
 	}
+
 	tests := []struct {
 		name string
 		args args
@@ -47,6 +51,7 @@ func Test_parseMainID(t *testing.T) {
 		{"single digit", args{id: "main.1"}, 1},
 		{"two digit", args{id: "main.25"}, 25},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equal(t, tt.want, parseMainID(tt.args.id))
@@ -76,26 +81,24 @@ func TestParseMainIDWithPanic(t *testing.T) {
 }
 
 func Test_runMainTasks(t *testing.T) {
-	runner := new(mocks.MockRunner)
+	mockRunner := mocks.NewMockRunner(t)
 
-	mockCall := runner.On("Run", mock.Anything).Return(&runners.Result{
+	mockCall := mockRunner.On("Run", mock.Anything).Return(&runners.Result{
 		TaskID:   "main.1",
 		Ok:       true,
 		Output:   "FAKE OUTPUT",
 		Duration: 0.042,
 	}, nil)
 
-	err := runMainTasks(runner, "FAKE INPUT")
+	_, err := runMainTasks(mockRunner, &Data{Input: "FAKE INPUT"})
 
-	runner.AssertExpectations(t)
 	require.NoError(t, err)
 
 	mockCall.Unset()
 
-	runner.On("Run", mock.Anything).Return(&runners.Result{}, fmt.Errorf("FAKE ERROR"))
-	err = runMainTasks(runner, "FAKE INPUT")
+	mockRunner.On("Run", mock.Anything).Return(&runners.Result{}, fmt.Errorf("FAKE ERROR"))
+	_, err = runMainTasks(mockRunner, &Data{Input: "FAKE INPUT"})
 
-	runner.AssertExpectations(t)
 	require.Error(t, err)
 }
 
@@ -104,9 +107,9 @@ func Test_handleMainResult(t *testing.T) {
 		r *runners.Result
 	}
 	tests := []struct {
-		name  string
-		args  args
-		wantW string
+		name string
+		args args
+		want TaskResult
 	}{
 		{
 			name: "sucessful run",
@@ -114,30 +117,48 @@ func Test_handleMainResult(t *testing.T) {
 				r: &runners.Result{
 					TaskID:   "main.1",
 					Ok:       true,
-					Output:   "FAKE OUTPUT",
+					Output:   "good output",
 					Duration: 0.042,
 				},
 			},
-			wantW: "  Part 1: FAKE OUTPUT in 42 ms\n",
+			want: TaskResult{
+				ID:       "main.1",
+				Type:     TaskMain,
+				Part:     1,
+				SubPart:  -1,
+				Status:   Passed,
+				Output:   "good output",
+				Expected: "good output",
+				Duration: 0.042,
+			},
 		},
 		{
 			name: "not ok",
 			args: args{
 				r: &runners.Result{
-					TaskID:   "main.1",
+					TaskID:   "main.2",
 					Ok:       false,
-					Output:   "FAKE ERROR",
+					Output:   "error text",
 					Duration: 0.042,
 				},
 			},
-			wantW: "  Part 1: did not complete saying \"FAKE ERROR\"\n",
+			want: TaskResult{
+				ID:       "main.2",
+				Type:     TaskMain,
+				Part:     2,
+				SubPart:  -1,
+				Status:   Error,
+				Output:   "⤷ saying:error text",
+				Expected: "",
+				Duration: 0.042,
+			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			w := &bytes.Buffer{}
-			handleMainResult(w, tt.args.r)
-			assert.Equal(t, tt.wantW, w.String())
+			got := handleTaskResult(w, tt.args.r, "good output")
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }

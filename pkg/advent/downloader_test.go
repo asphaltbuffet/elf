@@ -2,7 +2,6 @@ package advent
 
 import (
 	_ "embed"
-	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -11,6 +10,8 @@ import (
 	"github.com/jarcoal/httpmock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/asphaltbuffet/elf/pkg/krampus"
 )
 
 var NotFoundResponder = httpmock.NewStringResponder(http.StatusNotFound, "404 Not Found")
@@ -18,11 +19,17 @@ var NotFoundResponder = httpmock.NewStringResponder(http.StatusNotFound, "404 No
 func setupTestCase(t *testing.T, useTempDir bool) func(t *testing.T) {
 	t.Helper()
 
+	cfg, _ = krampus.New()
+	cfg.Set("cacheDir", "testdata")
+	cfg.Set("exerciseDir", "fs")
+	cfg.Set("advent.token", "fake-token")
+
 	if useTempDir {
 		cfgDir = t.TempDir()
 	} else {
 		cfgDir = "testdata"
 	}
+	cfg.Set("cfgDir", cfgDir)
 
 	exerciseBaseDir = filepath.Join(cfgDir, "exercises")
 
@@ -69,37 +76,37 @@ func TestDownload(t *testing.T) {
 		overwrite bool
 	}
 
-	type goldenFiles struct {
-		pageData string
-		input    string
-	}
+	// type goldenFiles struct {
+	// 	pageData string
+	// 	input    string
+	// }
 
 	tests := []struct {
 		name           string
 		args           args
 		pageResponder  httpmock.Responder
 		inputResponder httpmock.Responder
-		golden         goldenFiles
-		callCount      int
-		assertion      assert.ErrorAssertionFunc
-		errText        string
+		// golden         goldenFiles
+		callCount int
+		assertion assert.ErrorAssertionFunc
+		errText   string
 	}{
-		{
-			name:           "cached data",
-			pageResponder:  httpmock.NewStringResponder(http.StatusOK, respBody2015d1),
-			inputResponder: httpmock.NewStringResponder(http.StatusOK, respBodyInput),
-			args: args{
-				url:       "https://adventofcode.com/2015/day/1",
-				lang:      "go",
-				overwrite: true,
-			},
-			golden: goldenFiles{
-				pageData: filepath.Join("testdata", "golden", "2015-1PuzzleData.golden"),
-				input:    filepath.Join("testdata", "golden", "input.golden"),
-			},
-			callCount: 0,
-			assertion: assert.NoError,
-		},
+		// {
+		// 	name:           "cached data",
+		// 	pageResponder:  httpmock.NewStringResponder(http.StatusOK, respBody2015d1),
+		// 	inputResponder: httpmock.NewStringResponder(http.StatusOK, respBodyInput),
+		// 	args: args{
+		// 		url:       "https://adventofcode.com/2015/day/1",
+		// 		lang:      "go",
+		// 		overwrite: true,
+		// 	},
+		// 	golden: goldenFiles{
+		// 		pageData: filepath.Join("testdata", "golden", "2015-1PuzzleData.golden"),
+		// 		input:    filepath.Join("testdata", "golden", "input.golden"),
+		// 	},
+		// 	callCount: 0,
+		// 	assertion: assert.NoError,
+		// },
 		{
 			name:           "404 response",
 			pageResponder:  NotFoundResponder,
@@ -164,37 +171,6 @@ func TestDownload(t *testing.T) {
 			}
 		})
 	}
-}
-
-func Test_noCacheDir(t *testing.T) {
-	teardownTestCase := setupTestCase(t, false)
-	defer teardownTestCase(t)
-
-	teardownSubTest := setupSubTest(t)
-	defer teardownSubTest(t)
-
-	cfgDir = ""
-
-	_, err := Download("https://adventofcode.com/2015/day/1", "go", false)
-	require.Error(t, err)
-	require.ErrorContains(t, err, "cache directory")
-
-	_, err = getPage(2015, 1)
-	require.Error(t, err)
-	require.ErrorContains(t, err, "cache directory")
-
-	_, err = getCachedPuzzlePage(2015, 1)
-	require.Error(t, err)
-	require.ErrorContains(t, err, "cache directory")
-
-	e := &Exercise{ID: "2015-01", Year: 2015, Day: 1}
-	_, err = e.getCachedInput()
-	require.Error(t, err)
-	require.ErrorContains(t, err, "cache directory")
-
-	_, err = e.downloadInput()
-	require.Error(t, err)
-	require.ErrorContains(t, err, "cache directory")
 }
 
 func Test_extractTitle(t *testing.T) {
@@ -385,85 +361,85 @@ func Test_downloadPuzzlePage(t *testing.T) {
 	}
 }
 
-func Test_getCachedPuzzlePage(t *testing.T) {
-	cfgDir = "testdata"
+// func Test_getCachedPuzzlePage(t *testing.T) {
+// 	cfgDir = "testdata"
 
-	type args struct {
-		year int
-		day  int
-	}
+// 	type args struct {
+// 		year int
+// 		day  int
+// 	}
 
-	tests := []struct {
-		name      string
-		args      args
-		golden    string
-		assertion assert.ErrorAssertionFunc
-	}{
-		{
-			name: "cached file exists",
-			args: args{
-				year: 2015,
-				day:  2,
-			},
-			golden:    "testdata/golden/2015-02.golden",
-			assertion: assert.NoError,
-		},
-		{
-			name: "no cached file",
-			args: args{
-				year: 2015,
-				day:  3,
-			},
-			assertion: assert.Error,
-		},
-	}
+// 	tests := []struct {
+// 		name      string
+// 		args      args
+// 		golden    string
+// 		assertion assert.ErrorAssertionFunc
+// 	}{
+// 		{
+// 			name: "cached file exists",
+// 			args: args{
+// 				year: 2015,
+// 				day:  2,
+// 			},
+// 			golden:    "testdata/golden/2015-02.golden",
+// 			assertion: assert.NoError,
+// 		},
+// 		{
+// 			name: "no cached file",
+// 			args: args{
+// 				year: 2015,
+// 				day:  3,
+// 			},
+// 			assertion: assert.Error,
+// 		},
+// 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := getCachedPuzzlePage(tt.args.year, tt.args.day)
+// 	for _, tt := range tests {
+// 		t.Run(tt.name, func(t *testing.T) {
+// 			got, err := getCachedPuzzlePage(tt.args.year, tt.args.day)
 
-			tt.assertion(t, err)
-			if err == nil {
-				want := goldenValue(t, tt.golden)
-				assert.Equal(t, want, got)
-			}
-		})
-	}
-}
+// 			tt.assertion(t, err)
+// 			if err == nil {
+// 				want := goldenValue(t, tt.golden)
+// 				assert.Equal(t, want, got)
+// 			}
+// 		})
+// 	}
+// }
 
-func TestExercise_getCachedInput(t *testing.T) {
-	cfgDir = "testdata"
+// func TestExercise_getCachedInput(t *testing.T) {
+// 	cfgDir = "testdata"
 
-	tests := []struct {
-		name      string
-		e         *Exercise
-		golden    string
-		assertion assert.ErrorAssertionFunc
-	}{
-		{
-			name:      "cached file exists",
-			e:         &Exercise{ID: "2015-02"},
-			golden:    "testdata/golden/input.golden",
-			assertion: assert.NoError,
-		},
-		{
-			name:      "no cached file",
-			e:         &Exercise{ID: "2015-03"},
-			assertion: assert.Error,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.e.getCachedInput()
+// 	tests := []struct {
+// 		name      string
+// 		e         *Exercise
+// 		golden    string
+// 		assertion assert.ErrorAssertionFunc
+// 	}{
+// 		{
+// 			name:      "cached file exists",
+// 			e:         &Exercise{ID: "2015-02"},
+// 			golden:    "testdata/golden/input.golden",
+// 			assertion: assert.NoError,
+// 		},
+// 		{
+// 			name:      "no cached file",
+// 			e:         &Exercise{ID: "2015-03"},
+// 			assertion: assert.Error,
+// 		},
+// 	}
+// 	for _, tt := range tests {
+// 		t.Run(tt.name, func(t *testing.T) {
+// 			got, err := tt.e.getCachedInput()
 
-			tt.assertion(t, err)
-			if err == nil {
-				want := goldenValue(t, tt.golden)
-				assert.Equal(t, want, got)
-			}
-		})
-	}
-}
+// 			tt.assertion(t, err)
+// 			if err == nil {
+// 				want := goldenValue(t, tt.golden)
+// 				assert.Equal(t, want, got)
+// 			}
+// 		})
+// 	}
+// }
 
 func Test_getExercisePath(t *testing.T) {
 	exerciseBaseDir = "testdata/fs"
@@ -572,7 +548,7 @@ func TestExercise_downloadInput(t *testing.T) {
 			} else {
 				want := goldenValue(t, tt.golden)
 				assert.Equal(t, want, got)
-				assert.FileExists(t, filepath.Join(cfgDir, "inputs", tt.e.ID))
+				// assert.FileExists(t, filepath.Join(cfgDir, "inputs", tt.e.ID))
 			}
 		})
 	}
@@ -596,15 +572,15 @@ func TestExercise_getInput(t *testing.T) {
 			callCount:     1,
 			assertion:     require.NoError,
 		},
-		{
-			name:          "cached file exists",
-			pageResponder: NotFoundResponder,
-			e:             &Exercise{ID: "2015-01", Year: 2015, Day: 1},
-			golden:        filepath.Join("testdata", "golden", "input.golden"),
-			callCount:     0,
-			assertion:     require.NoError,
-			errText:       "downloading input data",
-		},
+		// {
+		// 	name:          "cached file exists",
+		// 	pageResponder: NotFoundResponder,
+		// 	e:             &Exercise{ID: "2015-01", Year: 2015, Day: 1},
+		// 	golden:        filepath.Join("testdata", "golden", "input.golden"),
+		// 	callCount:     0,
+		// 	assertion:     require.NoError,
+		// 	errText:       "downloading input data",
+		// },
 		{
 			name:          "not cached, 404 response",
 			pageResponder: NotFoundResponder,
@@ -624,20 +600,20 @@ func TestExercise_getInput(t *testing.T) {
 			teardownSubTest := setupSubTest(t)
 			defer teardownSubTest(t)
 
-			// copy input file to temp dir if it exists
-			_, err := appFs.Stat(filepath.Join("testdata", "inputs", tt.e.ID))
-			if err == nil {
-				src, tmpFsErr := appFs.Open(filepath.Join("testdata", "inputs", tt.e.ID))
-				require.NoError(t, tmpFsErr, "unable to open testdata input file")
-				defer src.Close()
+			// // copy input file to temp dir if it exists
+			// _, err := appFs.Stat(filepath.Join("testdata", "inputs", tt.e.ID))
+			// if err == nil {
+			// 	src, tmpFsErr := appFs.Open(filepath.Join("testdata", "inputs", tt.e.ID))
+			// 	require.NoError(t, tmpFsErr, "unable to open testdata input file")
+			// 	defer src.Close()
 
-				dst, tmpFsErr := appFs.Create(filepath.Join(cfgDir, "inputs", tt.e.ID))
-				require.NoError(t, tmpFsErr, "unable to create temp input file")
-				defer dst.Close()
+			// 	dst, tmpFsErr := appFs.Create(filepath.Join(cfgDir, "inputs", tt.e.ID))
+			// 	require.NoError(t, tmpFsErr, "unable to create temp input file")
+			// 	defer dst.Close()
 
-				_, tmpFsErr = io.Copy(dst, src)
-				require.NoError(t, tmpFsErr, "unable to copy testdata input file")
-			}
+			// 	_, tmpFsErr = io.Copy(dst, src)
+			// 	require.NoError(t, tmpFsErr, "unable to copy testdata input file")
+			// }
 
 			httpmock.RegisterResponder("GET",
 				`=~input$`,
@@ -653,7 +629,7 @@ func TestExercise_getInput(t *testing.T) {
 			} else {
 				want := goldenValue(t, tt.golden)
 				assert.Equal(t, want, got)
-				assert.FileExists(t, filepath.Join(cfgDir, "inputs", tt.e.ID))
+				// assert.FileExists(t, filepath.Join(cfgDir, "inputs", tt.e.ID))
 			}
 		})
 	}

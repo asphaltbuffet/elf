@@ -3,6 +3,7 @@ package cmd
 
 import (
 	"errors"
+	"fmt"
 	"log/slog"
 	"os"
 	"time"
@@ -11,16 +12,20 @@ import (
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	"github.com/asphaltbuffet/elf/pkg/krampus"
 )
 
 // application build information set by the linker.
 var (
 	Version string
+	Date    string
 )
 
 var (
 	rootCmd *cobra.Command
-	cfg     = viper.New()
+	cfg     *viper.Viper
+	appFs   afero.Fs
 )
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -37,12 +42,19 @@ func GetRootCommand() *cobra.Command {
 	if rootCmd == nil {
 		rootCmd = &cobra.Command{
 			Use:     "elf [command]",
-			Version: Version,
+			Version: fmt.Sprintf("%s\n%s", Version, Date),
 			Short:   "elf is a programming challenge helper application",
 			PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-				appFs := afero.NewOsFs()
-
-				return initialize(appFs)
+				var err error
+				cfg, err = krampus.New()
+				return err
+				// appFs = afero.NewOsFs()
+				// return initialize(appFs)
+			},
+			Run: func(cmd *cobra.Command, args []string) {
+				cmd.Println("config file:", cfg.ConfigFileUsed())
+				cmd.Println("language:", cfg.GetString("language"))
+				cmd.Println("token:", cfg.GetString("advent.token"))
 			},
 		}
 	}
@@ -50,7 +62,8 @@ func GetRootCommand() *cobra.Command {
 	rootCmd.AddCommand(GetSolveCmd())
 	rootCmd.AddCommand(GetTestCmd())
 	rootCmd.AddCommand(GetDownloadCmd())
-	// rootCmd.AddCommand(GetBenchmarkCmd())
+	rootCmd.AddCommand(GetBenchmarkCmd())
+	rootCmd.AddCommand(GetGraphCmd())
 
 	return rootCmd
 }
@@ -76,6 +89,21 @@ func initialize(fs afero.Fs) error {
 
 	_ = viper.BindEnv("language", "ELF_LANGUAGE")
 	viper.SetDefault("language", "go")
+
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		slog.Error("get default user config dir", "error", tint.Err(err))
+		return err
+	}
+	viper.SetDefault("config-dir", configDir)
+
+	cacheDir, err := os.UserCacheDir()
+	if err != nil {
+		slog.Error("get default user cache dir", "error", tint.Err(err))
+		return err
+	}
+
+	viper.SetDefault("cache-dir", cacheDir)
 
 	viper.SetFs(fs)
 

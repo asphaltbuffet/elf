@@ -4,15 +4,15 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "make",
+            "label": "Build or Test",
             "type": "shell",
-            "command": "make",
+            "command": "task dev",
             "problemMatcher": [
                 "$go"
             ],
             "group": {
                 "kind": "build",
-                "isDefault": true
+                "isDefault": true,
             }
         },
         {

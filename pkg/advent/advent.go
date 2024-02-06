@@ -8,6 +8,7 @@ import (
 	"path"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/lmittmann/tint"
 
@@ -17,8 +18,8 @@ import (
 
 var exerciseBaseDir = "exercises"
 
-func New(lang string, options ...func(*Exercise)) (*Exercise, error) {
-	e := &Exercise{Language: lang}
+func New(options ...func(*Exercise)) (*Exercise, error) {
+	e := &Exercise{}
 
 	for _, option := range options {
 		option(e)
@@ -26,24 +27,22 @@ func New(lang string, options ...func(*Exercise)) (*Exercise, error) {
 
 	switch {
 	case e.Language == "":
-		slog.Error("no language specified")
 		return nil, fmt.Errorf("no language specified")
 
-	case e.path != "":
+	case e.Path != "":
 		if err := e.loadInfo(); err != nil {
-			slog.Error("filling exercise from info file", tint.Err(err))
 			return nil, err
 		}
 
 	case e.URL != "":
 		if err := e.loadFromURL(); err != nil {
-			slog.Error("filling exercise from URL", tint.Err(err))
 			return nil, err
 		}
 
 	default:
-		slog.Error("no exercise path or URL specified")
-		return nil, fmt.Errorf("no exercise path or URL specified")
+		err := fmt.Errorf("no exercise path or URL specified")
+		slog.Error("instantiating exercise", tint.Err(err), slog.Any("options", options))
+		return nil, err
 	}
 
 	return e, nil
@@ -51,7 +50,7 @@ func New(lang string, options ...func(*Exercise)) (*Exercise, error) {
 
 func WithDir(dir string) func(*Exercise) {
 	return func(e *Exercise) {
-		e.path = dir
+		e.Path = dir
 	}
 }
 
@@ -61,11 +60,17 @@ func WithURL(url string) func(*Exercise) {
 	}
 }
 
+func WithLanguage(lang string) func(*Exercise) {
+	return func(e *Exercise) {
+		e.Language = lang
+	}
+}
+
 func (e *Exercise) loadInfo() error {
-	slog.Debug("populating exercise from info file", "path", e.path)
+	slog.Debug("populating exercise from info file", "path", e.Path)
 
 	// populate exercise info from info.json
-	fn := filepath.Join(e.path, "info.json")
+	fn := filepath.Join(e.Path, "info.json")
 
 	data, err := os.ReadFile(path.Clean(fn))
 	if err != nil {
@@ -80,8 +85,8 @@ func (e *Exercise) loadInfo() error {
 	}
 
 	if e.Day == 0 || e.Year == 0 || e.Title == "" || e.URL == "" {
-		slog.Error("incomplete info data", slog.Any("data", e))
-		return fmt.Errorf("incomplete info data: %v", e)
+		slog.Error("incomplete info data", slog.Any("data", e.LogValue()))
+		return fmt.Errorf("loading data: %s", fn)
 	}
 
 	// instatiate runner for language
@@ -90,7 +95,7 @@ func (e *Exercise) loadInfo() error {
 		return fmt.Errorf("no runner available for language %q", e.Language)
 	}
 
-	e.runner = rc(e.path)
+	e.runner = rc(e.Path)
 
 	return nil
 }
@@ -102,14 +107,14 @@ func (e *Exercise) loadFromURL() error {
 // Dir returns the path to the exercise directory.
 // It will return an empty string if the exercise does not exist.
 //
-// Example: exercises/2020/01-someExerciseTitle.
+// Example: 01-someExerciseTitle.
 func (e *Exercise) Dir() string {
-	if e == nil || e.path == "" {
+	if e == nil || e.Path == "" {
 		slog.Error("nil exercise or no path available")
 		return ""
 	}
 
-	return filepath.Join(exerciseBaseDir, strconv.Itoa(e.Year), filepath.Base(e.path))
+	return filepath.Base(e.Path)
 }
 
 func makeExerciseID(year, day int) string {
@@ -118,4 +123,28 @@ func makeExerciseID(year, day int) string {
 
 func makeExercisePath(year, day int, title string) string {
 	return filepath.Join(exerciseBaseDir, strconv.Itoa(year), fmt.Sprintf("%02d-%s", day, utilities.ToCamel(title)))
+}
+
+// GetImplementations returns a list of available implementations for the exercise.
+func (e *Exercise) GetImplementations() ([]string, error) {
+	dirEntries, err := os.ReadDir(e.Path)
+	if err != nil {
+		return nil, fmt.Errorf("checking %s: %w", e.Path, err)
+	}
+
+	impls := []string{}
+
+	for _, entry := range dirEntries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		name := strings.ToLower(entry.Name())
+
+		if _, ok := runners.Available[name]; ok {
+			impls = append(impls, name)
+		}
+	}
+
+	return impls, nil
 }

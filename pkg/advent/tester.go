@@ -3,9 +3,8 @@ package advent
 import (
 	"fmt"
 	"log/slog"
+	"os"
 
-	"github.com/charmbracelet/lipgloss"
-	"github.com/dustin/go-humanize"
 	"github.com/lmittmann/tint"
 
 	"github.com/asphaltbuffet/elf/pkg/runners"
@@ -30,11 +29,10 @@ func (e *Exercise) Test() error {
 		_ = e.runner.Cleanup()
 	}()
 
-	headerStyle := lipgloss.NewStyle().Bold(true).BorderStyle(lipgloss.NormalBorder()).Foreground(lipgloss.Color("5"))
+	fmt.Fprintln(os.Stdout, headerStyle(fmt.Sprintf("ADVENT OF CODE %d\nDay %d: %s", e.Year, e.Day, e.Title)))
 
-	fmt.Println(headerStyle.Render(e.String()))
-
-	if err := runTests(e.runner, e.Data); err != nil {
+	_, err := runTests(e.runner, e.Data)
+	if err != nil {
 		testerLog.Error("running tests", tint.Err(err))
 		return err
 	}
@@ -58,112 +56,49 @@ func parseTestID(id string) (runners.Part, int) {
 	return a, b
 }
 
-func runTests(runner runners.Runner, exInfo *Data) error {
-	for i, testCase := range exInfo.TestCases.One {
-		id := makeTestID(runners.PartOne, i)
-
-		if testCase.Input == "" && testCase.Expected == "" {
-			handleTestResult(&runners.Result{
-				TaskID: id,
-				Ok:     false,
-				Output: "empty input or expected output",
-			}, testCase)
-
-			continue
-		}
-
-		result, err := runner.Run(&runners.Task{
-			TaskID: id,
-			Part:   runners.PartOne,
-			Input:  testCase.Input,
-		})
-		if err != nil {
-			return err
-		}
-
-		handleTestResult(result, testCase)
-	}
-
-	for i, testCase := range exInfo.TestCases.Two {
-		id := makeTestID(runners.PartTwo, i)
-
-		if testCase.Input == "" && testCase.Expected == "" {
-			handleTestResult(&runners.Result{
-				TaskID: id,
-				Ok:     false,
-				Output: "empty input or expected output",
-			}, testCase)
-
-			continue
-		}
-
-		result, err := runner.Run(&runners.Task{
-			TaskID: id,
-			Part:   runners.PartTwo,
-			Input:  testCase.Input,
-		})
-		if err != nil {
-			return err
-		}
-
-		handleTestResult(result, testCase)
-	}
-
-	return nil
+type testTask struct {
+	task     *runners.Task
+	expected string
 }
 
-func handleTestResult(r *runners.Result, testCase *Test) {
-	part, n := parseTestID(r.TaskID)
+func runTests(runner runners.Runner, data *Data) ([]TaskResult, error) {
+	var tasks []testTask
 
-	testStyle := lipgloss.NewStyle().
-		PaddingLeft(2). //nolint:gomnd // hard-coded padding for now
-		Foreground(lipgloss.Color("69")).
-		SetString(fmt.Sprintf("Test %d.%d:", part, n))
+	tasks = append(tasks, makeTestTasks(runners.PartOne, data.TestCases.One)...)
+	tasks = append(tasks, makeTestTasks(runners.PartTwo, data.TestCases.Two)...)
 
-	passed := r.Output == testCase.Expected
-	missing := testCase.Input == "" && testCase.Expected == ""
+	results := make([]TaskResult, 0, len(tasks))
 
-	var status, followUpText lipgloss.Style
+	for _, t := range tasks {
+		result, err := runner.Run(t.task)
+		if err != nil {
+			slog.Error("running test task",
+				slog.Group("result", "id", result.TaskID, "ok", result.Ok, "output", result.Output),
+				tint.Err(err))
+			return nil, err
+		}
 
-	switch {
-	case missing:
-		status = lipgloss.NewStyle().Faint(true).SetString("EMPTY")
-
-	case !r.Ok:
-		status = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("202")).
-			SetString("DID NOT COMPLETE")
-
-		followUpText = lipgloss.NewStyle().
-			Faint(true).
-			Italic(true).
-			Foreground(lipgloss.Color("242")).
-			SetString(fmt.Sprintf("saying %q", r.Output))
-
-	case passed:
-		status = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("48")).SetString("PASS")
-
-	default:
-		status = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("161")).SetString("FAIL")
+		r := handleTaskResult(os.Stdout, result, t.expected)
+		results = append(results, r)
 	}
 
-	if followUpText.String() == "" && !missing {
-		followUpText = lipgloss.NewStyle().
-			Faint(true).
-			Italic(true).
-			Foreground(lipgloss.Color("242")).
-			SetString(fmt.Sprintf("in %s", humanize.SIWithDigits(r.Duration, 1, "s")))
+	return results, nil
+}
+
+func makeTestTasks(p runners.Part, tests []*Test) []testTask {
+	var tasks []testTask
+
+	for i, t := range tests {
+		tasks = append(tasks, testTask{
+			task: &runners.Task{
+				TaskID:    makeTestID(p, i),
+				Part:      p,
+				Input:     t.Input,
+				OutputDir: "",
+			},
+			expected: t.Expected,
+		})
 	}
 
-	fmt.Println(testStyle, status, followUpText)
-
-	if !passed && r.Ok {
-		extra := lipgloss.NewStyle().
-			Bold(true).
-			Foreground(lipgloss.Color("161")).
-			PaddingLeft(4). //nolint:gomnd // hard-coded padding for now
-			SetString(fmt.Sprintf("⤷ expected %q, got %q", testCase.Expected, r.Output))
-
-		fmt.Println(extra)
-	}
+	return tasks
 }

@@ -50,13 +50,17 @@ func runTestCmd(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	slog.Debug("testing exercise", slog.Any("challenge", ch))
+	if language == "" {
+		language = cfg.GetString("language")
+	}
 
-	ch, err = advent.New(language, advent.WithDir(dir))
+	ch, err = advent.New(advent.WithLanguage(language), advent.WithDir(dir))
 	if err != nil {
 		slog.Error("loading exercise", tint.Err(err))
 		return err
 	}
+
+	slog.Debug("testing exercise", slog.Any("challenge", ch))
 
 	if testErr := ch.Test(); testErr != nil {
 		slog.Error("testing exercise", tint.Err(testErr))
