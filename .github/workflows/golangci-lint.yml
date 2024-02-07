@@ -7,17 +7,34 @@ permissions:
   contents: read
   # Optional: allow read access to pull request. Use with `only-new-issues` option.
   # pull-requests: read
+  # Optional: Allow write access to checks to allow the action to annotate code in the PR.
+  checks: write
 jobs:
   golangci:
     name: lint
     runs-on: ubuntu-latest
     steps:
-      - run: mkdir -p bin
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - name: Clone Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
         with:
           go-version-file: 'go.mod'
           cache: false
+
+      - name: Install Task
+        uses: arduino/setup-task@v1
+        with:
+          version: 3.x
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Autogenerate files
+        run: task generate mock -f
+
+      - name: Create output directory
+        run: mkdir -p bin
+
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v3

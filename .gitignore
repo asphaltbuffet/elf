@@ -163,3 +163,7 @@ bin/
 # taskfile fingerprints
 .task/
 elf.toml
+
+# generated files
+mocks/
+**/*_string.go
