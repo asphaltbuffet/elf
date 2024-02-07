@@ -46,12 +46,10 @@ func (e *Exercise) Benchmark(iterations int) ([]TaskResult, error) {
 	normFactor := getNormalizationFactor()
 	// fmt.Printf("Normalization factor: %f\n", normFactor)
 
-	// temporary hack since python isn't working
-	// impls, err := e.GetImplementations()
-	// if err != nil {
-	// 	return nil, err
-	// }
-	impls := []string{"go"}
+	impls, err := e.GetImplementations()
+	if err != nil {
+		return nil, err
+	}
 
 	input, err := os.ReadFile(e.Data.InputFile)
 	if err != nil {
@@ -87,6 +85,7 @@ func (e *Exercise) Benchmark(iterations int) ([]TaskResult, error) {
 		benchmarks = append(benchmarks, implData)
 
 		benchmarkLog.Debug("benchmarking complete", "lang", impl, "iterations", iterations)
+		fmt.Println()
 	}
 
 	var benchmarkData []BenchmarkData
