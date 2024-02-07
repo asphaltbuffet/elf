@@ -55,8 +55,8 @@ func (p *pythonRunner) Start() error {
 	}
 
 	pythonPathVar := strings.Join([]string{
-		filepath.Join(cwd, "lib"),   // so we can use aocpy
-		filepath.Join(absDir, "py"), // so we can import stuff in the exercises directory
+		filepath.Join(cwd, "../../..", "lib"), // so we can use aocpy
+		filepath.Join(absDir, "py"),           // so we can import stuff in the exercises directory
 	}, ":")
 
 	p.cmd = exec.Command(python3Installation, "-B", pythonWrapperFilename) // -B prevents .pyc files from being written
