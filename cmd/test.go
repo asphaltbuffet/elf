@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"log/slog"
-	"os"
+	"path/filepath"
 
 	"github.com/lmittmann/tint"
 	"github.com/spf13/cobra"
@@ -13,40 +13,39 @@ import (
 var testCmd *cobra.Command
 
 type ChallengeTester interface {
-	Test() error
+	Test() ([]advent.TaskResult, error)
 	String() string
 }
 
-const exampleTestText = `  elf test --lang=go
-    elf test --lang=py
-    elf test # using default language from config`
+const exampleTestText = `
+elf test /path/to/exercise --lang=go
+elf test /path/to/exercise`
 
 func GetTestCmd() *cobra.Command {
 	if testCmd == nil {
 		testCmd = &cobra.Command{
-			Use:     "test [--lang=<language>]",
+			Use:     "test FILEPATH",
 			Aliases: []string{"t"},
 			Example: exampleTestText,
-			Args:    cobra.NoArgs,
+			Args:    cobra.ExactArgs(1),
 			Short:   "test a challenge",
 			RunE:    runTestCmd,
 		}
 
-		testCmd.Flags().StringVarP(&language, "lang", "l", "", "solution language")
+		testCmd.Flags().StringVarP(&language, "lang", "l", "", "implementation language")
 	}
 
 	return testCmd
 }
 
-func runTestCmd(cmd *cobra.Command, _ []string) error {
+func runTestCmd(cmd *cobra.Command, args []string) error {
 	var (
 		ch  ChallengeTester
 		err error
 	)
 
-	dir, err := os.Getwd()
+	dir, err := filepath.Abs(args[0])
 	if err != nil {
-		slog.Error("getting current directory", tint.Err(err))
 		return err
 	}
 
@@ -56,15 +55,15 @@ func runTestCmd(cmd *cobra.Command, _ []string) error {
 
 	ch, err = advent.New(advent.WithLanguage(language), advent.WithDir(dir))
 	if err != nil {
-		slog.Error("loading exercise", tint.Err(err))
 		return err
 	}
 
 	slog.Debug("testing exercise", slog.Any("challenge", ch))
 
-	if testErr := ch.Test(); testErr != nil {
-		slog.Error("testing exercise", tint.Err(testErr))
-		cmd.Println("Failed to run tests: ", testErr)
+	_, err = ch.Test()
+	if err != nil {
+		slog.Error("testing exercise", tint.Err(err))
+		cmd.Printf("Failed to run tests: %v\n", err)
 	}
 
 	return nil
