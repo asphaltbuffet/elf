@@ -20,7 +20,7 @@ func (e *Exercise) Test() error {
 	testerLog.Debug("solving", slog.String("language", e.Language))
 
 	if err := e.runner.Start(); err != nil {
-		testerLog.Error("starting runner", slog.String("path", e.Data.InputFile), tint.Err(err))
+		testerLog.Error("starting runner", slog.String("path", e.Data.InputFileName), tint.Err(err))
 		return err
 	}
 

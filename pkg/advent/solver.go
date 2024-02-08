@@ -5,6 +5,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -20,16 +21,17 @@ func (e *Exercise) Solve(skipTests bool) ([]TaskResult, error) {
 
 	results := []TaskResult{}
 
-	input, err := os.ReadFile(e.Data.InputFile)
+	inputFile := filepath.Join(e.Path, e.Data.InputFileName)
+	input, err := os.ReadFile(inputFile)
 	if err != nil {
-		solverLog.Error("reading input file", slog.String("path", e.Data.InputFile), tint.Err(err))
+		solverLog.Error("reading input file", slog.String("path", inputFile), tint.Err(err))
 		return nil, err
 	}
 
 	e.Data.Input = string(input)
 
 	if err = e.runner.Start(); err != nil {
-		solverLog.Error("starting runner", slog.String("path", e.Data.InputFile), tint.Err(err))
+		solverLog.Error("starting runner", tint.Err(err))
 		return nil, err
 	}
 
@@ -41,7 +43,6 @@ func (e *Exercise) Solve(skipTests bool) ([]TaskResult, error) {
 	fmt.Fprintln(os.Stdout, headerStyle(fmt.Sprintf("ADVENT OF CODE %d\nDay %d: %s", e.Year, e.Day, e.Title)))
 
 	if !skipTests {
-		// fmt.Fprintln(os.Stdout, taskHeaderStyle("Testing..."))
 		fmt.Printf("Testing (%s)...\n", e.runner)
 
 		var tr []TaskResult
@@ -55,7 +56,6 @@ func (e *Exercise) Solve(skipTests bool) ([]TaskResult, error) {
 		results = append(results, tr...)
 	}
 
-	// fmt.Fprintln(os.Stdout, taskHeaderStyle("Solving..."))
 	fmt.Printf("Solving (%s)...\n", e.runner)
 
 	mainResults, err := runMainTasks(e.runner, e.Data)

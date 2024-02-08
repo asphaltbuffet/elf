@@ -517,8 +517,8 @@ func (e *Exercise) writeInputFile(fs afero.Fs, replace bool) error {
 	}
 
 	e.Data = &Data{
-		Input:     string(inputFile),
-		InputFile: "input.txt",
+		Input:         string(inputFile),
+		InputFileName: "input.txt",
 		TestCases: TestCase{
 			One: []*Test{{Input: "", Expected: ""}},
 			Two: []*Test{{Input: "", Expected: ""}},

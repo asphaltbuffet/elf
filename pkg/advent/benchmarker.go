@@ -51,9 +51,9 @@ func (e *Exercise) Benchmark(iterations int) ([]TaskResult, error) {
 		return nil, err
 	}
 
-	input, err := os.ReadFile(e.Data.InputFile)
+	input, err := os.ReadFile(e.Data.InputFileName)
 	if err != nil {
-		benchmarkLog.Error("reading input file", slog.String("path", e.Data.InputFile), tint.Err(err))
+		benchmarkLog.Error("reading input file", slog.String("path", e.Data.InputFileName), tint.Err(err))
 		return nil, err
 	}
 

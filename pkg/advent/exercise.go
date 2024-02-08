@@ -20,10 +20,10 @@ type Exercise struct {
 
 // Data contains the relative path to exercise input and the specific test case data for an exercise.
 type Data struct {
-	Input     string   `json:"-"`
-	InputFile string   `json:"inputFile"`
-	TestCases TestCase `json:"testCases"`
-	Answers   Answer   `json:"answers,omitempty"`
+	Input         string   `json:"-"`
+	InputFileName string   `json:"inputFile"`
+	TestCases     TestCase `json:"testCases"`
+	Answers       Answer   `json:"answers,omitempty"`
 }
 
 // TestCase contains the test case for each part of an exercise.
