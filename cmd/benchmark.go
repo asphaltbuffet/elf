@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"log/slog"
-	"os"
+	"path/filepath"
 
 	"github.com/lmittmann/tint"
 	"github.com/spf13/cobra"
@@ -15,20 +15,22 @@ var (
 	iterations   int
 )
 
-const benchmarkExample = `elf benchmark`
+const benchmarkExample = `
+elf benchmark --num=5 /path/to/exercise
+elf benchmark /path/to/exercise`
 
 func GetBenchmarkCmd() *cobra.Command {
 	if benchmarkCmd == nil {
 		benchmarkCmd = &cobra.Command{
-			Use:     "benchmark (-n <iterations>)",
+			Use:     "benchmark [path/to/exercise]",
 			Aliases: []string{"bench", "b"},
 			Example: benchmarkExample,
-			Args:    cobra.NoArgs,
+			Args:    cobra.ExactArgs(1),
 			Short:   "benchmark all implementations for the challenge",
 			RunE:    runBenchmarkCmd,
 		}
 
-		benchmarkCmd.Flags().IntVarP(&iterations, "num", "n", 3, "number of iterations")
+		benchmarkCmd.Flags().IntVarP(&iterations, "num", "n", 10, "number of iterations")
 	}
 
 	return benchmarkCmd
@@ -39,13 +41,13 @@ type Benchmarker interface {
 	String() string
 }
 
-func runBenchmarkCmd(cmd *cobra.Command, _ []string) error {
+func runBenchmarkCmd(cmd *cobra.Command, args []string) error {
 	var (
 		ex  Benchmarker
 		err error
 	)
 
-	dir, err := os.Getwd()
+	dir, err := filepath.Abs(args[0])
 	if err != nil {
 		slog.Error("getting current directory", tint.Err(err))
 		return err
@@ -64,11 +66,6 @@ func runBenchmarkCmd(cmd *cobra.Command, _ []string) error {
 		slog.Error("solving exercise", tint.Err(err))
 		cmd.PrintErrln("Failed to solve: ", err)
 	}
-
-	// for _, result := range results {
-	// 	r := result
-	// 	cmd.Printf("%+v\n", r)
-	// }
 
 	return nil
 }

@@ -44,14 +44,14 @@ var benchmarkLog = slog.With(slog.String("fn", "Benchmark"))
 
 func (e *Exercise) Benchmark(iterations int) ([]TaskResult, error) {
 	normFactor := getNormalizationFactor()
-	// fmt.Printf("Normalization factor: %f\n", normFactor)
 
 	impls, err := e.GetImplementations()
 	if err != nil {
 		return nil, err
 	}
 
-	input, err := os.ReadFile(e.Data.InputFileName)
+	inputFile := filepath.Join(e.Path, e.Data.InputFileName)
+	input, err := os.ReadFile(inputFile)
 	if err != nil {
 		benchmarkLog.Error("reading input file", slog.String("path", e.Data.InputFileName), tint.Err(err))
 		return nil, err

@@ -44,19 +44,14 @@ func (p *pythonRunner) Start() error {
 	}
 
 	// Sort out PYTHONPATH
-	cwd, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-
 	absDir, err := filepath.Abs(p.dir)
 	if err != nil {
 		return err
 	}
 
 	pythonPathVar := strings.Join([]string{
-		filepath.Join(cwd, "../../..", "lib"), // so we can use aocpy
-		filepath.Join(absDir, "py"),           // so we can import stuff in the exercises directory
+		filepath.Join(absDir, "../../..", "lib"), // so we can use aocpy
+		filepath.Join(absDir, "py"),              // so we can import stuff in the exercises directory
 	}, ":")
 
 	p.cmd = exec.Command(python3Installation, "-B", pythonWrapperFilename) // -B prevents .pyc files from being written
