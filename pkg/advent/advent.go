@@ -89,7 +89,7 @@ func (e *Exercise) loadInfo() error {
 		return fmt.Errorf("loading data: %s", fn)
 	}
 
-	// instatiate runner for language
+	// instantiate runner for language
 	rc, ok := runners.Available[e.Language]
 	if !ok {
 		return fmt.Errorf("no runner available for language %q", e.Language)
@@ -101,7 +101,7 @@ func (e *Exercise) loadInfo() error {
 }
 
 func (e *Exercise) loadFromURL() error {
-	return fmt.Errorf("not implemented")
+	return fmt.Errorf("loading exercise directly from URL not implemented")
 }
 
 // Dir returns the path to the exercise directory.
