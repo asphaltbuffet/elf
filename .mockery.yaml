@@ -1,6 +1,7 @@
 with-expecter: true
 outpkg: mocks
-dir: "mocks/{{.InterfaceName}}"
+dir: "mocks/{{.PackageName}}"
+log-level: "info"
 packages:
     github.com/asphaltbuffet/elf/pkg/runners:
         # place your package-specific config here
@@ -8,27 +9,17 @@ packages:
         interfaces:
             # select the interfaces you want mocked
             Runner:
-                # Modify package-level config for this specific interface (if applicable)
-                config:
-                  log-level: "info"
-    github.com/asphaltbuffet/elf/cmd:
-        # place your package-specific config here
+    github.com/asphaltbuffet/elf/pkg/krampus:
         config:
         interfaces:
-            # select the interfaces you want mocked
+            DownloadConfiguration:
+            ExerciseConfiguration:
+            ConfigurationReader:
+    github.com/asphaltbuffet/elf/cmd:
+        config:
+        interfaces:
             Benchmarker:
-                # Modify package-level config for this specific interface (if applicable)
-                config:
-                  log-level: "info"
             Downloader:
-                config:
-                  log-level: "info"
             Challenge:
-                config:
-                  log-level: "info"
             ChallengeTester:
-                config:
-                  log-level: "info"
             Grapher:
-                config:
-                  log-level: "info"

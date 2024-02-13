@@ -4,80 +4,178 @@ import (
 	"errors"
 	"log/slog"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/lmittmann/tint"
+	"github.com/spf13/afero"
 	"github.com/spf13/viper"
 )
 
-var cfg *viper.Viper
+const (
+	ElfEnvPrefix          string = "ELF"
+	DefaultConfigFileBase string = "elf"
+	DefaultConfigExt      string = "toml"
+)
 
-func New() (*viper.Viper, error) {
-	if cfg != nil {
-		return cfg, nil
+type Config struct {
+	viper       *viper.Viper
+	cfgFile     string
+	cfgFileType string
+	logger      *slog.Logger
+	fs          afero.Fs
+}
+
+func NewConfig(options ...func(*Config)) (Config, error) {
+	cfg := Config{
+		viper: viper.New(),
+		fs:    afero.NewMemMapFs(),
 	}
 
-	cfg = viper.New()
+	for _, option := range options {
+		option(&cfg)
+	}
 
 	w := os.Stderr
-
-	slog.SetDefault(slog.New(
+	cfg.logger = slog.New(
 		tint.NewHandler(w, &tint.Options{
 			Level:      slog.LevelInfo,
 			TimeFormat: time.StampMilli,
 		}),
-	))
+	)
+	slog.SetDefault(cfg.logger)
 
-	cfg.SetEnvPrefix("elf")
+	cfg.viper.SetEnvPrefix(ElfEnvPrefix)
 
-	_ = cfg.BindEnv("advent.token", "ELF_ADVENT_TOKEN")
-	cfg.SetDefault("advent.token", "")
+	_ = cfg.viper.BindEnv(string(AdventTokenKey), "ELF_ADVENT_TOKEN")
+	cfg.viper.SetDefault(string(AdventTokenKey), "default-placeholder")
 
-	cfg.SetDefault("advent.user", "")
-	cfg.SetDefault("advent.dir", "exercises")
-	cfg.SetDefault("euler.dir", "problems")
+	cfg.viper.SetDefault(string(AdventUserKey), "")
+	cfg.viper.SetDefault(string(AdventDirKey), "exercises")
+	cfg.viper.SetDefault(string(EulerDirKey), "problems")
 
-	_ = cfg.BindEnv("language", "ELF_LANGUAGE")
-	cfg.SetDefault("language", "go")
+	_ = cfg.viper.BindEnv(string(LanguageKey), "ELF_LANGUAGE")
+	cfg.viper.SetDefault(string(LanguageKey), "go")
 
 	configDir, err := os.UserConfigDir()
 	if err != nil {
 		slog.Error("get default user config dir", "error", tint.Err(err))
-		return nil, err
+		return Config{}, err
 	}
-	cfg.SetDefault("config-dir", configDir)
+	cfg.viper.SetDefault(string(ConfigDirKey), configDir)
 
 	cacheDir, err := os.UserCacheDir()
 	if err != nil {
 		slog.Error("get default user cache dir", "error", tint.Err(err))
-		return nil, err
+		return Config{}, err
 	}
 
-	cfg.SetDefault("cache-dir", cacheDir)
-
-	cfg.SetConfigName("elf.toml")
-	cfg.SetConfigType("toml")
+	cfg.viper.SetDefault(string(CacheDirKey), cacheDir)
 
 	userCfg, err := os.UserConfigDir()
 	if err == nil {
-		cfg.AddConfigPath(userCfg)
+		cfg.viper.AddConfigPath(userCfg)
 	}
 
-	cfg.AddConfigPath(".")
-	cfg.AddConfigPath("$HOME/.config/elf")
+	cfg.viper.AddConfigPath(".")
+	cfg.viper.AddConfigPath("$HOME/.config/elf")
 
-	err = cfg.ReadInConfig()
+	err = cfg.viper.ReadInConfig()
 	if err != nil {
 		if !errors.As(err, &viper.ConfigFileNotFoundError{}) {
 			// only return error if it's not a missing config file
-			slog.Error("failed to read config file", "error", err, "config", cfg.ConfigFileUsed())
-			return nil, err
+			slog.Error("failed to read config file", "error", err, "config", cfg.viper.ConfigFileUsed())
+			return Config{}, err
 		}
 
 		slog.Warn("no config file found")
 	} else {
-		slog.Debug("starting with config file", "config", cfg.ConfigFileUsed())
+		slog.Debug("starting with config file", "config", cfg.viper.ConfigFileUsed())
 	}
 
 	return cfg, nil
+}
+
+func WithFile(f string) func(*Config) {
+	return func(c *Config) {
+		if c.viper == nil {
+			c.viper = viper.New() // or maybe we should panic?
+		}
+
+		file := filepath.Base(f)
+		ext := filepath.Ext(f)
+
+		// deal with dotfiles
+		// foo -> "foo" + "" (false)
+		// foo.bar -> "foo.bar" + ".bar" (false)
+		// .foo.bar -> ".foo.bar" + ".bar" (false)
+		// .foo.foo -> ".foo.foo" + ".foo" (false)
+		// .foo -> ".foo" + ".foo" (true)
+		// "" -> "" + "" (true)
+		if file == ext {
+			ext = ""
+		}
+
+		// remove leading dot
+		ext = strings.TrimPrefix(ext, ".")
+
+		switch {
+		case file != "." && ext == "":
+			// filename without extension; use default
+			c.cfgFile = file
+			c.cfgFileType = DefaultConfigExt
+
+		case file != ".":
+			// filename with extension; set type as well
+			c.cfgFile = file
+			c.cfgFileType = ext
+
+		default:
+			// lazy; only support one dot for now
+			c.cfgFile = DefaultConfigFileBase + "." + DefaultConfigExt
+			c.cfgFileType = DefaultConfigExt
+		}
+
+		c.viper.SetConfigName(c.cfgFile)
+		c.viper.SetConfigType(c.cfgFileType)
+	}
+}
+
+func WithFs(fs afero.Fs) func(*Config) {
+	return func(c *Config) {
+		c.fs = fs
+	}
+}
+
+func (c Config) GetConfigFileUsed() string {
+	return c.viper.ConfigFileUsed()
+}
+
+func (c Config) GetToken() string {
+	return c.viper.GetString(string(AdventTokenKey))
+}
+
+func (c Config) GetLanguage() string {
+	return c.viper.GetString(string(LanguageKey))
+}
+
+func (c Config) GetConfigDir() string {
+	return c.viper.GetString(string(ConfigDirKey))
+}
+
+func (c Config) GetCacheDir() string {
+	return c.viper.GetString(string(CacheDirKey))
+}
+
+func (c Config) GetLogger() *slog.Logger {
+	return c.logger
+}
+
+func (c Config) GetFs() afero.Fs {
+	return c.fs
+}
+
+func (c Config) GetBaseDir() string {
+	return c.viper.GetString(string(AdventDirKey))
 }
