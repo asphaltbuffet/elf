@@ -4,7 +4,6 @@ import (
 	"log/slog"
 	"path/filepath"
 
-	"github.com/lmittmann/tint"
 	"github.com/spf13/cobra"
 
 	"github.com/asphaltbuffet/elf/pkg/advent"
@@ -52,28 +51,28 @@ func runSolveCmd(cmd *cobra.Command, args []string) error {
 	)
 
 	cfg, err := krampus.NewConfig()
-
-	dir, err := filepath.Abs(args[0])
 	if err != nil {
-		slog.Error("getting current directory", tint.Err(err))
 		return err
 	}
 
-	slog.Debug("solving exercise", slog.Group("exercise", "dir", dir, "language", language))
+	dir, err := filepath.Abs(args[0])
+	if err != nil {
+		return err
+	}
 
 	if language == "" {
 		language = cfg.GetLanguage()
 	}
 
+	cfg.GetLogger().Debug("solving exercise", slog.Group("exercise", "dir", dir, "language", language))
+
 	ch, err = advent.New(&cfg, advent.WithLanguage(language), advent.WithDir(dir))
 	if err != nil {
-		slog.Error("creating exercise", tint.Err(err))
 		return err
 	}
 
 	_, solveErr := ch.Solve(noTest)
 	if solveErr != nil {
-		slog.Error("solving exercise", tint.Err(solveErr))
 		cmd.PrintErrln("Failed to solve: ", solveErr)
 	}
 

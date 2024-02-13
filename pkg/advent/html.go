@@ -29,7 +29,7 @@ func H2(doc *html.Node) (*html.Node, error) {
 	crawler(doc)
 
 	if h2 == nil {
-		return nil, fmt.Errorf("no <h2> found")
+		return nil, fmt.Errorf("%w: no <h2> found", ErrInvalidData)
 	}
 
 	return h2, nil

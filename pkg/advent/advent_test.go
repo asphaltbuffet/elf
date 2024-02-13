@@ -32,17 +32,17 @@ func Test_NewWithOpts(t *testing.T) {
 			name: "valid exercise",
 			args: args{
 				opts: []func(*Exercise){
-					WithDir("../../testdata/exercises/2015/01-fakeTestDayOne"),
-					WithLanguage("go"),
+					WithDir("exercises/2017/01-fakeFullDay"),
+					WithLanguage("py"),
 				},
 			},
 			want: &Exercise{
-				ID:       "2015-01",
-				Title:    "Fake Test Day One",
-				Language: "go",
-				Year:     2015,
+				ID:       "2017-01",
+				Title:    "Fake Full Day",
+				Language: "py",
+				Year:     2017,
 				Day:      1,
-				URL:      "https://fake.fk/2015/day/1",
+				URL:      "https://fake.fk/2017/day/1",
 				Data:     &Data{},
 			},
 			assertion: require.NoError,
@@ -51,7 +51,7 @@ func Test_NewWithOpts(t *testing.T) {
 			name: "invalid language",
 			args: args{
 				opts: []func(*Exercise){
-					WithDir("../../testdata/exercises/2015/01-fakeTestDayOne"),
+					WithDir("exercises/2017/01-fakeFullDay"),
 					WithLanguage("fake"),
 				},
 			},
@@ -70,7 +70,7 @@ func Test_NewWithOpts(t *testing.T) {
 			name: "empty language",
 			args: args{
 				opts: []func(*Exercise){
-					WithDir("../../testdata/exercises/2016/01-fakeTestDayOne"),
+					WithDir("exercises/2016/01-fakeTestDayOne"),
 					WithLanguage(""),
 				},
 			},
@@ -81,7 +81,7 @@ func Test_NewWithOpts(t *testing.T) {
 			name: "missing exercise directory",
 			args: args{
 				opts: []func(*Exercise){
-					WithDir("../../testdata/exercises/2016/01-fakeTestDayOne"),
+					WithDir("exercises/2015/01-fakeTestDayOne"),
 					WithLanguage("go"),
 				},
 			},
@@ -92,7 +92,7 @@ func Test_NewWithOpts(t *testing.T) {
 			name: "missing year directory",
 			args: args{
 				opts: []func(*Exercise){
-					WithDir("../../testdata/exercises/2017/01-fakeTestDayOne"),
+					WithDir("exercises/2016/01-fakeTestDayOne"),
 					WithLanguage("go"),
 				},
 			},
@@ -116,7 +116,8 @@ func Test_NewWithOpts(t *testing.T) {
 			// mockConfig.EXPECT().GetCacheDir().Return("testCache")
 			// mockConfig.EXPECT().GetToken().Return("fakeToken")
 			// mockConfig.EXPECT().GetLogger().Return(slog.New(slog.NewTextHandler(io.Discard, nil)))
-			mockConfig.EXPECT().GetFs().Return(testFs)
+			// mockConfig.EXPECT().GetFs().Return(testFs)
+			mockConfig.On("GetFs").Return(testFs)
 
 			got, err := New(mockConfig, tt.args.opts...)
 
@@ -155,9 +156,8 @@ func Test_GetImplementations(t *testing.T) {
 					Path: filepath.Join("exercises", "2017", "01-fakeFullDay"),
 				},
 			},
-			want:      []string{"go", "py"},
-			wantErr:   nil,
-			assertion: require.NoError,
+			want:    []string{"go", "py"},
+			wantErr: nil,
 		},
 		{
 			name: "one language",
@@ -169,9 +169,8 @@ func Test_GetImplementations(t *testing.T) {
 					Path:  filepath.Join("exercises", "2017", "03-fakeGoDay"),
 				},
 			},
-			want:      []string{"go"},
-			assertion: require.NoError,
-			wantErr:   nil,
+			want:    []string{"go"},
+			wantErr: nil,
 		},
 		{
 			name: "no languages",
@@ -183,9 +182,8 @@ func Test_GetImplementations(t *testing.T) {
 					Path:  filepath.Join("exercises", "2017", "02-fakeEmptyDay"),
 				},
 			},
-			want:      []string{},
-			assertion: require.NoError,
-			wantErr:   nil,
+			want:    []string{},
+			wantErr: os.ErrNotExist,
 		},
 		{
 			name: "no year",
@@ -197,9 +195,8 @@ func Test_GetImplementations(t *testing.T) {
 					Path:  filepath.Join("exercises", "2014", "14-fakeMissingYear"),
 				},
 			},
-			want:      nil,
-			assertion: require.Error,
-			wantErr:   os.ErrNotExist,
+			want:    nil,
+			wantErr: os.ErrNotExist,
 		},
 	}
 	teardownTestCase := setupTestCase(t)
@@ -214,10 +211,7 @@ func Test_GetImplementations(t *testing.T) {
 			got, err := tt.args.e.GetImplementations(testFs)
 
 			require.ErrorIs(t, err, tt.wantErr)
-			tt.assertion(t, err)
-			if err != nil {
-				require.ErrorIs(t, err, tt.wantErr)
-			} else {
+			if err == nil {
 				assert.Equal(t, tt.want, got)
 			}
 		})

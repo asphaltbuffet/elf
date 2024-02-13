@@ -15,6 +15,14 @@ import (
 	"github.com/asphaltbuffet/elf/pkg/runners"
 )
 
+var (
+	ErrEmptyLanguage  = fmt.Errorf("no language specified")
+	ErrNotFound       = afero.ErrFileNotFound
+	ErrNotImplemented = fmt.Errorf("not implemented")
+	ErrNoRunner       = fmt.Errorf("no runner available")
+	ErrInvalidData    = fmt.Errorf("invalid data")
+)
+
 func New(config krampus.ConfigurationReader, options ...func(*Exercise)) (*Exercise, error) {
 	e := &Exercise{}
 
@@ -22,12 +30,14 @@ func New(config krampus.ConfigurationReader, options ...func(*Exercise)) (*Exerc
 		option(e)
 	}
 
+	fs := config.GetFs()
+
 	switch {
 	case e.Language == "":
-		return nil, fmt.Errorf("no language specified")
+		return nil, ErrEmptyLanguage
 
 	case e.Path != "":
-		if err := e.loadInfo(config.GetFs()); err != nil {
+		if err := e.loadInfo(fs); err != nil {
 			return nil, err
 		}
 
@@ -37,9 +47,7 @@ func New(config krampus.ConfigurationReader, options ...func(*Exercise)) (*Exerc
 		}
 
 	default:
-		err := fmt.Errorf("no exercise path or URL specified")
-		slog.Error("instantiating exercise", tint.Err(err), slog.Any("options", options))
-		return nil, err
+		return nil, fmt.Errorf("instantiate exercise: %w", ErrNotFound)
 	}
 
 	return e, nil
@@ -72,7 +80,7 @@ func (e *Exercise) loadInfo(fs afero.Fs) error {
 	data, err := afero.ReadFile(fs, path.Clean(fn))
 	if err != nil {
 		slog.Error("reading info file", tint.Err(err), slog.String("path", fn))
-		return fmt.Errorf("read info file %q: %w", fn, err)
+		return err
 	}
 
 	err = json.Unmarshal(data, e)
@@ -83,13 +91,13 @@ func (e *Exercise) loadInfo(fs afero.Fs) error {
 
 	if e.Day == 0 || e.Year == 0 || e.Title == "" || e.URL == "" {
 		slog.Error("incomplete info data", slog.Any("data", e.LogValue()))
-		return fmt.Errorf("loading data: %s", fn)
+		return fmt.Errorf("%s: %w", fn, ErrInvalidData)
 	}
 
 	// instantiate runner for language
 	rc, ok := runners.Available[e.Language]
 	if !ok {
-		return fmt.Errorf("no runner available for language %q", e.Language)
+		return fmt.Errorf("%s: %w", e.Language, ErrNoRunner)
 	}
 
 	e.runner = rc(e.Path)
@@ -98,7 +106,7 @@ func (e *Exercise) loadInfo(fs afero.Fs) error {
 }
 
 func (e *Exercise) loadFromURL() error {
-	return fmt.Errorf("loading exercise directly from URL not implemented")
+	return ErrNotImplemented
 }
 
 // Dir returns the path to the exercise directory.
@@ -122,7 +130,7 @@ func makeExerciseID(year, day int) string {
 func (e *Exercise) GetImplementations(fs afero.Fs) ([]string, error) {
 	dirEntries, err := afero.ReadDir(fs, e.Path)
 	if err != nil {
-		return nil, fmt.Errorf("checking %s: %w", e.Path, err)
+		return nil, err
 	}
 
 	impls := []string{}
@@ -137,6 +145,10 @@ func (e *Exercise) GetImplementations(fs afero.Fs) ([]string, error) {
 		if _, ok := runners.Available[name]; ok {
 			impls = append(impls, name)
 		}
+	}
+
+	if len(impls) == 0 {
+		return nil, fmt.Errorf("%s: %w", e.Path, ErrNotFound)
 	}
 
 	return impls, nil

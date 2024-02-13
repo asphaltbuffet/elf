@@ -80,6 +80,9 @@ func runDownloadCmd(cmd *cobra.Command, args []string) error {
 	var chdl Downloader
 
 	cfg, err := krampus.NewConfig()
+	if err != nil {
+		return err
+	}
 
 	switch {
 	case strings.Contains(args[0], "adventofcode.com/"):
@@ -93,6 +96,9 @@ func runDownloadCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	err = chdl.Download()
+	if err != nil {
+		return fmt.Errorf("downloading challenge: %w", err)
+	}
 
 	cmd.Printf("New challenge created in: %s", chdl.Path())
 

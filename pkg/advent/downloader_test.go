@@ -2,58 +2,91 @@ package advent
 
 import (
 	_ "embed"
+	"errors"
+	"fmt"
+	"io"
+	"io/fs"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/go-resty/resty/v2"
 	"github.com/jarcoal/httpmock"
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/asphaltbuffet/elf/pkg/krampus"
 )
 
-var NotFoundResponder = httpmock.NewStringResponder(http.StatusNotFound, "404 Not Found")
+var (
+	NotFoundResponder = httpmock.NewStringResponder(http.StatusNotFound, "404 Not Found")
 
-func setupTestCase(t *testing.T, useTempDir bool) func(t *testing.T) {
+	roBase  afero.Fs
+	testFs  afero.Fs
+	mockDlr *Downloader
+)
+
+// FileExists checks whether a file exists in the given path. It also fails if
+// the path points to a directory or there is an error when trying to check the file.
+func FileExists(t *testing.T, afs afero.Fs, path string, msgAndArgs ...interface{}) bool {
 	t.Helper()
 
-	cfg, _ = krampus.New()
-	cfg.Set("cacheDir", "testdata")
-	cfg.Set("exerciseDir", "fs")
-	cfg.Set("advent.token", "fake-token")
-
-	if useTempDir {
-		cfgDir = t.TempDir()
-	} else {
-		cfgDir = "testdata"
+	info, err := afs.Stat(path)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return assert.Fail(t, fmt.Sprintf("unable to find file %q", path), msgAndArgs...)
+		}
+		return assert.Fail(t, fmt.Sprintf("error when running Fs.Stat(%q): %s", path, err), msgAndArgs...)
 	}
-	cfg.Set("cfgDir", cfgDir)
 
-	exerciseBaseDir = filepath.Join(cfgDir, "exercises")
+	if info.IsDir() {
+		return assert.Fail(t, fmt.Sprintf("%q is a directory", path), msgAndArgs...)
+	}
 
-	rClient.SetBaseURL("https://test.fake")
+	return true
+}
 
-	httpmock.ActivateNonDefault(rClient.GetClient())
+func setupTestCase(t *testing.T) func(t *testing.T) {
+	t.Helper()
+
+	base := afero.NewBasePathFs(afero.NewOsFs(), "testdata")
+	roBase = afero.NewReadOnlyFs(base)
 
 	return func(t *testing.T) {
 		t.Helper()
 
 		httpmock.DeactivateAndReset()
-		require.NoError(t, os.RemoveAll(exerciseBaseDir))
 	}
 }
 
 func setupSubTest(t *testing.T) func(t *testing.T) {
 	t.Helper()
 
+	testFs = afero.NewCopyOnWriteFs(roBase, afero.NewMemMapFs())
+	require.NoError(t, testFs.MkdirAll("testCache", 0o755))
+
+	mockDlr = &Downloader{
+		appFs:           testFs,
+		cacheDir:        "testCache",
+		cfgDir:          "./",
+		exerciseBaseDir: "exercises",
+		exercise:        &Exercise{},
+		lang:            "",
+		logger:          slog.New(slog.NewTextHandler(io.Discard, nil)),
+		rClient:         resty.New().SetBaseURL("https://test.fake"),
+		token:           "fakeToken",
+		url:             "",
+	}
+
+	httpmock.ActivateNonDefault(mockDlr.rClient.GetClient())
+
 	httpmock.Reset()
 
 	return func(t *testing.T) {
 		t.Helper()
 
-		t.Log("teardown sub-test")
+		// t.Log("teardown sub-test")
 	}
 }
 
@@ -87,26 +120,19 @@ func TestDownload(t *testing.T) {
 		pageResponder  httpmock.Responder
 		inputResponder httpmock.Responder
 		// golden         goldenFiles
-		callCount int
-		assertion assert.ErrorAssertionFunc
-		errText   string
+		wantErr error
 	}{
-		// {
-		// 	name:           "cached data",
-		// 	pageResponder:  httpmock.NewStringResponder(http.StatusOK, respBody2015d1),
-		// 	inputResponder: httpmock.NewStringResponder(http.StatusOK, respBodyInput),
-		// 	args: args{
-		// 		url:       "https://adventofcode.com/2015/day/1",
-		// 		lang:      "go",
-		// 		overwrite: true,
-		// 	},
-		// 	golden: goldenFiles{
-		// 		pageData: filepath.Join("testdata", "golden", "2015-1PuzzleData.golden"),
-		// 		input:    filepath.Join("testdata", "golden", "input.golden"),
-		// 	},
-		// 	callCount: 0,
-		// 	assertion: assert.NoError,
-		// },
+		{
+			name:           "cached data",
+			pageResponder:  httpmock.NewStringResponder(http.StatusOK, respBody2015d1),
+			inputResponder: httpmock.NewStringResponder(http.StatusOK, respBodyInput),
+			args: args{
+				url:       "https://adventofcode.com/2015/day/1",
+				lang:      "go",
+				overwrite: true,
+			},
+			wantErr: nil,
+		},
 		{
 			name:           "404 response",
 			pageResponder:  NotFoundResponder,
@@ -116,9 +142,7 @@ func TestDownload(t *testing.T) {
 				lang:      "go",
 				overwrite: true,
 			},
-			callCount: 1,
-			assertion: assert.Error,
-			errText:   "processing page response",
+			wantErr: ErrHTTPResponse,
 		},
 		{
 			name:           "bad url",
@@ -129,13 +153,11 @@ func TestDownload(t *testing.T) {
 				lang:      "go",
 				overwrite: false,
 			},
-			callCount: 0,
-			assertion: assert.Error,
-			errText:   "creating exercise from URL",
+			wantErr: ErrInvalidURL,
 		},
 	}
 
-	teardownTestCase := setupTestCase(t, false)
+	teardownTestCase := setupTestCase(t)
 	defer teardownTestCase(t)
 
 	for _, tt := range tests {
@@ -144,6 +166,7 @@ func TestDownload(t *testing.T) {
 			teardownSubTest := setupSubTest(t)
 			defer teardownSubTest(t)
 
+			// set up mocking
 			httpmock.RegisterNoResponder(httpmock.NewNotFoundResponder(t.Error))
 
 			httpmock.RegisterResponder("GET",
@@ -154,67 +177,63 @@ func TestDownload(t *testing.T) {
 				`=~input$`,
 				tt.inputResponder)
 
+			mockDlr.lang = tt.args.lang
+			mockDlr.url = tt.args.url
+
 			// execute function under test
-			got, err := Download(tt.args.url, tt.args.lang, tt.args.overwrite)
-			t.Log("got", got, "err", err)
+			err := mockDlr.Download()
 
 			// assert results
-			tt.assertion(t, err)
-			if err != nil {
-				require.ErrorContains(t, err, tt.errText)
-			} else {
-				// pdWant := goldenValue(t, tt.golden.pageData)
-				// inWant := goldenValue(t, tt.golden.input)
-				assert.FileExists(t, filepath.Join(got, "input.txt"))
-
-				assert.Equal(t, tt.callCount, httpmock.GetTotalCallCount())
+			require.ErrorIs(t, err, tt.wantErr)
+			if err == nil {
+				FileExists(t, testFs, filepath.Join(mockDlr.Path(), "input.txt"))
 			}
 		})
 	}
 }
 
-func Test_extractTitle(t *testing.T) {
+func TestExtractTitle(t *testing.T) {
 	type args struct {
 		page []byte
 	}
 
 	tests := []struct {
-		name      string
-		args      args
-		want      string
-		assertion assert.ErrorAssertionFunc
+		name    string
+		args    args
+		want    string
+		wantErr error
 	}{
 		{
 			name: "empty file",
 			args: args{
 				page: []byte(""),
 			},
-			want:      "",
-			assertion: assert.Error,
+			want:    "",
+			wantErr: ErrInvalidData,
 		},
 		{
 			name: "single digit day",
 			args: args{
 				page: []byte("<h2>--- Day 1: Fake Day Title ---</h2>"),
 			},
-			want:      "Fake Day Title",
-			assertion: assert.NoError,
+			want:    "Fake Day Title",
+			wantErr: nil,
 		},
 		{
 			name: "two digit day",
 			args: args{
 				page: []byte("<h2>--- Day 20: Fake Day Title ---</h2>"),
 			},
-			want:      "Fake Day Title",
-			assertion: assert.NoError,
+			want:    "Fake Day Title",
+			wantErr: nil,
 		},
 		{
 			name: "bad day value",
 			args: args{
 				page: []byte("<h2>--- Day Two: Fake Day Title ---</h2>"),
 			},
-			want:      "",
-			assertion: assert.Error,
+			want:    "",
+			wantErr: ErrInvalidData,
 		},
 	}
 
@@ -222,7 +241,7 @@ func Test_extractTitle(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := extractTitle(tt.args.page)
 
-			tt.assertion(t, err)
+			require.ErrorIs(t, err, tt.wantErr)
 
 			if err == nil {
 				assert.Equal(t, tt.want, got)
@@ -316,7 +335,7 @@ func Test_downloadPuzzlePage(t *testing.T) {
 		args          args
 		golden        string
 		assertion     assert.ErrorAssertionFunc
-		errText       string
+		wantErr       error
 	}{
 		{
 			name:          "good request for 2015-1",
@@ -324,17 +343,18 @@ func Test_downloadPuzzlePage(t *testing.T) {
 			args:          args{year: 2015, day: 1},
 			golden:        filepath.Join("testdata", "golden", "2015-1PuzzleData.golden"),
 			assertion:     assert.NoError,
+			wantErr:       nil,
 		},
 		{
 			name:          "404 response",
 			pageResponder: NotFoundResponder,
 			args:          args{year: 2015, day: 1},
 			assertion:     assert.Error,
-			errText:       "processing page response",
+			wantErr:       ErrHTTPResponse,
 		},
 	}
 
-	teardownTestCase := setupTestCase(t, true)
+	teardownTestCase := setupTestCase(t)
 	defer teardownTestCase(t)
 
 	for _, tt := range tests {
@@ -348,12 +368,108 @@ func Test_downloadPuzzlePage(t *testing.T) {
 
 			httpmock.RegisterNoResponder(httpmock.NewNotFoundResponder(t.Error))
 
-			got, err := downloadPuzzlePage(tt.args.year, tt.args.day)
+			got, err := mockDlr.downloadPuzzlePage(tt.args.year, tt.args.day)
 
-			tt.assertion(t, err)
-			if err != nil {
-				require.ErrorContains(t, err, tt.errText)
-			} else {
+			require.ErrorIs(t, err, tt.wantErr)
+			if err == nil {
+				want := goldenValue(t, tt.golden)
+
+				assert.Equal(t, want, got)
+				FileExists(t, testFs, filepath.Join(mockDlr.cacheDir, "pages", makeExerciseID(tt.args.year, tt.args.day)))
+			}
+		})
+	}
+}
+
+func Test_getCachedPuzzlePage(t *testing.T) {
+	type args struct {
+		year int
+		day  int
+	}
+
+	tests := []struct {
+		name    string
+		args    args
+		golden  string
+		wantErr error
+	}{
+		{
+			name: "cached file exists",
+			args: args{
+				year: 2015,
+				day:  2,
+			},
+			golden:  "testdata/golden/2015-02.golden",
+			wantErr: nil,
+		},
+		{
+			name: "no cached file",
+			args: args{
+				year: 2015,
+				day:  3,
+			},
+			wantErr: ErrNotFound,
+		},
+	}
+
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			teardownSubTest := setupSubTest(t)
+			defer teardownSubTest(t)
+
+			got, err := mockDlr.getCachedPuzzlePage(tt.args.year, tt.args.day)
+
+			require.ErrorIs(t, err, tt.wantErr)
+			if err == nil {
+				want := goldenValue(t, tt.golden)
+
+				assert.Equal(t, want, got)
+			}
+		})
+	}
+}
+
+func TestExercise_getCachedInput(t *testing.T) {
+	type args struct {
+		year int
+		day  int
+	}
+
+	tests := []struct {
+		name    string
+		args    args
+		golden  string
+		wantErr error
+	}{
+		{
+			name:    "cached file exists",
+			args:    args{year: 2015, day: 2},
+			golden:  "testdata/golden/input.golden",
+			wantErr: nil,
+		},
+		{
+			name:    "no cached file",
+			args:    args{year: 2015, day: 3},
+			golden:  "",
+			wantErr: ErrNotFound,
+		},
+	}
+
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			teardownSubTest := setupSubTest(t)
+			defer teardownSubTest(t)
+
+			got, err := mockDlr.getCachedInput(tt.args.year, tt.args.day)
+
+			require.ErrorIs(t, err, tt.wantErr)
+			if err == nil {
 				want := goldenValue(t, tt.golden)
 				assert.Equal(t, want, got)
 			}
@@ -361,172 +477,87 @@ func Test_downloadPuzzlePage(t *testing.T) {
 	}
 }
 
-// func Test_getCachedPuzzlePage(t *testing.T) {
-// 	cfgDir = "testdata"
-
-// 	type args struct {
-// 		year int
-// 		day  int
-// 	}
-
-// 	tests := []struct {
-// 		name      string
-// 		args      args
-// 		golden    string
-// 		assertion assert.ErrorAssertionFunc
-// 	}{
-// 		{
-// 			name: "cached file exists",
-// 			args: args{
-// 				year: 2015,
-// 				day:  2,
-// 			},
-// 			golden:    "testdata/golden/2015-02.golden",
-// 			assertion: assert.NoError,
-// 		},
-// 		{
-// 			name: "no cached file",
-// 			args: args{
-// 				year: 2015,
-// 				day:  3,
-// 			},
-// 			assertion: assert.Error,
-// 		},
-// 	}
-
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			got, err := getCachedPuzzlePage(tt.args.year, tt.args.day)
-
-// 			tt.assertion(t, err)
-// 			if err == nil {
-// 				want := goldenValue(t, tt.golden)
-// 				assert.Equal(t, want, got)
-// 			}
-// 		})
-// 	}
-// }
-
-// func TestExercise_getCachedInput(t *testing.T) {
-// 	cfgDir = "testdata"
-
-// 	tests := []struct {
-// 		name      string
-// 		e         *Exercise
-// 		golden    string
-// 		assertion assert.ErrorAssertionFunc
-// 	}{
-// 		{
-// 			name:      "cached file exists",
-// 			e:         &Exercise{ID: "2015-02"},
-// 			golden:    "testdata/golden/input.golden",
-// 			assertion: assert.NoError,
-// 		},
-// 		{
-// 			name:      "no cached file",
-// 			e:         &Exercise{ID: "2015-03"},
-// 			assertion: assert.Error,
-// 		},
-// 	}
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			got, err := tt.e.getCachedInput()
-
-// 			tt.assertion(t, err)
-// 			if err == nil {
-// 				want := goldenValue(t, tt.golden)
-// 				assert.Equal(t, want, got)
-// 			}
-// 		})
-// 	}
-// }
-
 func Test_getExercisePath(t *testing.T) {
-	exerciseBaseDir = "testdata/fs"
-	// logger = slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
-
 	type args struct {
 		year int
 		day  int
 	}
+
 	tests := []struct {
-		name     string
-		args     args
-		wantPath string
-		wantOk   bool
+		name        string
+		args        args
+		wantPath    string
+		okAssertion assert.BoolAssertionFunc
 	}{
 		{
-			name: "no year",
-			args: args{
-				year: 2014,
-				day:  1,
-			},
-			wantPath: "",
-			wantOk:   false,
+			name:        "no year",
+			args:        args{year: 2014, day: 1},
+			wantPath:    "",
+			okAssertion: assert.False,
 		},
 		{
-			name: "empty year",
-			args: args{
-				year: 2015,
-				day:  1,
-			},
-			wantPath: "",
-			wantOk:   false,
+			name:        "empty year",
+			args:        args{year: 2015, day: 1},
+			wantPath:    "",
+			okAssertion: assert.False,
 		},
 		{
-			name: "full day",
-			args: args{
-				year: 2017,
-				day:  1,
-			},
-			wantPath: filepath.Join(exerciseBaseDir, "2017", "01-fakeFullDay"),
-			wantOk:   true,
+			name:        "full day",
+			args:        args{year: 2017, day: 1},
+			wantPath:    filepath.Join("exercises", "2017", "01-fakeFullDay"),
+			okAssertion: assert.True,
 		},
 		{
-			name: "empty day",
-			args: args{
-				year: 2017,
-				day:  2,
-			},
-			wantPath: filepath.Join(exerciseBaseDir, "2017", "02-fakeEmptyDay"),
-			wantOk:   true,
+			name:        "empty day",
+			args:        args{year: 2017, day: 2},
+			wantPath:    filepath.Join("exercises", "2017", "02-fakeEmptyDay"),
+			okAssertion: assert.True,
 		},
 	}
+
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotPath, gotOk := getExercisePath(tt.args.year, tt.args.day)
-			assert.Equal(t, tt.wantPath, gotPath)
-			assert.Equal(t, tt.wantOk, gotOk)
+			teardownSubTest := setupSubTest(t)
+			defer teardownSubTest(t)
+
+			// uncomment to view debug logging in test output
+			// mockDownloader.logger = slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
+
+			gotPath, gotOk := mockDlr.getExercisePath(tt.args.year, tt.args.day)
+
+			require.Equal(t, tt.wantPath, gotPath)
+			tt.okAssertion(t, gotOk)
 		})
 	}
 }
 
-func TestExercise_downloadInput(t *testing.T) {
+func Test_downloadInput(t *testing.T) {
 	tests := []struct {
 		name          string
 		e             *Exercise
 		pageResponder httpmock.Responder
 		golden        string
-		assertion     assert.ErrorAssertionFunc
-		errText       string
+		wantErr       error
 	}{
 		{
 			name:          "new download",
 			pageResponder: httpmock.NewStringResponder(http.StatusOK, respBodyInput),
 			e:             &Exercise{ID: "2015-01", Year: 2015, Day: 1},
 			golden:        filepath.Join("testdata", "golden", "input.golden"),
-			assertion:     assert.NoError,
+			wantErr:       nil,
 		},
 		{
 			name:          "404 response",
 			pageResponder: NotFoundResponder,
 			e:             &Exercise{ID: "2015-01", Year: 2015, Day: 1},
-			assertion:     assert.Error,
-			errText:       "downloading input data",
+			wantErr:       ErrHTTPResponse,
 		},
 	}
 
-	teardownTestCase := setupTestCase(t, true)
+	teardownTestCase := setupTestCase(t)
 	defer teardownTestCase(t)
 
 	for _, tt := range tests {
@@ -540,21 +571,22 @@ func TestExercise_downloadInput(t *testing.T) {
 
 			httpmock.RegisterNoResponder(httpmock.NewNotFoundResponder(t.Error))
 
-			got, err := tt.e.downloadInput()
+			mockDlr.exercise = tt.e
 
-			tt.assertion(t, err)
-			if err != nil {
-				require.ErrorContains(t, err, tt.errText)
-			} else {
+			got, err := mockDlr.downloadInput(tt.e.Year, tt.e.Day)
+
+			require.ErrorIs(t, err, tt.wantErr)
+			if err == nil {
 				want := goldenValue(t, tt.golden)
+
 				assert.Equal(t, want, got)
-				// assert.FileExists(t, filepath.Join(cfgDir, "inputs", tt.e.ID))
+				FileExists(t, testFs, filepath.Join(mockDlr.cacheDir, "inputs", makeExerciseID(tt.e.Year, tt.e.Day)))
 			}
 		})
 	}
 }
 
-func TestExercise_getInput(t *testing.T) {
+func Test_getInput(t *testing.T) {
 	tests := []struct {
 		name          string
 		e             *Exercise
@@ -562,6 +594,8 @@ func TestExercise_getInput(t *testing.T) {
 		golden        string
 		callCount     int
 		assertion     require.ErrorAssertionFunc
+		wantError     error
+		statAssertion require.ErrorAssertionFunc
 		errText       string
 	}{
 		{
@@ -569,30 +603,31 @@ func TestExercise_getInput(t *testing.T) {
 			pageResponder: httpmock.NewStringResponder(http.StatusOK, respBodyInput),
 			e:             &Exercise{ID: "2015-03", Year: 2015, Day: 3},
 			golden:        filepath.Join("testdata", "golden", "input.golden"),
-			callCount:     1,
 			assertion:     require.NoError,
+			wantError:     nil,
+			statAssertion: require.NoError,
 		},
-		// {
-		// 	name:          "cached file exists",
-		// 	pageResponder: NotFoundResponder,
-		// 	e:             &Exercise{ID: "2015-01", Year: 2015, Day: 1},
-		// 	golden:        filepath.Join("testdata", "golden", "input.golden"),
-		// 	callCount:     0,
-		// 	assertion:     require.NoError,
-		// 	errText:       "downloading input data",
-		// },
+		{
+			name:          "cached file exists",
+			pageResponder: NotFoundResponder,
+			e:             &Exercise{ID: "2015-01", Year: 2015, Day: 1},
+			golden:        filepath.Join("testdata", "golden", "input.golden"),
+			assertion:     require.NoError,
+			wantError:     nil,
+			statAssertion: require.NoError,
+		},
 		{
 			name:          "not cached, 404 response",
 			pageResponder: NotFoundResponder,
 			e:             &Exercise{ID: "2015-01", Year: 2015, Day: 4},
 			golden:        filepath.Join("testdata", "golden", "input.golden"),
-			callCount:     0,
-			assertion:     require.NoError,
-			errText:       "downloading input data",
+			assertion:     require.Error,
+			statAssertion: require.Error,
+			wantError:     ErrHTTPResponse,
 		},
 	}
 
-	teardownTestCase := setupTestCase(t, true)
+	teardownTestCase := setupTestCase(t)
 	defer teardownTestCase(t)
 
 	for _, tt := range tests {
@@ -600,37 +635,54 @@ func TestExercise_getInput(t *testing.T) {
 			teardownSubTest := setupSubTest(t)
 			defer teardownSubTest(t)
 
-			// // copy input file to temp dir if it exists
-			// _, err := appFs.Stat(filepath.Join("testdata", "inputs", tt.e.ID))
-			// if err == nil {
-			// 	src, tmpFsErr := appFs.Open(filepath.Join("testdata", "inputs", tt.e.ID))
-			// 	require.NoError(t, tmpFsErr, "unable to open testdata input file")
-			// 	defer src.Close()
-
-			// 	dst, tmpFsErr := appFs.Create(filepath.Join(cfgDir, "inputs", tt.e.ID))
-			// 	require.NoError(t, tmpFsErr, "unable to create temp input file")
-			// 	defer dst.Close()
-
-			// 	_, tmpFsErr = io.Copy(dst, src)
-			// 	require.NoError(t, tmpFsErr, "unable to copy testdata input file")
-			// }
-
 			httpmock.RegisterResponder("GET",
 				`=~input$`,
 				tt.pageResponder)
 
 			httpmock.RegisterNoResponder(httpmock.NewNotFoundResponder(t.Error))
 
-			got, err := tt.e.getInput()
+			mockDlr.exercise = tt.e
+
+			got, err := mockDlr.getInput(tt.e.Year, tt.e.Day)
 
 			tt.assertion(t, err)
 			if err != nil {
-				require.ErrorContains(t, err, tt.errText)
+				require.ErrorIs(t, err, tt.wantError)
 			} else {
-				want := goldenValue(t, tt.golden)
-				assert.Equal(t, want, got)
-				// assert.FileExists(t, filepath.Join(cfgDir, "inputs", tt.e.ID))
+				assert.Equal(t, goldenValue(t, tt.golden), got)
+				// _, err = testFs.Stat(filepath.Join(mockDownloader.Path(), "input.txt"))
+				// tt.statAssertion(t, err)
 			}
+		})
+	}
+}
+
+func Test_makeExercisePath(t *testing.T) {
+	type args struct {
+		year  int
+		day   int
+		title string
+	}
+
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "happy path",
+			args: args{
+				year:  2015,
+				day:   1,
+				title: "Fake Title Day One",
+			},
+			want: filepath.Join("exercises", "2015", "01-fakeTitleDayOne"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, makeExercisePath("exercises", tt.args.year, tt.args.day, tt.args.title))
 		})
 	}
 }
