@@ -5,9 +5,11 @@ import (
 	"path/filepath"
 
 	"github.com/lmittmann/tint"
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
 	"github.com/asphaltbuffet/elf/pkg/advent"
+	"github.com/asphaltbuffet/elf/pkg/krampus"
 )
 
 var (
@@ -37,7 +39,7 @@ func GetBenchmarkCmd() *cobra.Command {
 }
 
 type Benchmarker interface {
-	Benchmark(int) ([]advent.TaskResult, error)
+	Benchmark(afero.Fs, int) ([]advent.TaskResult, error)
 	String() string
 }
 
@@ -47,6 +49,11 @@ func runBenchmarkCmd(cmd *cobra.Command, args []string) error {
 		err error
 	)
 
+	cfg, err := krampus.NewConfig()
+	if err != nil {
+		return err
+	}
+
 	dir, err := filepath.Abs(args[0])
 	if err != nil {
 		slog.Error("getting current directory", tint.Err(err))
@@ -55,13 +62,14 @@ func runBenchmarkCmd(cmd *cobra.Command, args []string) error {
 
 	slog.Debug("benchmarking exercise", slog.Group("exercise", "dir", dir))
 
-	ex, err = advent.New(advent.WithDir(dir), advent.WithLanguage("go")) // TODO: make language configurable
+	// TODO: language shouldn't be required for benchmarking
+	ex, err = advent.New(&cfg, advent.WithDir(dir), advent.WithLanguage("go"))
 	if err != nil {
 		slog.Error("creating exercise", tint.Err(err))
 		return err
 	}
 
-	_, err = ex.Benchmark(iterations)
+	_, err = ex.Benchmark(cfg.GetFs(), iterations)
 	if err != nil {
 		slog.Error("solving exercise", tint.Err(err))
 		cmd.PrintErrln("Failed to solve: ", err)

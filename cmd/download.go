@@ -4,11 +4,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
 	"github.com/asphaltbuffet/elf/pkg/advent"
-	"github.com/asphaltbuffet/elf/pkg/euler"
+	"github.com/asphaltbuffet/elf/pkg/krampus"
 )
 
 var (
@@ -40,15 +39,11 @@ func GetDownloadCmd() *cobra.Command {
 			Args:    cobra.ExactArgs(1),
 			Short:   "download a challenge",
 			RunE:    runDownloadCmd,
-			PreRunE: func(cmd *cobra.Command, args []string) error {
-				appFs = afero.NewOsFs()
-				return initialize(appFs)
-			},
 		}
 
-		downloadCmd.Flags().StringVarP(&language, "lang", "l", "", "solution language")
+		// downloadCmd.Flags().StringVarP(&language, "lang", "l", "", "solution language")
 		downloadCmd.Flags().BoolVarP(&noLang, "no-lang", "L", false, "do not create language directory")
-		downloadCmd.MarkFlagsMutuallyExclusive("lang", "no-lang")
+		// downloadCmd.MarkFlagsMutuallyExclusive("lang", "no-lang")
 
 		downloadCmd.Flags().BoolVarP(&dlAll, "all", "a", false, "download/create all missing files")
 		downloadCmd.Flags().BoolVarP(&forceAll, "force-all", "A", false, "download/create all files; overwrite existing")
@@ -72,46 +67,34 @@ func GetDownloadCmd() *cobra.Command {
 
 type Downloader interface {
 	Download() error
-	Dir() string
-	String() string
+	Path() string
 }
 
+// // https://adventofcode.com/2022/day/1
+// reAdvent := `^https?://(www\.)?adventofcode\.com/(?P<year>\d{4})/day/(?P<day>\d{1,2})$`
+// // https://projecteuler.net/problem=1
+// reEuler := `^https?://(www\.)?projecteuler\.net/problem=(?P<num>\d{1,3})$`
+
 func runDownloadCmd(cmd *cobra.Command, args []string) error {
-	var (
-		path string
-		err  error
-	)
+	var err error
+	var chdl Downloader
 
-	if language == "" {
-		language = cfg.GetString("language")
-	}
-
-	// // https://adventofcode.com/2022/day/1
-	// reAdvent := `^https?://(www\.)?adventofcode\.com/(?P<year>\d{4})/day/(?P<day>\d{1,2})$`
-	// // https://projecteuler.net/problem=1
-	// reEuler := `^https?://(www\.)?projecteuler\.net/problem=(?P<num>\d{1,3})$`
+	cfg, err := krampus.NewConfig()
 
 	switch {
 	case strings.Contains(args[0], "adventofcode.com/"):
-		path, err = advent.Download(args[0], language, forceAll)
-
+		chdl, err = advent.NewDownloader(&cfg, args[0], language)
 		if err != nil {
-			cmd.PrintErrln(err)
-			return nil
-		}
-
-	case strings.Contains(args[0], "projecteuler.net/"):
-		path, err = euler.Download(args[0], language, forceAll)
-
-		if err != nil {
-			return err
+			return fmt.Errorf("downloading advent challenge: %w", err)
 		}
 
 	default:
 		return fmt.Errorf("unsupported URL: %s", args[0])
 	}
 
-	fmt.Printf("New challenge created in: %s", path)
+	err = chdl.Download()
+
+	cmd.Printf("New challenge created in: %s", chdl.Path())
 
 	return nil
 }

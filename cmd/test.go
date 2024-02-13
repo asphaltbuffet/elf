@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/asphaltbuffet/elf/pkg/advent"
+	"github.com/asphaltbuffet/elf/pkg/krampus"
 )
 
 var testCmd *cobra.Command
@@ -44,16 +45,21 @@ func runTestCmd(cmd *cobra.Command, args []string) error {
 		err error
 	)
 
+	cfg, err := krampus.NewConfig()
+	if err != nil {
+		return err
+	}
+
 	dir, err := filepath.Abs(args[0])
 	if err != nil {
 		return err
 	}
 
 	if language == "" {
-		language = cfg.GetString("language")
+		language = cfg.GetLanguage()
 	}
 
-	ch, err = advent.New(advent.WithLanguage(language), advent.WithDir(dir))
+	ch, err = advent.New(&cfg, advent.WithLanguage(language), advent.WithDir(dir))
 	if err != nil {
 		return err
 	}

@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/asphaltbuffet/elf/pkg/advent"
+	"github.com/asphaltbuffet/elf/pkg/krampus"
 )
 
 var (
@@ -50,6 +51,8 @@ func runSolveCmd(cmd *cobra.Command, args []string) error {
 		err error
 	)
 
+	cfg, err := krampus.NewConfig()
+
 	dir, err := filepath.Abs(args[0])
 	if err != nil {
 		slog.Error("getting current directory", tint.Err(err))
@@ -59,10 +62,10 @@ func runSolveCmd(cmd *cobra.Command, args []string) error {
 	slog.Debug("solving exercise", slog.Group("exercise", "dir", dir, "language", language))
 
 	if language == "" {
-		language = cfg.GetString("language")
+		language = cfg.GetLanguage()
 	}
 
-	ch, err = advent.New(advent.WithLanguage(language), advent.WithDir(dir))
+	ch, err = advent.New(&cfg, advent.WithLanguage(language), advent.WithDir(dir))
 	if err != nil {
 		slog.Error("creating exercise", tint.Err(err))
 		return err
