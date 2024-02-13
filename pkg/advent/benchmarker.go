@@ -12,6 +12,7 @@ import (
 	"github.com/lmittmann/tint"
 	"github.com/montanaflynn/stats"
 	"github.com/schollz/progressbar/v3"
+	"github.com/spf13/afero"
 
 	"github.com/asphaltbuffet/elf/pkg/runners"
 )
@@ -42,10 +43,10 @@ type PartData struct {
 
 var benchmarkLog = slog.With(slog.String("fn", "Benchmark"))
 
-func (e *Exercise) Benchmark(iterations int) ([]TaskResult, error) {
+func (e *Exercise) Benchmark(fs afero.Fs, iterations int) ([]TaskResult, error) {
 	normFactor := getNormalizationFactor()
 
-	impls, err := e.GetImplementations()
+	impls, err := e.GetImplementations(fs)
 	if err != nil {
 		return nil, err
 	}

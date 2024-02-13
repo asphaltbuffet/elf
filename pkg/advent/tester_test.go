@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	mocks "github.com/asphaltbuffet/elf/mocks/Runner"
+	mocks "github.com/asphaltbuffet/elf/mocks/runners"
 	"github.com/asphaltbuffet/elf/pkg/runners"
 )
 

@@ -9,6 +9,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	mocks "github.com/asphaltbuffet/elf/mocks/krampus"
 )
 
 func Test_NewWithOpts(t *testing.T) {
@@ -98,10 +100,25 @@ func Test_NewWithOpts(t *testing.T) {
 			assertion: require.Error,
 		},
 	}
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := New(tt.args.opts...)
+			// set up testing
+			teardownSubTest := setupSubTest(t)
+			defer teardownSubTest(t)
+
+			// set up mocks
+			mockConfig := mocks.NewMockConfigurationReader(t)
+			// // mockConfig.EXPECT().GetLanguage().Return(tt.args.lang)
+			// mockConfig.EXPECT().GetConfigDir().Return("")
+			// mockConfig.EXPECT().GetCacheDir().Return("testCache")
+			// mockConfig.EXPECT().GetToken().Return("fakeToken")
+			// mockConfig.EXPECT().GetLogger().Return(slog.New(slog.NewTextHandler(io.Discard, nil)))
+			mockConfig.EXPECT().GetFs().Return(testFs)
+
+			got, err := New(mockConfig, tt.args.opts...)
 
 			tt.assertion(t, err)
 
@@ -119,39 +136,7 @@ func Test_NewWithOpts(t *testing.T) {
 	}
 }
 
-func Test_makeExercisePath(t *testing.T) {
-	type args struct {
-		year  int
-		day   int
-		title string
-	}
-
-	tests := []struct {
-		name string
-		args args
-		want string
-	}{
-		{
-			name: "happy path",
-			args: args{
-				year:  2015,
-				day:   1,
-				title: "Fake Title Day One",
-			},
-			want: filepath.Join("exercises", "2015", "01-fakeTitleDayOne"),
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, makeExercisePath(tt.args.year, tt.args.day, tt.args.title))
-		})
-	}
-}
-
 func Test_GetImplementations(t *testing.T) {
-	t.Parallel()
-
 	type args struct {
 		e *Exercise
 	}
@@ -167,7 +152,7 @@ func Test_GetImplementations(t *testing.T) {
 			name: "two languages",
 			args: args{
 				&Exercise{
-					Path: filepath.Join("testdata", "fs", "2017", "01-fakeFullDay"),
+					Path: filepath.Join("exercises", "2017", "01-fakeFullDay"),
 				},
 			},
 			want:      []string{"go", "py"},
@@ -181,7 +166,7 @@ func Test_GetImplementations(t *testing.T) {
 					Year:  2017,
 					Day:   3,
 					Title: "Fake Go Day",
-					Path:  filepath.Join("testdata", "fs", "2017", "03-fakeGoDay"),
+					Path:  filepath.Join("exercises", "2017", "03-fakeGoDay"),
 				},
 			},
 			want:      []string{"go"},
@@ -195,7 +180,7 @@ func Test_GetImplementations(t *testing.T) {
 					Year:  2017,
 					Day:   2,
 					Title: "Fake Empty Day",
-					Path:  filepath.Join("testdata", "fs", "2017", "02-fakeEmptyDay"),
+					Path:  filepath.Join("exercises", "2017", "02-fakeEmptyDay"),
 				},
 			},
 			want:      []string{},
@@ -209,7 +194,7 @@ func Test_GetImplementations(t *testing.T) {
 					Year:  2014,
 					Day:   14,
 					Title: "Fake Missing Year",
-					Path:  filepath.Join("testdata", "fs", "2014", "14-fakeMissingYear"),
+					Path:  filepath.Join("exercises", "2014", "14-fakeMissingYear"),
 				},
 			},
 			want:      nil,
@@ -217,14 +202,16 @@ func Test_GetImplementations(t *testing.T) {
 			wantErr:   os.ErrNotExist,
 		},
 	}
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
 
 	for _, tt := range tests {
-		tt := tt
-
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
+			// set up testing
+			teardownSubTest := setupSubTest(t)
+			defer teardownSubTest(t)
 
-			got, err := tt.args.e.GetImplementations()
+			got, err := tt.args.e.GetImplementations(testFs)
 
 			require.ErrorIs(t, err, tt.wantErr)
 			tt.assertion(t, err)

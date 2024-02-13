@@ -4,21 +4,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"os"
 	"path"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/lmittmann/tint"
+	"github.com/spf13/afero"
 
+	"github.com/asphaltbuffet/elf/pkg/krampus"
 	"github.com/asphaltbuffet/elf/pkg/runners"
-	"github.com/asphaltbuffet/elf/pkg/utilities"
 )
 
-var exerciseBaseDir = "exercises"
-
-func New(options ...func(*Exercise)) (*Exercise, error) {
+func New(config krampus.ConfigurationReader, options ...func(*Exercise)) (*Exercise, error) {
 	e := &Exercise{}
 
 	for _, option := range options {
@@ -30,7 +27,7 @@ func New(options ...func(*Exercise)) (*Exercise, error) {
 		return nil, fmt.Errorf("no language specified")
 
 	case e.Path != "":
-		if err := e.loadInfo(); err != nil {
+		if err := e.loadInfo(config.GetFs()); err != nil {
 			return nil, err
 		}
 
@@ -66,13 +63,13 @@ func WithLanguage(lang string) func(*Exercise) {
 	}
 }
 
-func (e *Exercise) loadInfo() error {
+func (e *Exercise) loadInfo(fs afero.Fs) error {
 	slog.Debug("populating exercise from info file", "path", e.Path)
 
 	// populate exercise info from info.json
 	fn := filepath.Join(e.Path, "info.json")
 
-	data, err := os.ReadFile(path.Clean(fn))
+	data, err := afero.ReadFile(fs, path.Clean(fn))
 	if err != nil {
 		slog.Error("reading info file", tint.Err(err), slog.String("path", fn))
 		return fmt.Errorf("read info file %q: %w", fn, err)
@@ -121,13 +118,9 @@ func makeExerciseID(year, day int) string {
 	return fmt.Sprintf("%d-%02d", year, day)
 }
 
-func makeExercisePath(year, day int, title string) string {
-	return filepath.Join(exerciseBaseDir, strconv.Itoa(year), fmt.Sprintf("%02d-%s", day, utilities.ToCamel(title)))
-}
-
 // GetImplementations returns a list of available implementations for the exercise.
-func (e *Exercise) GetImplementations() ([]string, error) {
-	dirEntries, err := os.ReadDir(e.Path)
+func (e *Exercise) GetImplementations(fs afero.Fs) ([]string, error) {
+	dirEntries, err := afero.ReadDir(fs, e.Path)
 	if err != nil {
 		return nil, fmt.Errorf("checking %s: %w", e.Path, err)
 	}
