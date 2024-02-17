@@ -16,15 +16,18 @@ import (
 )
 
 var (
-	ErrEmptyLanguage  = fmt.Errorf("no language specified")
-	ErrNotFound       = afero.ErrFileNotFound
-	ErrNotImplemented = fmt.Errorf("not implemented")
-	ErrNoRunner       = fmt.Errorf("no runner available")
-	ErrInvalidData    = fmt.Errorf("invalid data")
+	ErrEmptyLanguage     = fmt.Errorf("no language specified")
+	ErrNotFound          = afero.ErrFileNotFound
+	ErrNotImplemented    = fmt.Errorf("not implemented")
+	ErrNoRunner          = fmt.Errorf("no runner available")
+	ErrInvalidData       = fmt.Errorf("invalid data")
+	ErrNoImplementations = fmt.Errorf("no implementations found")
 )
 
-func New(config krampus.ConfigurationReader, options ...func(*Exercise)) (*Exercise, error) {
-	e := &Exercise{}
+func New(config krampus.ExerciseConfiguration, options ...func(*Exercise)) (*Exercise, error) {
+	e := &Exercise{
+		logger: config.GetLogger().With(slog.String("fn", "exercise")),
+	}
 
 	for _, option := range options {
 		option(e)
@@ -148,7 +151,7 @@ func (e *Exercise) GetImplementations(fs afero.Fs) ([]string, error) {
 	}
 
 	if len(impls) == 0 {
-		return nil, fmt.Errorf("%s: %w", e.Path, ErrNotFound)
+		return nil, fmt.Errorf("search %s: %w", e.Path, ErrNoImplementations)
 	}
 
 	return impls, nil

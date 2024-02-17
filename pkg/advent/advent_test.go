@@ -110,14 +110,13 @@ func Test_NewWithOpts(t *testing.T) {
 			defer teardownSubTest(t)
 
 			// set up mocks
-			mockConfig := mocks.NewMockConfigurationReader(t)
+			mockConfig := mocks.NewMockExerciseConfiguration(t)
 			// // mockConfig.EXPECT().GetLanguage().Return(tt.args.lang)
 			// mockConfig.EXPECT().GetConfigDir().Return("")
 			// mockConfig.EXPECT().GetCacheDir().Return("testCache")
 			// mockConfig.EXPECT().GetToken().Return("fakeToken")
-			// mockConfig.EXPECT().GetLogger().Return(slog.New(slog.NewTextHandler(io.Discard, nil)))
-			// mockConfig.EXPECT().GetFs().Return(testFs)
-			mockConfig.On("GetFs").Return(testFs)
+			mockConfig.EXPECT().GetFs().Return(testFs)
+			mockConfig.EXPECT().GetLogger().Return(slog.New(slog.NewTextHandler(os.Stderr, nil)))
 
 			got, err := New(mockConfig, tt.args.opts...)
 
@@ -183,7 +182,7 @@ func Test_GetImplementations(t *testing.T) {
 				},
 			},
 			want:    []string{},
-			wantErr: os.ErrNotExist,
+			wantErr: ErrNoImplementations,
 		},
 		{
 			name: "no year",
@@ -196,7 +195,7 @@ func Test_GetImplementations(t *testing.T) {
 				},
 			},
 			want:    nil,
-			wantErr: os.ErrNotExist,
+			wantErr: ErrNotFound,
 		},
 	}
 	teardownTestCase := setupTestCase(t)
