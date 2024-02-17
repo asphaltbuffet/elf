@@ -23,7 +23,7 @@ func Test_runMainTasks(t *testing.T) {
 		Duration: 0.042,
 	}, nil).Times(2)
 
-	_, err := runMainTasks(mockRunner, &Data{Input: "FAKE INPUT"})
+	_, err := runMainTasks(mockRunner, &Data{InputData: "FAKE INPUT"})
 
 	require.NoError(t, err)
 
@@ -35,7 +35,7 @@ func Test_runMainTasks(t *testing.T) {
 		Output:   "fakey fake",
 		Duration: 0.666,
 	}, fmt.Errorf("FAKE ERROR")).Once()
-	_, err = runMainTasks(mockRunner, &Data{Input: "FAKE INPUT"})
+	_, err = runMainTasks(mockRunner, &Data{InputData: "FAKE INPUT"})
 
 	require.Error(t, err)
 }

@@ -588,7 +588,7 @@ func (d *Downloader) writeInputFile(replace bool) error {
 	}
 
 	d.exercise.Data = &Data{
-		Input:         string(inputFile),
+		InputData:     string(inputFile),
 		InputFileName: "input.txt",
 		TestCases: TestCase{
 			One: []*Test{{Input: "", Expected: ""}},

@@ -27,7 +27,7 @@ func (e *Exercise) Solve(skipTests bool) ([]tasks.Result, error) {
 		return nil, err
 	}
 
-	e.Data.Input = string(input)
+	e.Data.InputData = string(input)
 
 	if err = e.runner.Start(); err != nil {
 		solverLog.Error("starting runner", tint.Err(err))
@@ -104,7 +104,7 @@ func makeMainTasks(part runners.Part, data *Data) []testTask {
 		task: &runners.Task{
 			TaskID:    tasks.MakeTaskID(tasks.Solve, part),
 			Part:      part,
-			Input:     data.Input,
+			Input:     data.InputData,
 			OutputDir: "",
 		},
 		expected: expected,

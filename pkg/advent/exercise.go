@@ -3,24 +3,29 @@ package advent
 import (
 	"log/slog"
 
+	"github.com/spf13/afero"
+
 	"github.com/asphaltbuffet/elf/pkg/runners"
 )
 
 type Exercise struct {
-	ID       string         `json:"id"`
-	Title    string         `json:"title"`
-	Language string         `json:"-"`
-	Year     int            `json:"year"`
-	Day      int            `json:"day"`
-	URL      string         `json:"url"`
-	Data     *Data          `json:"data"`
-	Path     string         `json:"-"`
-	runner   runners.Runner `json:"-"`
+	ID       string `json:"id"`
+	Title    string `json:"title"`
+	Language string `json:"-"`
+	Year     int    `json:"year"`
+	Day      int    `json:"day"`
+	URL      string `json:"url"`
+	Data     *Data  `json:"data"`
+	Path     string `json:"-"`
+
+	runner runners.Runner `json:"-"`
+	appFs  afero.Fs       `json:"-"`
+	logger *slog.Logger   `json:"-"`
 }
 
 // Data contains the relative path to exercise input and the specific test case data for an exercise.
 type Data struct {
-	Input         string   `json:"-"`
+	InputData     string   `json:"-"`
 	InputFileName string   `json:"inputFile"`
 	TestCases     TestCase `json:"testCases"`
 	Answers       Answer   `json:"answers,omitempty"`

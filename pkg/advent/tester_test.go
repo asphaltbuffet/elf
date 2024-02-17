@@ -107,7 +107,7 @@ func Test_runTestTasks(t *testing.T) {
 	}, nil)
 
 	_, err := runTests(mockRunner, &Data{
-		Input: "FAKE INPUT",
+		InputData: "FAKE INPUT",
 		TestCases: TestCase{
 			One: []*Test{
 				{
