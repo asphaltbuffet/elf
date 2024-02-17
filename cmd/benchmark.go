@@ -63,8 +63,7 @@ func runBenchmarkCmd(cmd *cobra.Command, args []string) error {
 
 	slog.Debug("benchmarking exercise", slog.Group("exercise", "dir", dir))
 
-	// TODO: language shouldn't be required for benchmarking
-	ex, err = advent.New(&cfg, advent.WithDir(dir), advent.WithLanguage("go"))
+	ex, err = advent.NewBenchmarker(&cfg, advent.WithExerciseDir(dir))
 	if err != nil {
 		slog.Error("creating exercise", tint.Err(err))
 		return err
