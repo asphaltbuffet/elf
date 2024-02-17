@@ -6,20 +6,19 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"strconv"
-	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/lmittmann/tint"
 
 	"github.com/asphaltbuffet/elf/pkg/runners"
+	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
-func (e *Exercise) Solve(skipTests bool) ([]TaskResult, error) {
+func (e *Exercise) Solve(skipTests bool) ([]tasks.Result, error) {
 	solverLog := slog.With(slog.String("exercise", e.Title))
 	solverLog.Debug("solving", slog.String("language", e.Language))
 
-	results := []TaskResult{}
+	results := []tasks.Result{}
 
 	inputFile := filepath.Join(e.Path, e.Data.InputFileName)
 	input, err := os.ReadFile(inputFile)
@@ -45,7 +44,7 @@ func (e *Exercise) Solve(skipTests bool) ([]TaskResult, error) {
 	if !skipTests {
 		fmt.Printf("Testing (%s)...\n", e.runner)
 
-		var tr []TaskResult
+		var tr []tasks.Result
 
 		tr, err = runTests(e.runner, e.Data)
 		if err != nil {
@@ -69,36 +68,18 @@ func (e *Exercise) Solve(skipTests bool) ([]TaskResult, error) {
 	return results, nil
 }
 
-func makeMainID(part runners.Part) string {
-	return fmt.Sprintf("main.%d", part)
-}
+func runMainTasks(runner runners.Runner, data *Data) ([]tasks.Result, error) {
+	var solveTasks []testTask
 
-func parseMainID(id string) runners.Part {
-	var p runners.Part
+	solveTasks = append(solveTasks, makeMainTasks(runners.PartOne, data)...)
+	solveTasks = append(solveTasks, makeMainTasks(runners.PartTwo, data)...)
 
-	_, err := fmt.Sscanf(id, "main.%d", &p)
-	if err != nil {
-		slog.Error("parsing main id", slog.Group("task", "id", id), tint.Err(err))
-		panic(err)
-	}
+	results := make([]tasks.Result, 0, len(solveTasks))
 
-	return p
-}
-
-func runMainTasks(runner runners.Runner, data *Data) ([]TaskResult, error) {
-	var tasks []testTask
-
-	tasks = append(tasks, makeMainTasks(runners.PartOne, data)...)
-	tasks = append(tasks, makeMainTasks(runners.PartTwo, data)...)
-
-	results := make([]TaskResult, 0, len(tasks))
-
-	for _, t := range tasks {
+	for _, t := range solveTasks {
 		result, err := runner.Run(t.task)
 		if err != nil {
-			slog.Error("running task",
-				slog.Group("result", "id", result.TaskID, "ok", result.Ok, "output", result.Output),
-				tint.Err(err))
+			slog.Error("running task", slog.String("id", t.task.TaskID), tint.Err(err))
 			return nil, err
 		}
 
@@ -109,109 +90,33 @@ func runMainTasks(runner runners.Runner, data *Data) ([]TaskResult, error) {
 	return results, nil
 }
 
-func makeMainTasks(p runners.Part, data *Data) []testTask {
-	var tasks []testTask
-	var exp string
+func makeMainTasks(part runners.Part, data *Data) []testTask {
+	var solveTasks []testTask
+	var expected string
 
-	if p == runners.PartOne {
-		exp = data.Answers.One
+	if part == runners.PartOne {
+		expected = data.Answers.One
 	} else {
-		exp = data.Answers.Two
+		expected = data.Answers.Two
 	}
 
-	tasks = append(tasks, testTask{
+	solveTasks = append(solveTasks, testTask{
 		task: &runners.Task{
-			TaskID:    makeMainID(p),
-			Part:      p,
+			TaskID:    tasks.MakeTaskID(tasks.Solve, part),
+			Part:      part,
 			Input:     data.Input,
 			OutputDir: "",
 		},
-		expected: exp,
+		expected: expected,
 	})
 
-	return tasks
+	return solveTasks
 }
 
-type TaskType string
+func handleTaskResult(w io.Writer, r *runners.Result, expected string) tasks.Result {
+	taskType, part, subpart := tasks.ParseTaskID(r.TaskID)
 
-const (
-	TaskTest      TaskType = "test"
-	TaskMain      TaskType = "main"
-	TaskBenchmark TaskType = "benchmark"
-	TaskVisual    TaskType = "vis"
-	TaskInvalid   TaskType = "invalid"
-)
-
-type (
-	TaskPart    runners.Part
-	TaskSubPart int
-)
-
-func parseTaskID(id string) (TaskType, TaskPart, TaskSubPart) {
-	tokens := strings.Split(id, ".")
-
-	switch t := TaskType(tokens[0]); t {
-	case TaskBenchmark, TaskTest, TaskVisual: // test/visual
-		p, err := strconv.ParseUint(tokens[1], 10, 8)
-		// p, err := strconv.Atoi(tokens[1])
-		if err != nil {
-			slog.Error("invalid part type", slog.String("id", id))
-			panic("invalid part type")
-		}
-
-		n, err := strconv.Atoi(tokens[2])
-		if err != nil {
-			slog.Error("invalid sub-test number", slog.String("id", id))
-			panic("invalid sub-test number")
-		}
-
-		return t, TaskPart(p), TaskSubPart(n)
-
-	case TaskMain: // main
-		p, err := strconv.ParseUint(tokens[1], 10, 8)
-		// p, err := strconv.Atoi(tokens[1])
-		if err != nil {
-			slog.Error("invalid part type", slog.String("id", id))
-			panic("invalid part type")
-		}
-
-		return t, TaskPart(p), TaskSubPart(-1)
-
-	case TaskInvalid:
-		fallthrough
-
-	default:
-		slog.Error("invalid task type", slog.String("id", id))
-		return TaskInvalid, TaskPart(0), TaskSubPart(0)
-	}
-}
-
-//go:generate stringer -type=TaskStatus
-type TaskStatus int
-
-const (
-	Invalid TaskStatus = iota
-	Passed
-	Unverified
-	Failed
-	Error
-)
-
-type TaskResult struct {
-	ID       string
-	Type     TaskType
-	Part     TaskPart
-	SubPart  TaskSubPart
-	Status   TaskStatus
-	Output   string
-	Expected string
-	Duration float64
-}
-
-func handleTaskResult(w io.Writer, r *runners.Result, expected string) TaskResult {
-	taskType, part, subpart := parseTaskID(r.TaskID)
-
-	result := TaskResult{
+	result := tasks.Result{
 		ID:       r.TaskID,
 		Type:     taskType,
 		Part:     part,
@@ -219,20 +124,20 @@ func handleTaskResult(w io.Writer, r *runners.Result, expected string) TaskResul
 		Duration: r.Duration,
 	}
 
-	name := taskStyle(int(part), int(subpart))
+	name := taskStyle(int(part), subpart)
 
 	var output, extra, followUpText lipgloss.Style
 	var printExtra bool
 
 	switch {
-	case taskType == TaskBenchmark:
+	case taskType == tasks.Benchmark:
 		// for now, we assume benchmarks are always successful
-		result.Status = Passed
+		result.Status = tasks.StatusPassed
 		result.Output = r.Output
 		result.Expected = "" // no expected output for benchmarks
 		result.Duration = r.Duration
 	case !r.Ok:
-		result.Status = Error
+		result.Status = tasks.StatusError
 		result.Output = fmt.Sprint("⤷ saying:", r.Output)
 
 		output = lipgloss.NewStyle().
@@ -244,7 +149,7 @@ func handleTaskResult(w io.Writer, r *runners.Result, expected string) TaskResul
 		printExtra = true
 
 	case expected == "":
-		result.Status = Unverified
+		result.Status = tasks.StatusUnverified
 		result.Output = r.Output
 
 		output = statusStyle.Foreground(newAns).Background(lipgloss.Color("0")).SetString("NEW")
@@ -255,7 +160,7 @@ func handleTaskResult(w io.Writer, r *runners.Result, expected string) TaskResul
 		printExtra = true
 
 	case r.Output == expected:
-		result.Status = Passed
+		result.Status = tasks.StatusPassed
 		result.Output = r.Output
 		result.Expected = expected
 
@@ -263,13 +168,13 @@ func handleTaskResult(w io.Writer, r *runners.Result, expected string) TaskResul
 		// followUpText = timeStyle.SetString(humanize.SIWithDigits(r.Duration, 1, "s"))
 		followUpText = timeStyle.SetString(fmt.Sprintf("%.2f ms", r.Duration*1000))
 
-		if taskType == TaskMain {
+		if taskType == tasks.Solve {
 			extra = extraStyle.Foreground(lipgloss.Color("7")).SetString("⤷ " + r.Output)
 			printExtra = true
 		}
 
 	case r.Output != expected:
-		result.Status = Failed
+		result.Status = tasks.StatusFailed
 		result.Output = fmt.Sprintf("⤷ got %q, but expected %q", r.Output, expected)
 
 		output = statusStyle.Foreground(bad).SetString("FAIL")
@@ -279,14 +184,14 @@ func handleTaskResult(w io.Writer, r *runners.Result, expected string) TaskResul
 		printExtra = true
 
 	default:
-		result.Status = Invalid
+		result.Status = tasks.StatusInvalid
 		result.Output = r.Output
 		result.Expected = expected
 	}
 
 	slog.Debug("handling result", slog.Group("result", "id", r.TaskID, "ok", r.Ok, "output", r.Output))
 
-	if taskType != TaskBenchmark {
+	if taskType != tasks.Benchmark {
 		fmt.Fprintln(w, name, output, followUpText)
 
 		// show extra info

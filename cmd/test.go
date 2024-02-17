@@ -9,12 +9,13 @@ import (
 
 	"github.com/asphaltbuffet/elf/pkg/advent"
 	"github.com/asphaltbuffet/elf/pkg/krampus"
+	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
 var testCmd *cobra.Command
 
 type ChallengeTester interface {
-	Test() ([]advent.TaskResult, error)
+	Test() ([]tasks.Result, error)
 	String() string
 }
 

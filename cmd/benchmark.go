@@ -10,6 +10,7 @@ import (
 
 	"github.com/asphaltbuffet/elf/pkg/advent"
 	"github.com/asphaltbuffet/elf/pkg/krampus"
+	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
 var (
@@ -39,7 +40,7 @@ func GetBenchmarkCmd() *cobra.Command {
 }
 
 type Benchmarker interface {
-	Benchmark(afero.Fs, int) ([]advent.TaskResult, error)
+	Benchmark(afero.Fs, int) ([]tasks.Result, error)
 	String() string
 }
 

@@ -8,9 +8,10 @@ import (
 	"github.com/lmittmann/tint"
 
 	"github.com/asphaltbuffet/elf/pkg/runners"
+	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
-func (e *Exercise) Test() ([]TaskResult, error) {
+func (e *Exercise) Test() ([]tasks.Result, error) {
 	if e == nil || *e == (Exercise{}) {
 		return nil, fmt.Errorf("exercise is nil")
 	}
@@ -65,15 +66,15 @@ type testTask struct {
 	expected string
 }
 
-func runTests(runner runners.Runner, data *Data) ([]TaskResult, error) {
-	var tasks []testTask
+func runTests(runner runners.Runner, data *Data) ([]tasks.Result, error) {
+	var testTasks []testTask
 
-	tasks = append(tasks, makeTestTasks(runners.PartOne, data.TestCases.One)...)
-	tasks = append(tasks, makeTestTasks(runners.PartTwo, data.TestCases.Two)...)
+	testTasks = append(testTasks, makeTestTasks(runners.PartOne, data.TestCases.One)...)
+	testTasks = append(testTasks, makeTestTasks(runners.PartTwo, data.TestCases.Two)...)
 
-	results := make([]TaskResult, 0, len(tasks))
+	results := make([]tasks.Result, 0, len(testTasks))
 
-	for _, t := range tasks {
+	for _, t := range testTasks {
 		result, err := runner.Run(t.task)
 		if err != nil {
 			slog.Error("running test task",
@@ -90,12 +91,12 @@ func runTests(runner runners.Runner, data *Data) ([]TaskResult, error) {
 }
 
 func makeTestTasks(p runners.Part, tests []*Test) []testTask {
-	var tasks []testTask
+	var testTasks []testTask
 
 	for i, t := range tests {
-		tasks = append(tasks, testTask{
+		testTasks = append(testTasks, testTask{
 			task: &runners.Task{
-				TaskID:    makeTestID(p, i),
+				TaskID:    tasks.MakeTaskID(tasks.Test, p, i),
 				Part:      p,
 				Input:     t.Input,
 				OutputDir: "",
@@ -104,5 +105,5 @@ func makeTestTasks(p runners.Part, tests []*Test) []testTask {
 		})
 	}
 
-	return tasks
+	return testTasks
 }

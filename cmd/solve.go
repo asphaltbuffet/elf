@@ -8,6 +8,7 @@ import (
 
 	"github.com/asphaltbuffet/elf/pkg/advent"
 	"github.com/asphaltbuffet/elf/pkg/krampus"
+	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
 var (
@@ -40,7 +41,7 @@ func GetSolveCmd() *cobra.Command {
 }
 
 type Challenge interface {
-	Solve(bool) ([]advent.TaskResult, error)
+	Solve(bool) ([]tasks.Result, error)
 	String() string
 }
 
