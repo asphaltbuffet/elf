@@ -30,13 +30,19 @@ type Config struct {
 func NewConfig(options ...func(*Config)) (Config, error) {
 	cfg := Config{
 		viper: viper.New(),
-		fs:    afero.NewMemMapFs(),
 	}
 
 	for _, option := range options {
 		option(&cfg)
 	}
 
+	// set up fs
+	if cfg.fs == nil {
+		cfg.fs = afero.NewOsFs()
+	}
+	cfg.viper.SetFs(cfg.fs)
+
+	// set up logger
 	w := os.Stderr
 	cfg.logger = slog.New(
 		tint.NewHandler(w, &tint.Options{
@@ -46,14 +52,17 @@ func NewConfig(options ...func(*Config)) (Config, error) {
 	)
 	slog.SetDefault(cfg.logger)
 
+	// set up viper
+	cfg.setViperConfigFile()
+
 	cfg.viper.SetEnvPrefix(ElfEnvPrefix)
 
 	_ = cfg.viper.BindEnv(string(AdventTokenKey), "ELF_ADVENT_TOKEN")
 	cfg.viper.SetDefault(string(AdventTokenKey), "default-placeholder")
 
 	cfg.viper.SetDefault(string(AdventUserKey), "")
-	cfg.viper.SetDefault(string(AdventDirKey), "exercises")
 	cfg.viper.SetDefault(string(EulerDirKey), "problems")
+	cfg.viper.SetDefault(string(AdventDirKey), "exercises")
 
 	_ = cfg.viper.BindEnv(string(LanguageKey), "ELF_LANGUAGE")
 	cfg.viper.SetDefault(string(LanguageKey), "go")
@@ -63,7 +72,7 @@ func NewConfig(options ...func(*Config)) (Config, error) {
 		slog.Error("get default user config dir", "error", tint.Err(err))
 		return Config{}, err
 	}
-	cfg.viper.SetDefault(string(ConfigDirKey), configDir)
+	cfg.viper.SetDefault(string(ConfigDirKey), filepath.Join(configDir, "elf"))
 
 	cacheDir, err := os.UserCacheDir()
 	if err != nil {
@@ -71,25 +80,26 @@ func NewConfig(options ...func(*Config)) (Config, error) {
 		return Config{}, err
 	}
 
-	cfg.viper.SetDefault(string(CacheDirKey), cacheDir)
+	cfg.viper.SetDefault(string(CacheDirKey), filepath.Join(cacheDir, "elf"))
+
+	// set config sources
+	cfg.viper.AddConfigPath(".")
 
 	userCfg, err := os.UserConfigDir()
 	if err == nil {
-		cfg.viper.AddConfigPath(userCfg)
+		cfg.viper.AddConfigPath(filepath.Join(userCfg, "elf"))
 	}
-
-	cfg.viper.AddConfigPath(".")
-	cfg.viper.AddConfigPath("$HOME/.config/elf")
 
 	err = cfg.viper.ReadInConfig()
 	if err != nil {
 		if !errors.As(err, &viper.ConfigFileNotFoundError{}) {
 			// only return error if it's not a missing config file
-			slog.Error("failed to read config file", "error", err, "config", cfg.viper.ConfigFileUsed())
+			slog.Error("failed to read config file", "error", err, "config", cfg.cfgFile)
 			return Config{}, err
 		}
 
-		slog.Warn("no config file found")
+		slog.Warn("no config file found", slog.String("file", cfg.cfgFile), tint.Err(err))
+		// return cfg, err
 	} else {
 		slog.Debug("starting with config file", "config", cfg.viper.ConfigFileUsed())
 	}
@@ -99,10 +109,6 @@ func NewConfig(options ...func(*Config)) (Config, error) {
 
 func WithFile(f string) func(*Config) {
 	return func(c *Config) {
-		if c.viper == nil {
-			c.viper = viper.New() // or maybe we should panic?
-		}
-
 		file := filepath.Base(f)
 		ext := filepath.Ext(f)
 
@@ -136,8 +142,21 @@ func WithFile(f string) func(*Config) {
 			c.cfgFile = DefaultConfigFileBase + "." + DefaultConfigExt
 			c.cfgFileType = DefaultConfigExt
 		}
+	}
+}
 
-		c.viper.SetConfigName(c.cfgFile)
+func (c *Config) setViperConfigFile() {
+	if c.viper == nil {
+		panic("viper not initialized")
+	}
+
+	if c.cfgFile == "" {
+		c.cfgFile = DefaultConfigFileBase + "." + DefaultConfigExt
+	}
+
+	c.viper.SetConfigName(c.cfgFile)
+
+	if c.cfgFileType != "" {
 		c.viper.SetConfigType(c.cfgFileType)
 	}
 }
