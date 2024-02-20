@@ -33,14 +33,14 @@ func New(config krampus.ExerciseConfiguration, options ...func(*Exercise)) (*Exe
 		option(e)
 	}
 
-	fs := config.GetFs()
+	e.appFs = config.GetFs()
 
 	switch {
 	case e.Language == "":
 		return nil, ErrEmptyLanguage
 
 	case e.Path != "":
-		if err := e.loadInfo(fs); err != nil {
+		if err := e.loadInfo(e.appFs); err != nil {
 			return nil, err
 		}
 

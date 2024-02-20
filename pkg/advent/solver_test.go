@@ -1,10 +1,12 @@
 package advent
 
 import (
-	"bytes"
 	"fmt"
+	"io"
+	"log/slog"
 	"testing"
 
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -35,6 +37,7 @@ func Test_runMainTasks(t *testing.T) {
 		Output:   "fakey fake",
 		Duration: 0.666,
 	}, fmt.Errorf("FAKE ERROR")).Once()
+
 	_, err = runMainTasks(mockRunner, &Data{InputData: "FAKE INPUT"})
 
 	require.Error(t, err)
@@ -94,10 +97,121 @@ func Test_handleMainResult(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			w := &bytes.Buffer{}
-			got := handleTaskResult(w, tt.args.r, "good output")
+			got := handleTaskResult(io.Discard, tt.args.r, "good output")
 
 			assert.Equal(t, tt.want, got)
 		})
 	}
+}
+
+func TestExercise_SolveMissingInput(t *testing.T) {
+	base := afero.NewBasePathFs(afero.NewOsFs(), "testdata")
+	roBase = afero.NewReadOnlyFs(base)
+
+	testFs = afero.NewCopyOnWriteFs(roBase, afero.NewMemMapFs())
+
+	e := &Exercise{
+		ID:       "1111-22",
+		Title:    "Fake Title",
+		Language: "fakeLang",
+		Year:     1111,
+		Day:      22,
+		Data: &Data{
+			InputData:     "",
+			InputFileName: "missingInput.txt",
+			TestCases:     TestCase{},
+			Answers:       Answer{},
+		},
+		Path:   "",
+		runner: nil,
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		appFs:  testFs,
+	}
+
+	// execute the function under test
+	_, err := e.Solve(false)
+
+	require.Error(t, err)
+}
+
+func TestExercise_SolveRunnerStartError(t *testing.T) {
+	base := afero.NewBasePathFs(afero.NewOsFs(), "testdata")
+	roBase = afero.NewReadOnlyFs(base)
+
+	testFs = afero.NewCopyOnWriteFs(roBase, afero.NewMemMapFs())
+	f, err := testFs.Create("input.fake")
+	require.NoError(t, err)
+	_, err = f.WriteString("fake input data")
+	require.NoError(t, err)
+	f.Close()
+
+	// set up mock runner
+	mockRunner := mocks.NewMockRunner(t)
+	mockRunner.EXPECT().Start().Return(fmt.Errorf("FAKE ERROR")).Once()
+
+	e := &Exercise{
+		ID:       "1111-22",
+		Title:    "Fake Title",
+		Language: "fakeLang",
+		Year:     1111,
+		Day:      22,
+		Data: &Data{
+			InputData:     "",
+			InputFileName: "input.fake",
+			TestCases:     TestCase{},
+			Answers:       Answer{},
+		},
+		Path:   "",
+		runner: mockRunner,
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		appFs:  testFs,
+	}
+
+	// execute the function under test
+	_, err = e.Solve(false)
+
+	require.Error(t, err)
+}
+
+func TestExercise_SolveRunnerRunError(t *testing.T) {
+	base := afero.NewBasePathFs(afero.NewOsFs(), "testdata")
+	roBase = afero.NewReadOnlyFs(base)
+
+	testFs = afero.NewCopyOnWriteFs(roBase, afero.NewMemMapFs())
+	f, err := testFs.Create("input.fake")
+	require.NoError(t, err)
+	_, err = f.WriteString("fake input data")
+	require.NoError(t, err)
+	f.Close()
+
+	// set up mock runner
+	mockRunner := mocks.NewMockRunner(t)
+	mockRunner.EXPECT().Start().Return(nil).Once()
+	mockRunner.EXPECT().Run(mock.Anything).Return(nil, fmt.Errorf("FAKE ERROR"))
+	mockRunner.EXPECT().String().Return("fakeRunner")
+	mockRunner.EXPECT().Stop().Return(nil).Once()
+	mockRunner.EXPECT().Cleanup().Return(nil).Once()
+
+	e := &Exercise{
+		ID:       "1111-22",
+		Title:    "Fake Title",
+		Language: "fakeLang",
+		Year:     1111,
+		Day:      22,
+		Data: &Data{
+			InputData:     "",
+			InputFileName: "input.fake",
+			TestCases:     TestCase{},
+			Answers:       Answer{},
+		},
+		Path:   "",
+		runner: mockRunner,
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		appFs:  testFs,
+	}
+
+	// execute the function under test
+	_, err = e.Solve(true)
+
+	require.Error(t, err)
 }

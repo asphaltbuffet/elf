@@ -9,28 +9,29 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/lmittmann/tint"
+	"github.com/spf13/afero"
 
 	"github.com/asphaltbuffet/elf/pkg/runners"
 	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
 func (e *Exercise) Solve(skipTests bool) ([]tasks.Result, error) {
-	solverLog := slog.With(slog.String("exercise", e.Title))
-	solverLog.Debug("solving", slog.String("language", e.Language))
+	logger := e.logger.With(slog.String("exercise", e.Title))
+	logger.Debug("solving", slog.String("language", e.Language))
 
 	results := []tasks.Result{}
 
 	inputFile := filepath.Join(e.Path, e.Data.InputFileName)
-	input, err := os.ReadFile(inputFile)
+	input, err := afero.ReadFile(e.appFs, inputFile)
 	if err != nil {
-		solverLog.Error("reading input file", slog.String("path", inputFile), tint.Err(err))
+		logger.Error("reading input file", slog.String("path", inputFile), tint.Err(err))
 		return nil, err
 	}
 
 	e.Data.InputData = string(input)
 
 	if err = e.runner.Start(); err != nil {
-		solverLog.Error("starting runner", tint.Err(err))
+		logger.Error("starting runner", tint.Err(err))
 		return nil, err
 	}
 
@@ -48,7 +49,7 @@ func (e *Exercise) Solve(skipTests bool) ([]tasks.Result, error) {
 
 		tr, err = runTests(e.runner, e.Data)
 		if err != nil {
-			solverLog.Error("running tests", tint.Err(err))
+			logger.Error("running tests", tint.Err(err))
 			return nil, err
 		}
 
@@ -59,7 +60,7 @@ func (e *Exercise) Solve(skipTests bool) ([]tasks.Result, error) {
 
 	mainResults, err := runMainTasks(e.runner, e.Data)
 	if err != nil {
-		solverLog.Error("running main tasks", tint.Err(err))
+		logger.Error("running main tasks", tint.Err(err))
 		return nil, err
 	}
 
