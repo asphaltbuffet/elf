@@ -46,6 +46,11 @@ func Test_MakeTaskID(t *testing.T) {
 			args: args{tasks.Visualize, runners.PartOne, []int{25}},
 			want: "visualize.1.25",
 		},
+		{
+			name: "Benchmark with subpart",
+			args: args{tasks.Benchmark, runners.PartOne, []int{-1}},
+			want: "benchmark.1.-1",
+		},
 	}
 
 	for _, tt := range tests {
@@ -84,10 +89,6 @@ func Test_MakeTaskID_WithPanic(t *testing.T) {
 			args: args{tasks.Test, runners.PartOne, []int{1, 2, 3}},
 		},
 		{
-			name: "Benchmark with subpart",
-			args: args{tasks.Benchmark, runners.PartOne, []int{-1}},
-		},
-		{
 			name: "invalid task type",
 			args: args{42, runners.PartOne, []int{-1}},
 		},
@@ -118,12 +119,12 @@ func Test_ParseTaskID(t *testing.T) {
 		args  args
 		wants wants
 	}{
-		{"valid long", args{id: "test.1.2"}, wants{tasks.Test, runners.PartOne, 2}},
-		{"invalid long", args{id: "benchmark.1.2"}, wants{tasks.Invalid, 0, 0}},
-		{"valid short", args{id: "solve.2"}, wants{tasks.Solve, runners.PartTwo, 0}},
+		{"valid test", args{id: "test.1.2"}, wants{tasks.Test, runners.PartOne, 2}},
+		{"valid benchmark", args{id: "benchmark.1.2"}, wants{tasks.Benchmark, 1, 2}},
+		{"valid test", args{id: "solve.2"}, wants{tasks.Solve, runners.PartTwo, 0}},
 		{"invalid short", args{id: "visualize.2"}, wants{tasks.Invalid, 0, 0}},
 		{"invalid type", args{id: "fake.2.1"}, wants{tasks.Invalid, 0, 0}},
-		{"invalid format", args{id: "test"}, wants{tasks.Invalid, 0, 0}},
+		{"no parts", args{id: "test"}, wants{tasks.Invalid, 0, 0}},
 	}
 
 	for _, tt := range tests {
