@@ -30,11 +30,10 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Autogenerate files
-        run: task generate mock -f
+        run: task install-mockery install-stringer generate mock
 
       - name: Create output directory
         run: mkdir -p bin
-
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v3

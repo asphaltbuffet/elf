@@ -1,0 +1,37 @@
+{
+    "type": "advent",
+    "id": "2017-01",
+    "title": "Fake Full Day",
+    "year": 2017,
+    "day": 1,
+    "url": "https://fake.fk/2017/day/1",
+    "data": {
+        "inputFile": "input.txt",
+        "testCases": {
+            "one": [
+                {
+                    "input": "FaKe",
+                    "expected": "fake"
+                },
+                {
+                    "input": "",
+                    "expected": ""
+                }
+            ],
+            "two": [
+                {
+                    "input": "fAkE",
+                    "expected": "FAKE"
+                },
+                {
+                    "input": "fAkE",
+                    "expected": "this fails"
+                },
+                {
+                    "input": "die",
+                    "expected": "DIE"
+                }
+            ]
+        }
+    }
+}

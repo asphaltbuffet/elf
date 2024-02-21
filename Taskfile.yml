@@ -18,10 +18,11 @@ tasks:
 
     ci:
         desc: ci build pipeline
-        deps: [generate, mock]
         cmds:
-            - task: mod-tidy
             - task: install
+            - task: generate
+            - task: mock
+            - task: mod-tidy
             - task: test
             - task: build
             - task: diff
@@ -54,32 +55,55 @@ tasks:
         desc: install tools
         cmds:
             - curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.55.2
-            - go install mvdan.cc/gofumpt@v0.4.0
-            - go install gotest.tools/gotestsum@latest
+            - task: install-gofumpt
+            - task: install-stringer
+            - task: install-mockery
+            - task: install-gotestsum
+            - task: install-goreleaser
+
+    install-goreleaser:
+        internal: true
+        cmds:
             - go install github.com/goreleaser/goreleaser@latest
+        status:
+            - if ! command -v goreleaser &> /dev/null; then exit 1; fi
+
+    install-gotestsum:
+        internal: true
+        cmds:
+            - go install gotest.tools/gotestsum@latest
+        status:
+            - if ! command -v gotestsum &> /dev/null; then exit 1; fi
+
+    install-gofumpt:
+        internal: true
+        cmds:
+            - go install mvdan.cc/gofumpt@v0.4.0
+        status:
+            - if ! command -v gofumpt &> /dev/null; then exit 1; fi
 
     generate:
         desc: generate artifacts
-        deps: [install-stringer]
         aliases: [gen]
         cmds:
             - go generate ./...
+        preconditions:
+            - if ! command -v stringer &> /dev/null; then exit 1; fi
 
     install-stringer:
-        internal: true
         cmds:
             - go install golang.org/x/tools/cmd/stringer@latest
         status:
-            - if ! command -v mockery &> /dev/null; then exit 1; fi
+            - if ! command -v stringer &> /dev/null; then exit 1; fi
 
     mock:
         desc: generate mocks
-        deps: [install-mockery]
         cmds:
             - mockery --log-level=warn
+        preconditions:
+          - if ! command -v mockery &> /dev/null; then exit 1; fi
 
     install-mockery:
-        internal: true
         cmds:
             - go install github.com/vektra/mockery/v2@v2.40.1
         status:
@@ -92,14 +116,16 @@ tasks:
 
     snapshot:
         desc: goreleaser build snapshot
-        deps: [install, mod-tidy, generate]
+        deps: [mod-tidy]
         aliases: [ss]
         cmds:
+            - task: install
+            - task: generate
             - goreleaser build --clean --single-target --snapshot
 
     lint:
         desc: golangci-lint
-        deps: [mod-tidy, generate, mock]
+        deps: [generate, mock]
         cmds:
             - cmd: mkdir -p bin
               silent: true
@@ -111,7 +137,7 @@ tasks:
 
     test:
         desc: go test
-        deps: [generate, install, mock]
+        deps: [generate, mock]
         cmds:
             - cmd: mkdir -p bin
               silent: true

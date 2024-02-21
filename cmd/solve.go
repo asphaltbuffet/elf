@@ -1,17 +1,14 @@
 package cmd
 
 import (
-	"encoding/json"
-	"fmt"
 	"log/slog"
-	"os"
-	"path"
 	"path/filepath"
 
-	"github.com/lmittmann/tint"
 	"github.com/spf13/cobra"
 
 	"github.com/asphaltbuffet/elf/pkg/advent"
+	"github.com/asphaltbuffet/elf/pkg/krampus"
+	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
 var (
@@ -20,17 +17,18 @@ var (
 	noTest   bool
 )
 
-const exampleText = `  elf solve --lang=go --no-test
+const exampleText = `
+  elf solve --lang=go --no-test
   elf solve --lang=py
   elf solve # using default language from config`
 
 func GetSolveCmd() *cobra.Command {
 	if solveCmd == nil {
 		solveCmd = &cobra.Command{
-			Use:     "solve <id> [--lang=<language>] [--no-test]",
+			Use:     "solve [--lang=<language>] [--no-test] path/to/exercise",
 			Aliases: []string{"s"},
 			Example: exampleText,
-			Args:    cobra.NoArgs,
+			Args:    cobra.ExactArgs(1),
 			Short:   "solve a challenge",
 			RunE:    runSolveCmd,
 		}
@@ -39,78 +37,49 @@ func GetSolveCmd() *cobra.Command {
 		solveCmd.Flags().StringVarP(&language, "lang", "l", "", "solution language")
 	}
 
+	solveCmd.Flags().StringP("config-file", "c", "", "configuration file")
+
 	return solveCmd
 }
 
 type Challenge interface {
-	Solve(bool) ([]advent.TaskResult, error)
+	Solve(bool) ([]tasks.Result, error)
 	String() string
 }
 
-type Info struct {
-	ChallengeType string `json:"type"`
-}
-
-func runSolveCmd(cmd *cobra.Command, _ []string) error {
+func runSolveCmd(cmd *cobra.Command, args []string) error {
 	var (
 		ch  Challenge
 		err error
 	)
 
-	dir, err := os.Getwd()
+	cf, _ := cmd.Flags().GetString("config-file")
+
+	cfg, err := krampus.NewConfig(krampus.WithFile(cf))
 	if err != nil {
-		slog.Error("getting current directory", tint.Err(err))
 		return err
 	}
 
-	info, err := ReadInfo(dir)
+	dir, err := filepath.Abs(args[0])
 	if err != nil {
-		slog.Error("getting exercise info", tint.Err(err))
 		return err
 	}
-
-	slog.Debug("solving exercise", slog.Group("exercise", "dir", dir, "language", language, "type", info.ChallengeType))
 
 	if language == "" {
-		language = cfg.GetString("language")
+		language = cfg.GetLanguage()
 	}
 
-	ch, err = advent.New(advent.WithLanguage(language), advent.WithDir(dir))
+	cfg.GetLogger().Debug("solving exercise", slog.Group("exercise", "dir", dir, "language", language))
+
+	ch, err = advent.New(&cfg, advent.WithLanguage(language), advent.WithDir(dir))
 	if err != nil {
-		slog.Error("creating exercise", tint.Err(err))
 		return err
 	}
 
-	results, solveErr := ch.Solve(noTest)
+	_, solveErr := ch.Solve(noTest)
 	if solveErr != nil {
-		slog.Error("solving exercise", tint.Err(solveErr))
 		cmd.PrintErrln("Failed to solve: ", solveErr)
 	}
 
-	for _, result := range results {
-		r := result
-		fmt.Printf("%+v\n", r)
-	}
-
 	return nil
-}
-
-func ReadInfo(dir string) (*Info, error) {
-	fn := filepath.Join(dir, "info.json")
-
-	data, err := os.ReadFile(path.Clean(fn))
-	if err != nil {
-		slog.Debug("failed to read info", tint.Err(err))
-		return nil, fmt.Errorf("read info file %q: %w", fn, err)
-	}
-
-	d := &Info{}
-
-	err = json.Unmarshal(data, d)
-	if err != nil {
-		slog.Debug("failed to unmarshall info", tint.Err(err))
-		return nil, fmt.Errorf("unmarshal info file %s: %w", fn, err)
-	}
-
-	return d, nil
 }

@@ -8,20 +8,24 @@ import (
 	"github.com/lmittmann/tint"
 
 	"github.com/asphaltbuffet/elf/pkg/runners"
+	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
-func (e *Exercise) Test() error {
+func (e *Exercise) Test() ([]tasks.Result, error) {
 	if e == nil || *e == (Exercise{}) {
-		slog.Error("exercise is nil")
-		return fmt.Errorf("exercise is nil")
+		return nil, fmt.Errorf("exercise is nil")
 	}
 
 	testerLog := slog.With(slog.String("fn", "Test"), slog.String("exercise", e.Title))
-	testerLog.Debug("solving", slog.String("language", e.Language))
+	testerLog.Debug("testing", slog.String("language", e.Language))
 
 	if err := e.runner.Start(); err != nil {
-		testerLog.Error("starting runner", slog.String("path", e.Data.InputFile), tint.Err(err))
-		return err
+		testerLog.Error("starting runner",
+			slog.String("path", e.Path),
+			slog.String("implementation", e.runner.String()),
+			tint.Err(err))
+
+		return nil, err
 	}
 
 	defer func() {
@@ -31,13 +35,14 @@ func (e *Exercise) Test() error {
 
 	fmt.Fprintln(os.Stdout, headerStyle(fmt.Sprintf("ADVENT OF CODE %d\nDay %d: %s", e.Year, e.Day, e.Title)))
 
-	_, err := runTests(e.runner, e.Data)
+	results, err := runTests(e.runner, e.Data)
 	if err != nil {
 		testerLog.Error("running tests", tint.Err(err))
-		return err
+
+		return nil, err
 	}
 
-	return nil
+	return results, nil
 }
 
 func makeTestID(part runners.Part, n int) string {
@@ -61,15 +66,15 @@ type testTask struct {
 	expected string
 }
 
-func runTests(runner runners.Runner, data *Data) ([]TaskResult, error) {
-	var tasks []testTask
+func runTests(runner runners.Runner, data *Data) ([]tasks.Result, error) {
+	var testTasks []testTask
 
-	tasks = append(tasks, makeTestTasks(runners.PartOne, data.TestCases.One)...)
-	tasks = append(tasks, makeTestTasks(runners.PartTwo, data.TestCases.Two)...)
+	testTasks = append(testTasks, makeTestTasks(runners.PartOne, data.TestCases.One)...)
+	testTasks = append(testTasks, makeTestTasks(runners.PartTwo, data.TestCases.Two)...)
 
-	results := make([]TaskResult, 0, len(tasks))
+	results := make([]tasks.Result, 0, len(testTasks))
 
-	for _, t := range tasks {
+	for _, t := range testTasks {
 		result, err := runner.Run(t.task)
 		if err != nil {
 			slog.Error("running test task",
@@ -86,12 +91,12 @@ func runTests(runner runners.Runner, data *Data) ([]TaskResult, error) {
 }
 
 func makeTestTasks(p runners.Part, tests []*Test) []testTask {
-	var tasks []testTask
+	var testTasks []testTask
 
 	for i, t := range tests {
-		tasks = append(tasks, testTask{
+		testTasks = append(testTasks, testTask{
 			task: &runners.Task{
-				TaskID:    makeTestID(p, i),
+				TaskID:    tasks.MakeTaskID(tasks.Test, p, i),
 				Part:      p,
 				Input:     t.Input,
 				OutputDir: "",
@@ -100,5 +105,5 @@ func makeTestTasks(p runners.Part, tests []*Test) []testTask {
 		})
 	}
 
-	return tasks
+	return testTasks
 }

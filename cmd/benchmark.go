@@ -2,12 +2,15 @@ package cmd
 
 import (
 	"log/slog"
-	"os"
+	"path/filepath"
 
 	"github.com/lmittmann/tint"
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
 	"github.com/asphaltbuffet/elf/pkg/advent"
+	"github.com/asphaltbuffet/elf/pkg/krampus"
+	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
 var (
@@ -15,37 +18,47 @@ var (
 	iterations   int
 )
 
-const benchmarkExample = `elf benchmark`
+const benchmarkExample = `
+elf benchmark --num=5 /path/to/exercise
+elf benchmark /path/to/exercise`
 
 func GetBenchmarkCmd() *cobra.Command {
 	if benchmarkCmd == nil {
 		benchmarkCmd = &cobra.Command{
-			Use:     "benchmark (-n <iterations>)",
+			Use:     "benchmark [path/to/exercise]",
 			Aliases: []string{"bench", "b"},
 			Example: benchmarkExample,
-			Args:    cobra.NoArgs,
+			Args:    cobra.ExactArgs(1),
 			Short:   "benchmark all implementations for the challenge",
 			RunE:    runBenchmarkCmd,
 		}
 
-		benchmarkCmd.Flags().IntVarP(&iterations, "num", "n", 3, "number of iterations")
+		benchmarkCmd.Flags().IntVarP(&iterations, "num", "n", 10, "number of iterations")
+		benchmarkCmd.Flags().StringP("config-file", "c", "", "configuration file")
 	}
 
 	return benchmarkCmd
 }
 
 type Benchmarker interface {
-	Benchmark(int) ([]advent.TaskResult, error)
+	Benchmark(afero.Fs, int) ([]tasks.Result, error)
 	String() string
 }
 
-func runBenchmarkCmd(cmd *cobra.Command, _ []string) error {
+func runBenchmarkCmd(cmd *cobra.Command, args []string) error {
 	var (
 		ex  Benchmarker
 		err error
 	)
 
-	dir, err := os.Getwd()
+	cf, _ := cmd.Flags().GetString("config-file")
+
+	cfg, err := krampus.NewConfig(krampus.WithFile(cf))
+	if err != nil {
+		return err
+	}
+
+	dir, err := filepath.Abs(args[0])
 	if err != nil {
 		slog.Error("getting current directory", tint.Err(err))
 		return err
@@ -53,22 +66,17 @@ func runBenchmarkCmd(cmd *cobra.Command, _ []string) error {
 
 	slog.Debug("benchmarking exercise", slog.Group("exercise", "dir", dir))
 
-	ex, err = advent.New(advent.WithDir(dir), advent.WithLanguage("go")) // TODO: make language configurable
+	ex, err = advent.NewBenchmarker(&cfg, advent.WithExerciseDir(dir))
 	if err != nil {
 		slog.Error("creating exercise", tint.Err(err))
 		return err
 	}
 
-	_, err = ex.Benchmark(iterations)
+	_, err = ex.Benchmark(cfg.GetFs(), iterations)
 	if err != nil {
 		slog.Error("solving exercise", tint.Err(err))
 		cmd.PrintErrln("Failed to solve: ", err)
 	}
-
-	// for _, result := range results {
-	// 	r := result
-	// 	cmd.Printf("%+v\n", r)
-	// }
 
 	return nil
 }

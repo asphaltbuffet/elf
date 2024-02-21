@@ -4,33 +4,43 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"os"
 	"path"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/lmittmann/tint"
+	"github.com/spf13/afero"
 
+	"github.com/asphaltbuffet/elf/pkg/krampus"
 	"github.com/asphaltbuffet/elf/pkg/runners"
-	"github.com/asphaltbuffet/elf/pkg/utilities"
 )
 
-var exerciseBaseDir = "exercises"
+var (
+	ErrEmptyLanguage     = fmt.Errorf("no language specified")
+	ErrNotFound          = afero.ErrFileNotFound
+	ErrNotImplemented    = fmt.Errorf("not implemented")
+	ErrNoRunner          = fmt.Errorf("no runner available")
+	ErrInvalidData       = fmt.Errorf("invalid data")
+	ErrNoImplementations = fmt.Errorf("no implementations found")
+)
 
-func New(options ...func(*Exercise)) (*Exercise, error) {
-	e := &Exercise{}
+func New(config krampus.ExerciseConfiguration, options ...func(*Exercise)) (*Exercise, error) {
+	e := &Exercise{
+		logger: config.GetLogger().With(slog.String("fn", "exercise")),
+	}
 
 	for _, option := range options {
 		option(e)
 	}
 
+	e.appFs = config.GetFs()
+
 	switch {
 	case e.Language == "":
-		return nil, fmt.Errorf("no language specified")
+		return nil, ErrEmptyLanguage
 
 	case e.Path != "":
-		if err := e.loadInfo(); err != nil {
+		if err := e.loadInfo(e.appFs); err != nil {
 			return nil, err
 		}
 
@@ -40,9 +50,7 @@ func New(options ...func(*Exercise)) (*Exercise, error) {
 		}
 
 	default:
-		err := fmt.Errorf("no exercise path or URL specified")
-		slog.Error("instantiating exercise", tint.Err(err), slog.Any("options", options))
-		return nil, err
+		return nil, fmt.Errorf("instantiate exercise: %w", ErrNotFound)
 	}
 
 	return e, nil
@@ -66,16 +74,16 @@ func WithLanguage(lang string) func(*Exercise) {
 	}
 }
 
-func (e *Exercise) loadInfo() error {
+func (e *Exercise) loadInfo(fs afero.Fs) error {
 	slog.Debug("populating exercise from info file", "path", e.Path)
 
 	// populate exercise info from info.json
 	fn := filepath.Join(e.Path, "info.json")
 
-	data, err := os.ReadFile(path.Clean(fn))
+	data, err := afero.ReadFile(fs, path.Clean(fn))
 	if err != nil {
 		slog.Error("reading info file", tint.Err(err), slog.String("path", fn))
-		return fmt.Errorf("read info file %q: %w", fn, err)
+		return err
 	}
 
 	err = json.Unmarshal(data, e)
@@ -86,13 +94,13 @@ func (e *Exercise) loadInfo() error {
 
 	if e.Day == 0 || e.Year == 0 || e.Title == "" || e.URL == "" {
 		slog.Error("incomplete info data", slog.Any("data", e.LogValue()))
-		return fmt.Errorf("loading data: %s", fn)
+		return fmt.Errorf("%s: %w", fn, ErrInvalidData)
 	}
 
-	// instatiate runner for language
+	// instantiate runner for language
 	rc, ok := runners.Available[e.Language]
 	if !ok {
-		return fmt.Errorf("no runner available for language %q", e.Language)
+		return fmt.Errorf("%s: %w", e.Language, ErrNoRunner)
 	}
 
 	e.runner = rc(e.Path)
@@ -101,7 +109,7 @@ func (e *Exercise) loadInfo() error {
 }
 
 func (e *Exercise) loadFromURL() error {
-	return fmt.Errorf("not implemented")
+	return ErrNotImplemented
 }
 
 // Dir returns the path to the exercise directory.
@@ -121,15 +129,11 @@ func makeExerciseID(year, day int) string {
 	return fmt.Sprintf("%d-%02d", year, day)
 }
 
-func makeExercisePath(year, day int, title string) string {
-	return filepath.Join(exerciseBaseDir, strconv.Itoa(year), fmt.Sprintf("%02d-%s", day, utilities.ToCamel(title)))
-}
-
 // GetImplementations returns a list of available implementations for the exercise.
-func (e *Exercise) GetImplementations() ([]string, error) {
-	dirEntries, err := os.ReadDir(e.Path)
+func (e *Exercise) GetImplementations(fs afero.Fs) ([]string, error) {
+	dirEntries, err := afero.ReadDir(fs, e.Path)
 	if err != nil {
-		return nil, fmt.Errorf("checking %s: %w", e.Path, err)
+		return nil, err
 	}
 
 	impls := []string{}
@@ -144,6 +148,10 @@ func (e *Exercise) GetImplementations() ([]string, error) {
 		if _, ok := runners.Available[name]; ok {
 			impls = append(impls, name)
 		}
+	}
+
+	if len(impls) == 0 {
+		return nil, fmt.Errorf("search %s: %w", e.Path, ErrNoImplementations)
 	}
 
 	return impls, nil

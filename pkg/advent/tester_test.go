@@ -8,8 +8,9 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	mocks "github.com/asphaltbuffet/elf/mocks/Runner"
+	mocks "github.com/asphaltbuffet/elf/mocks/runners"
 	"github.com/asphaltbuffet/elf/pkg/runners"
+	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
 func Test_makeTestID(t *testing.T) {
@@ -106,7 +107,7 @@ func Test_runTestTasks(t *testing.T) {
 	}, nil)
 
 	_, err := runTests(mockRunner, &Data{
-		Input: "FAKE INPUT",
+		InputData: "FAKE INPUT",
 		TestCases: TestCase{
 			One: []*Test{
 				{
@@ -134,7 +135,7 @@ func Test_handleTestResult(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want TaskResult
+		want tasks.Result
 	}{
 		{
 			name: "sucessful run",
@@ -146,12 +147,12 @@ func Test_handleTestResult(t *testing.T) {
 					Duration: 0.042,
 				},
 			},
-			want: TaskResult{
+			want: tasks.Result{
 				ID:       "test.1.1",
-				Type:     TaskTest,
+				Type:     tasks.Test,
 				Part:     1,
 				SubPart:  1,
-				Status:   Passed,
+				Status:   tasks.StatusPassed,
 				Output:   "good output",
 				Expected: "good output",
 				Duration: 0.042,
@@ -167,12 +168,12 @@ func Test_handleTestResult(t *testing.T) {
 					Duration: 0.042,
 				},
 			},
-			want: TaskResult{
+			want: tasks.Result{
 				ID:       "test.1.2",
-				Type:     TaskTest,
+				Type:     tasks.Test,
 				Part:     1,
 				SubPart:  2,
-				Status:   Error,
+				Status:   tasks.StatusError,
 				Output:   "⤷ saying:error text",
 				Expected: "",
 				Duration: 0.042,
