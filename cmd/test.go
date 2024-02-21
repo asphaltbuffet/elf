@@ -35,6 +35,7 @@ func GetTestCmd() *cobra.Command {
 		}
 
 		testCmd.Flags().StringVarP(&language, "lang", "l", "", "implementation language")
+		testCmd.Flags().StringP("config-file", "c", "", "configuration file")
 	}
 
 	return testCmd
@@ -46,7 +47,9 @@ func runTestCmd(cmd *cobra.Command, args []string) error {
 		err error
 	)
 
-	cfg, err := krampus.NewConfig()
+	cf, _ := cmd.Flags().GetString("config-file")
+
+	cfg, err := krampus.NewConfig(krampus.WithFile(cf))
 	if err != nil {
 		return err
 	}

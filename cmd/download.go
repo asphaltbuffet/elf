@@ -60,6 +60,8 @@ func GetDownloadCmd() *cobra.Command {
 		downloadCmd.Flags().BoolVarP(&dlInput, "input", "i", false, "create input file, if missing")
 		downloadCmd.Flags().BoolVarP(&forceInput, "force-input", "I", false, "download input file; overwrite existing")
 		downloadCmd.MarkFlagsMutuallyExclusive("input", "force-input")
+
+		downloadCmd.Flags().StringP("config-file", "c", "", "configuration file")
 	}
 
 	return downloadCmd
@@ -79,7 +81,9 @@ func runDownloadCmd(cmd *cobra.Command, args []string) error {
 	var err error
 	var chdl Downloader
 
-	cfg, err := krampus.NewConfig()
+	cf, _ := cmd.Flags().GetString("config-file")
+
+	cfg, err := krampus.NewConfig(krampus.WithFile(cf))
 	if err != nil {
 		return err
 	}

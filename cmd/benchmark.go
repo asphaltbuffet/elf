@@ -34,6 +34,7 @@ func GetBenchmarkCmd() *cobra.Command {
 		}
 
 		benchmarkCmd.Flags().IntVarP(&iterations, "num", "n", 10, "number of iterations")
+		benchmarkCmd.Flags().StringP("config-file", "c", "", "configuration file")
 	}
 
 	return benchmarkCmd
@@ -50,7 +51,9 @@ func runBenchmarkCmd(cmd *cobra.Command, args []string) error {
 		err error
 	)
 
-	cfg, err := krampus.NewConfig()
+	cf, _ := cmd.Flags().GetString("config-file")
+
+	cfg, err := krampus.NewConfig(krampus.WithFile(cf))
 	if err != nil {
 		return err
 	}

@@ -37,6 +37,8 @@ func GetSolveCmd() *cobra.Command {
 		solveCmd.Flags().StringVarP(&language, "lang", "l", "", "solution language")
 	}
 
+	solveCmd.Flags().StringP("config-file", "c", "", "configuration file")
+
 	return solveCmd
 }
 
@@ -51,7 +53,9 @@ func runSolveCmd(cmd *cobra.Command, args []string) error {
 		err error
 	)
 
-	cfg, err := krampus.NewConfig()
+	cf, _ := cmd.Flags().GetString("config-file")
+
+	cfg, err := krampus.NewConfig(krampus.WithFile(cf))
 	if err != nil {
 		return err
 	}
