@@ -254,7 +254,7 @@ func (d *Downloader) getExercisePath(year, day int) (string, bool) {
 func extractTitle(page []byte) (string, error) {
 	doc, _ := html.Parse(bytes.NewReader(page))
 
-	extract, err := H2(doc)
+	extract, err := getH2NodeFromHTML(doc)
 	if err != nil {
 		return "", fmt.Errorf("extracting title: %w", err)
 	}
