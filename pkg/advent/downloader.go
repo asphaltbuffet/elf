@@ -129,7 +129,7 @@ func (d *Downloader) Download() error {
 		return err
 	}
 
-	// update client with exercise-specific data
+	// update client with year and day
 	d.rClient.
 		SetHeader("User-Agent", "github.com/asphaltbuffet/elf").
 		SetPathParams(map[string]string{
@@ -168,6 +168,7 @@ func (d *Downloader) Path() string {
 
 func (d *Downloader) loadFromURL(year, day int) (*Exercise, error) {
 	logger := d.logger.With(slog.Int("year", year), slog.Int("day", day), slog.String("fn", "loadFromURL"))
+	logger.Debug("loading exercise")
 
 	var (
 		page  []byte
@@ -177,16 +178,14 @@ func (d *Downloader) loadFromURL(year, day int) (*Exercise, error) {
 
 	page, err = d.getPage(year, day)
 	if err != nil {
-		logger.Error("getting page data", tint.Err(err))
-
-		return nil, err
+		logger.Debug("getting page data", slog.String("url", d.url), tint.Err(err))
+		return nil, fmt.Errorf("get page data %d-%02d: %w", year, day, err)
 	}
 
 	title, err = extractTitle(page)
 	if err != nil {
-		slog.Error("extracting title from page data", tint.Err(err))
-
-		return nil, err
+		logger.Debug("extracting title", slog.Int("page-size", len(page)), tint.Err(err))
+		return nil, fmt.Errorf("extract %d-%02d title: %w", year, day, err)
 	}
 
 	d.exercise.ID = makeExerciseID(year, day)
@@ -207,9 +206,10 @@ func (d *Downloader) getExercisePath(year, day int) (string, bool) {
 
 	var exPath string
 	dayPrefix := fmt.Sprintf("%02d-", day)
+
 	logger.Debug("searching for exercise dir", slog.String("root", d.exerciseBaseDir), slog.String("prefix", dayPrefix))
 
-	err := afero.Walk(d.appFs, d.exerciseBaseDir, func(path string, info fs.FileInfo, err error) error {
+	_ = afero.Walk(d.appFs, d.exerciseBaseDir, func(path string, info fs.FileInfo, err error) error {
 		switch {
 		case err != nil:
 			return nil //nolint:nilerr // errors are used to abort walking
@@ -242,7 +242,10 @@ func (d *Downloader) getExercisePath(year, day int) (string, bool) {
 }
 
 func extractTitle(page []byte) (string, error) {
-	doc, _ := html.Parse(bytes.NewReader(page))
+	doc, err := html.Parse(bytes.NewReader(page))
+	if err != nil {
+		return "", err
+	}
 
 	extract, err := getH2NodeFromHTML(doc)
 	if err != nil {
@@ -276,22 +279,21 @@ func (d *Downloader) getPage(year, day int) ([]byte, error) {
 }
 
 func ParseURL(url string) (int, int, error) {
-	var y, d int
+	var year, day int
 
 	// regex here is validating year/day are integers, if this changes, add validation below
 	re := regexp.MustCompile(`^https?://(www\.)?adventofcode\.com/(?P<year>\d{4})/day/(?P<day>\d{1,2})`)
 
 	matches := findNamedMatches(re, url)
 	if len(matches) != 2 { //nolint:gomnd // we expect 2 matches
-		slog.Debug("parsing URL", slog.String("url", url), slog.Any("found", matches))
 		return 0, 0, fmt.Errorf("parse %s: %w", url, ErrInvalidURL)
 	}
 
 	// ignore errors; we already validated type via regex
-	y, _ = strconv.Atoi(matches["year"])
-	d, _ = strconv.Atoi(matches["day"])
+	year, _ = strconv.Atoi(matches["year"])
+	day, _ = strconv.Atoi(matches["day"])
 
-	return y, d, nil
+	return year, day, nil
 }
 
 func findNamedMatches(re *regexp.Regexp, s string) map[string]string {
@@ -389,8 +391,6 @@ func (d *Downloader) downloadInput(year, day int) ([]byte, error) {
 		return nil, fmt.Errorf("creating inputs directory: %w", err)
 	}
 
-	logger.Debug("downloading input")
-
 	resp, err := d.rClient.R().
 		SetPathParams(map[string]string{
 			"year": strconv.Itoa(year),
@@ -415,7 +415,7 @@ func (d *Downloader) downloadInput(year, day int) ([]byte, error) {
 			slog.String("status", resp.Status()),
 			slog.Int("code", resp.StatusCode()))
 
-		return nil, fmt.Errorf("%w: %s: %s", ErrHTTPResponse, resp.Request.Method, resp.Status())
+		return nil, fmt.Errorf("%w: %s", ErrHTTPResponse, resp.Status())
 	}
 
 	data := bytes.TrimSpace(resp.Body())
@@ -423,8 +423,7 @@ func (d *Downloader) downloadInput(year, day int) ([]byte, error) {
 	// write response to disk
 	err = afero.WriteFile(d.appFs, filepath.Join(d.cacheDir, "inputs", makeExerciseID(year, day)), data, 0o600)
 	if err != nil {
-		logger.Error("writing to cache", tint.Err(err))
-		return nil, fmt.Errorf("writing cached input: %w", err)
+		return nil, err
 	}
 
 	return data, nil
