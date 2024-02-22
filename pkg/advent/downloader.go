@@ -272,18 +272,17 @@ func extractTitle(page []byte) (string, error) {
 }
 
 func (d *Downloader) getPage(year, day int) ([]byte, error) {
-	pageData, err := d.getCachedPuzzlePage(year, day) // we're never going to see the error this returns
-	if err == nil {
-		slog.Debug("using cached puzzle page",
-			slog.Int("year", year),
-			slog.Int("day", day),
-			slog.Int("size", len(pageData)))
+	logger := d.logger.With(slog.Int("year", year), slog.Int("day", day), slog.String("fn", "getPage"))
+
+	pageData, ok := d.getCachedPage(year, day)
+	if ok {
+		logger.Debug("using cached puzzle page", slog.Int("size", len(pageData)))
 		return pageData, nil
 	}
 
-	slog.Debug("downloading puzzle page", slog.Int("year", year), slog.Int("day", day))
+	logger.Info("no cached page")
 
-	return d.downloadPuzzlePage(year, day)
+	return d.downloadPage(year, day)
 }
 
 func ParseURL(url string) (int, int, error) {
@@ -322,51 +321,33 @@ func findNamedMatches(re *regexp.Regexp, s string) map[string]string {
 	return result
 }
 
-func (d *Downloader) getCachedPuzzlePage(year, day int) ([]byte, error) {
-	if d.cacheDir == "" {
-		return nil, fmt.Errorf("cache directory not set")
-	}
-
+func (d *Downloader) getCachedPage(year, day int) ([]byte, bool) {
 	fp := filepath.Join(d.cacheDir, "pages", makeExerciseID(year, day))
+	data, err := afero.ReadFile(d.appFs, fp)
 
-	f, err := afero.ReadFile(d.appFs, fp)
-	if err != nil {
-		return nil, fmt.Errorf("reading puzzle page: %w", err)
-	}
-
-	return f, nil
+	return data, err == nil
 }
 
-func (d *Downloader) getCachedInput(year, day int) ([]byte, error) {
-	if d.cacheDir == "" {
-		return nil, fmt.Errorf("cache directory: %w", ErrNotConfigured)
-	}
-
+func (d *Downloader) getCachedInput(year, day int) ([]byte, bool) {
 	fp := filepath.Join(d.cacheDir, "inputs", makeExerciseID(year, day))
+	data, err := afero.ReadFile(d.appFs, fp)
 
-	f, err := afero.ReadFile(d.appFs, fp)
-	if err != nil {
-		return nil, err
-	}
-
-	return f, nil
+	return data, err == nil
 }
 
-func (d *Downloader) downloadPuzzlePage(year, day int) ([]byte, error) {
-	logger := d.logger.With(slog.Int("year", year), slog.Int("day", day), slog.String("fn", "downloadPuzzlePage"))
-
-	if d.cacheDir == "" {
-		return nil, fmt.Errorf("cache directory: %w", ErrNotConfigured)
-	}
+func (d *Downloader) downloadPage(year, day int) ([]byte, error) {
+	pageCacheDir := filepath.Join(d.cacheDir, "pages")
+	logger := d.logger.With(
+		slog.String("fn", "downloadPage"),
+		slog.Int("year", year),
+		slog.Int("day", day),
+		slog.String("dir", pageCacheDir),
+	)
 
 	// make sure we can write the cached file before we download it
-	err := d.appFs.MkdirAll(filepath.Join(d.cacheDir, "pages"), 0o750)
-	if err != nil {
-		return nil, fmt.Errorf("creating cache directory: %w", err)
+	if err := d.appFs.MkdirAll(pageCacheDir, 0o750); err != nil {
+		return nil, fmt.Errorf("create %q: %w", pageCacheDir, err)
 	}
-
-	logger.Debug("downloading puzzle page",
-		slog.String("file", filepath.Join(d.cacheDir, "pages", makeExerciseID(year, day))))
 
 	req := d.rClient.R().SetPathParams(map[string]string{
 		"year": strconv.Itoa(year),
@@ -379,28 +360,31 @@ func (d *Downloader) downloadPuzzlePage(year, day int) ([]byte, error) {
 	}
 
 	if resp.StatusCode() != http.StatusOK {
-		slog.Debug("download page response",
-			slog.String("url", resp.Request.URL),
-			slog.String("status", http.StatusText(resp.StatusCode())),
-			slog.Int("code", resp.StatusCode()))
-
 		return nil, fmt.Errorf("%w: %s: %s", ErrHTTPResponse, resp.Request.Method, resp.Status())
 	}
+
+	logger.Debug("download page response",
+		slog.String("url", resp.Request.URL),
+		slog.String("status", http.StatusText(resp.StatusCode())),
+		slog.Int("code", resp.StatusCode()))
 
 	// only keep relevant parts of the page
 	re := regexp.MustCompile(`(?s)<article.*?>(.*)</article>`)
 	matches := re.FindSubmatch(resp.Body())
+
 	if len(matches) != 2 { //nolint:gomnd // we expect 2 matches
-		slog.Debug("extracting page data", slog.String("url", resp.Request.URL), slog.Any("found", matches))
+		logger.Debug("extracting page data", slog.String("url", resp.Request.URL), slog.Any("found", matches))
+
 		return nil, fmt.Errorf("extracting page data: no match")
 	}
 
 	pd := bytes.TrimSpace(matches[1])
 
 	// write response to disk
-	err = afero.WriteFile(d.appFs, filepath.Join(d.cacheDir, "pages", makeExerciseID(year, day)), pd, 0o600)
+	err = afero.WriteFile(d.appFs, filepath.Join(pageCacheDir, makeExerciseID(year, day)), pd, 0o600)
 	if err != nil {
-		slog.Debug("writing to cache", slog.String("url", resp.Request.URL), tint.Err(err))
+		logger.Debug("writing page to cache", slog.String("url", resp.Request.URL), tint.Err(err))
+
 		return nil, fmt.Errorf("writing cached puzzle page: %w", err)
 	}
 
@@ -463,14 +447,14 @@ func (d *Downloader) downloadInput(year, day int) ([]byte, error) {
 func (d *Downloader) getInput(year, day int) ([]byte, error) {
 	logger := d.logger.With(slog.Int("year", year), slog.Int("day", day), slog.String("fn", "getInput"))
 
-	data, err := d.getCachedInput(year, day)
-	if err != nil { // TODO: we should only continue if the error is "file not found"
-		logger.Debug("failed to get cached input data", tint.Err(err))
-		return d.downloadInput(year, day)
+	data, ok := d.getCachedInput(year, day)
+	if ok {
+		return data, nil
 	}
 
-	logger.Debug("got cached input")
-	return data, nil
+	logger.Info("no cached page")
+
+	return d.downloadInput(year, day)
 }
 
 //go:embed templates/readme.tmpl

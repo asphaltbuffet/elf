@@ -323,7 +323,7 @@ func TestParseURL(t *testing.T) {
 //go:embed testdata/http/2015-1_resp_body
 var respBody2015d1 string
 
-func Test_downloadPuzzlePage(t *testing.T) {
+func Test_downloadPage(t *testing.T) {
 	type args struct {
 		year int
 		day  int
@@ -368,7 +368,7 @@ func Test_downloadPuzzlePage(t *testing.T) {
 
 			httpmock.RegisterNoResponder(httpmock.NewNotFoundResponder(t.Error))
 
-			got, err := mockDlr.downloadPuzzlePage(tt.args.year, tt.args.day)
+			got, err := mockDlr.downloadPage(tt.args.year, tt.args.day)
 
 			require.ErrorIs(t, err, tt.wantErr)
 			if err == nil {
@@ -381,34 +381,29 @@ func Test_downloadPuzzlePage(t *testing.T) {
 	}
 }
 
-func Test_getCachedPuzzlePage(t *testing.T) {
+func Test_getCachedPage(t *testing.T) {
 	type args struct {
 		year int
 		day  int
 	}
 
 	tests := []struct {
-		name    string
-		args    args
-		golden  string
-		wantErr error
+		name   string
+		args   args
+		golden string
+		wantOk assert.BoolAssertionFunc
 	}{
 		{
-			name: "cached file exists",
-			args: args{
-				year: 2015,
-				day:  2,
-			},
-			golden:  "testdata/golden/2015-02.golden",
-			wantErr: nil,
+			name:   "cached file exists",
+			args:   args{2015, 2},
+			golden: "testdata/golden/2015-02.golden",
+			wantOk: assert.True,
 		},
 		{
-			name: "no cached file",
-			args: args{
-				year: 2015,
-				day:  3,
-			},
-			wantErr: ErrNotFound,
+			name:   "no cached file",
+			args:   args{2015, 3},
+			golden: "", // no golden file for failure
+			wantOk: assert.False,
 		},
 	}
 
@@ -420,10 +415,10 @@ func Test_getCachedPuzzlePage(t *testing.T) {
 			teardownSubTest := setupSubTest(t)
 			defer teardownSubTest(t)
 
-			got, err := mockDlr.getCachedPuzzlePage(tt.args.year, tt.args.day)
+			got, gotOk := mockDlr.getCachedPage(tt.args.year, tt.args.day)
 
-			require.ErrorIs(t, err, tt.wantErr)
-			if err == nil {
+			tt.wantOk(t, gotOk)
+			if gotOk {
 				want := goldenValue(t, tt.golden)
 
 				assert.Equal(t, want, got)
@@ -439,22 +434,22 @@ func TestExercise_getCachedInput(t *testing.T) {
 	}
 
 	tests := []struct {
-		name    string
-		args    args
-		golden  string
-		wantErr error
+		name        string
+		args        args
+		golden      string
+		okAssertion assert.BoolAssertionFunc
 	}{
 		{
-			name:    "cached file exists",
-			args:    args{year: 2015, day: 2},
-			golden:  "testdata/golden/input.golden",
-			wantErr: nil,
+			name:        "cached file exists",
+			args:        args{year: 2015, day: 2},
+			golden:      "testdata/golden/input.golden",
+			okAssertion: assert.True,
 		},
 		{
-			name:    "no cached file",
-			args:    args{year: 2015, day: 3},
-			golden:  "",
-			wantErr: ErrNotFound,
+			name:        "no cached file",
+			args:        args{year: 2015, day: 3},
+			golden:      "",
+			okAssertion: assert.False,
 		},
 	}
 
@@ -466,10 +461,10 @@ func TestExercise_getCachedInput(t *testing.T) {
 			teardownSubTest := setupSubTest(t)
 			defer teardownSubTest(t)
 
-			got, err := mockDlr.getCachedInput(tt.args.year, tt.args.day)
+			got, gotOk := mockDlr.getCachedInput(tt.args.year, tt.args.day)
 
-			require.ErrorIs(t, err, tt.wantErr)
-			if err == nil {
+			tt.okAssertion(t, gotOk)
+			if gotOk {
 				want := goldenValue(t, tt.golden)
 				assert.Equal(t, want, got)
 			}
