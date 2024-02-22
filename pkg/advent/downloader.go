@@ -239,14 +239,6 @@ func (d *Downloader) getExercisePath(year, day int) (string, bool) {
 			return filepath.SkipDir
 		}
 	})
-	switch {
-	case errors.Is(err, filepath.SkipAll):
-		logger.Debug("found exercise", slog.String("found", exPath))
-
-	default:
-		logger.Debug("did not find exercise", tint.Err(err))
-		return "", false
-	}
 
 	return exPath, exPath != ""
 }
@@ -393,10 +385,6 @@ func (d *Downloader) downloadPage(year, day int) ([]byte, error) {
 
 func (d *Downloader) downloadInput(year, day int) ([]byte, error) {
 	logger := d.logger.With(slog.Int("year", year), slog.Int("day", day), slog.String("fn", "downloadInput"))
-
-	if d.cacheDir == "" {
-		return nil, fmt.Errorf("cache directory: %w", ErrNotConfigured)
-	}
 
 	err := d.appFs.MkdirAll(filepath.Join(d.cacheDir, "inputs"), 0o750)
 	if err != nil {
