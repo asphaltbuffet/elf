@@ -173,7 +173,6 @@ func (d *Downloader) loadFromURL(year, day int) (*Exercise, error) {
 		page  []byte
 		title string
 		err   error
-		e     *Exercise
 	)
 
 	page, err = d.getPage(year, day)
@@ -190,18 +189,17 @@ func (d *Downloader) loadFromURL(year, day int) (*Exercise, error) {
 		return nil, err
 	}
 
-	e = &Exercise{
-		ID:       makeExerciseID(year, day),
-		Title:    title,
-		Year:     year,
-		Language: d.lang,
-		Day:      day,
-		URL:      d.url,
-		Data:     nil, // this should be empty, we only load this from info.json
-		Path:     makeExercisePath(d.exerciseBaseDir, year, day, title),
-	}
+	d.exercise.ID = makeExerciseID(year, day)
+	d.exercise.Title = title
+	d.exercise.Year = year
+	d.exercise.Language = d.lang
+	d.exercise.Day = day
+	d.exercise.URL = d.url
+	d.exercise.Path = makeExercisePath(d.exerciseBaseDir, year, day, title)
 
-	return e, nil
+	logger.Debug("loaded exercise", slog.Any("exercise", d.exercise.LogValue()))
+
+	return d.exercise, nil
 }
 
 func (d *Downloader) getExercisePath(year, day int) (string, bool) {
