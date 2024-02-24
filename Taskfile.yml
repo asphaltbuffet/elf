@@ -48,6 +48,8 @@ tasks:
             - go mod tidy
         sources:
             - "**/*.go"
+            - "go.mod"
+            - "go.sum"
         generates:
             - go.mod
             - go.sum
