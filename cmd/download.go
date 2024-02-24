@@ -10,16 +10,17 @@ import (
 	"github.com/asphaltbuffet/elf/pkg/krampus"
 )
 
+// Downloader is an interface for downloading challenges.
+type Downloader interface {
+	Download() error
+}
+
 var (
 	downloadCmd *cobra.Command
-	noLang      bool
-	dlAll       bool
+	skipLang    bool
 	forceAll    bool
-	dlInfo      bool
 	forceInfo   bool
-	dlReadme    bool
 	forceReadme bool
-	dlInput     bool
 	forceInput  bool
 )
 
@@ -33,7 +34,7 @@ const exampleDownloadText = `  elf download https://example.com --lang=go
 func GetDownloadCmd() *cobra.Command {
 	if downloadCmd == nil {
 		downloadCmd = &cobra.Command{
-			Use:     "download <url> [-A | -inrL | -[a]INR] [--no-lang | --lang <string>]",
+			Use:     "download [flags] url",
 			Aliases: []string{"d"},
 			Example: exampleDownloadText,
 			Args:    cobra.ExactArgs(1),
@@ -41,35 +42,17 @@ func GetDownloadCmd() *cobra.Command {
 			RunE:    runDownloadCmd,
 		}
 
-		// downloadCmd.Flags().StringVarP(&language, "lang", "l", "", "solution language")
-		downloadCmd.Flags().BoolVarP(&noLang, "no-lang", "L", false, "do not create language directory")
-		// downloadCmd.MarkFlagsMutuallyExclusive("lang", "no-lang")
+		downloadCmd.Flags().BoolVarP(&skipLang, "skip-lang", "L", false, "skip creating implementation files")
 
-		downloadCmd.Flags().BoolVarP(&dlAll, "all", "a", false, "download/create all missing files")
-		downloadCmd.Flags().BoolVarP(&forceAll, "force-all", "A", false, "download/create all files; overwrite existing")
-		downloadCmd.MarkFlagsMutuallyExclusive("all", "force-all")
-
-		downloadCmd.Flags().BoolVarP(&dlInfo, "info", "n", false, "create info file, if missing")
-		downloadCmd.Flags().BoolVarP(&forceInfo, "force-info", "N", false, "create info file, overwrite existing")
-		downloadCmd.MarkFlagsMutuallyExclusive("info", "force-info")
-
-		downloadCmd.Flags().BoolVarP(&dlReadme, "readme", "r", false, "create README file, if missing")
-		downloadCmd.Flags().BoolVarP(&forceReadme, "force-readme", "R", false, "create README file, overwrite existing")
-		downloadCmd.MarkFlagsMutuallyExclusive("readme", "force-readme")
-
-		downloadCmd.Flags().BoolVarP(&dlInput, "input", "i", false, "create input file, if missing")
-		downloadCmd.Flags().BoolVarP(&forceInput, "force-input", "I", false, "download input file; overwrite existing")
-		downloadCmd.MarkFlagsMutuallyExclusive("input", "force-input")
+		downloadCmd.Flags().BoolVarP(&forceAll, "force-all", "A", false, "overwrite existing files")
+		downloadCmd.Flags().BoolVarP(&forceInfo, "force-info", "N", false, "overwrite existing info file")
+		downloadCmd.Flags().BoolVarP(&forceReadme, "force-readme", "R", false, "overwrite existing README file")
+		downloadCmd.Flags().BoolVarP(&forceInput, "force-input", "I", false, "overwrite existing input file")
 
 		downloadCmd.Flags().StringP("config-file", "c", "", "configuration file")
 	}
 
 	return downloadCmd
-}
-
-type Downloader interface {
-	Download() error
-	Path() string
 }
 
 // // https://adventofcode.com/2022/day/1
@@ -88,9 +71,20 @@ func runDownloadCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	forced := &advent.Overwrites{
+		// All:    forceAll,
+		// Info:   forceInfo,
+		// Readme: forceReadme,
+		Input: forceInput,
+	}
+
 	switch {
 	case strings.Contains(args[0], "adventofcode.com/"):
-		chdl, err = advent.NewDownloader(&cfg, args[0], language)
+		chdl, err = advent.NewDownloader(&cfg,
+			advent.WithURL(args[0]),
+			advent.WithDownloadLanguage(language),
+			advent.WithOverwrites(forced),
+		)
 		if err != nil {
 			return fmt.Errorf("downloading advent challenge: %w", err)
 		}
@@ -104,7 +98,7 @@ func runDownloadCmd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("downloading challenge: %w", err)
 	}
 
-	cmd.Printf("New challenge created in: %s", chdl.Path())
+	cmd.Printf("New challenge created in: %s", chdl)
 
 	return nil
 }

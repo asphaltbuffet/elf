@@ -2,6 +2,7 @@ package krampus
 
 import (
 	"errors"
+	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -58,25 +59,22 @@ func NewConfig(options ...func(*Config)) (Config, error) {
 	cfg.viper.SetEnvPrefix(ElfEnvPrefix)
 
 	_ = cfg.viper.BindEnv(string(AdventTokenKey), "ELF_ADVENT_TOKEN")
-	cfg.viper.SetDefault(string(AdventTokenKey), "default-placeholder")
-
-	cfg.viper.SetDefault(string(AdventUserKey), "")
-	cfg.viper.SetDefault(string(EulerDirKey), "problems")
-	cfg.viper.SetDefault(string(AdventDirKey), "exercises")
-
 	_ = cfg.viper.BindEnv(string(LanguageKey), "ELF_LANGUAGE")
-	cfg.viper.SetDefault(string(LanguageKey), "go")
+
+	for k, v := range defaults {
+		cfg.viper.SetDefault(string(k), v)
+	}
 
 	configDir, err := os.UserConfigDir()
 	if err != nil {
-		slog.Error("get default user config dir", "error", tint.Err(err))
+		cfg.logger.Error("get default user config dir", "error", tint.Err(err))
 		return Config{}, err
 	}
 	cfg.viper.SetDefault(string(ConfigDirKey), filepath.Join(configDir, "elf"))
 
 	cacheDir, err := os.UserCacheDir()
 	if err != nil {
-		slog.Error("get default user cache dir", "error", tint.Err(err))
+		cfg.logger.Error("get default user cache dir", "error", tint.Err(err))
 		return Config{}, err
 	}
 
@@ -94,53 +92,58 @@ func NewConfig(options ...func(*Config)) (Config, error) {
 	if err != nil {
 		if !errors.As(err, &viper.ConfigFileNotFoundError{}) {
 			// only return error if it's not a missing config file
-			slog.Error("failed to read config file", "error", err, "config", cfg.cfgFile)
+			cfg.logger.Error("failed to read config file", "error", err, "config", cfg.cfgFile)
 			return Config{}, err
 		}
 
-		slog.Warn("no config file found", slog.String("file", cfg.cfgFile), tint.Err(err))
+		cfg.logger.Warn("no config file found", slog.String("file", cfg.cfgFile), tint.Err(err))
 		// return cfg, err
 	} else {
-		slog.Debug("starting with config file", "config", cfg.viper.ConfigFileUsed())
+		cfg.logger.Debug("starting with config file", "config", cfg.viper.ConfigFileUsed())
 	}
 
 	return cfg, nil
 }
 
+// WithFile sets the configuration file and type.
+//
+// If the file is empty, the default file name and type are used.
 func WithFile(f string) func(*Config) {
 	return func(c *Config) {
 		file := filepath.Base(f)
 		ext := filepath.Ext(f)
 
-		// deal with dotfiles
-		// foo -> "foo" + "" (false)
-		// foo.bar -> "foo.bar" + ".bar" (false)
-		// .foo.bar -> ".foo.bar" + ".bar" (false)
-		// .foo.foo -> ".foo.foo" + ".foo" (false)
-		// .foo -> ".foo" + ".foo" (true)
-		// "" -> "" + "" (true)
+		// handle dotfiles
+		// foo 		-> "foo" + "" 			(false)
+		// foo.bar 	-> "foo.bar" + ".bar" 	(false)
+		// .foo.bar -> ".foo.bar" + ".bar" 	(false)
+		// .foo.foo -> ".foo.foo" + ".foo" 	(false)
+		// .foo 	-> ".foo" + ".foo" 		(true)
+		// "" 		-> "." + "" 			(false)
 		if file == ext {
 			ext = ""
 		}
 
-		// remove leading dot
+		// remove leading dot from extension
 		ext = strings.TrimPrefix(ext, ".")
 
 		switch {
+		// filepath.Base returns "." for empty path
+		case file == ".":
+			// no filename; use defaults
+			c.cfgFile = fmt.Sprintf("%s.%s", DefaultConfigFileBase, DefaultConfigExt)
+			c.cfgFileType = DefaultConfigExt
 		case file != "." && ext == "":
-			// filename without extension; use default
+			// filename without extension; use default extension
 			c.cfgFile = file
 			c.cfgFileType = DefaultConfigExt
 
-		case file != ".":
+		case file != "." && ext != "":
 			// filename with extension; set type as well
 			c.cfgFile = file
 			c.cfgFileType = ext
 
 		default:
-			// lazy; only support one dot for now
-			c.cfgFile = DefaultConfigFileBase + "." + DefaultConfigExt
-			c.cfgFileType = DefaultConfigExt
 		}
 	}
 }
@@ -161,20 +164,31 @@ func (c *Config) setViperConfigFile() {
 	}
 }
 
+// WithFs sets the file system.
+//
+// If the file system is nil, a new OS file system is used.
 func WithFs(fs afero.Fs) func(*Config) {
 	return func(c *Config) {
 		c.fs = fs
 	}
 }
 
+// GetConfigFileUsed returns the configuration file used.
+//
+// If no configuration file is loaded, an empty string is returned. Failure to read a
+// configuration file does not cause an error and will still result in an empty string.
 func (c Config) GetConfigFileUsed() string {
 	return c.viper.ConfigFileUsed()
 }
 
+// GetToken returns the authentication token for downloading exercises.
 func (c Config) GetToken() string {
 	return c.viper.GetString(string(AdventTokenKey))
 }
 
+// GetLanguage returns the configured default implementation language.
+//
+// If no language is configured, an empty string is returned.
 func (c Config) GetLanguage() string {
 	return c.viper.GetString(string(LanguageKey))
 }
@@ -197,4 +211,8 @@ func (c Config) GetFs() afero.Fs {
 
 func (c Config) GetBaseDir() string {
 	return c.viper.GetString(string(AdventDirKey))
+}
+
+func (c Config) GetInputFilename() string {
+	return c.viper.GetString(string(InputFileKey))
 }

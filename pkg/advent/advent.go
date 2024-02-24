@@ -62,12 +62,6 @@ func WithDir(dir string) func(*Exercise) {
 	}
 }
 
-func WithURL(url string) func(*Exercise) {
-	return func(e *Exercise) {
-		e.URL = url
-	}
-}
-
 func WithLanguage(lang string) func(*Exercise) {
 	return func(e *Exercise) {
 		e.Language = lang
