@@ -152,17 +152,6 @@ func (b *Benchmarker) Benchmark(afs afero.Fs, iterations int) ([]tasks.Result, e
 	return results, afero.WriteFile(afs, outfile, jsonData, 0o600)
 }
 
-func (b *Benchmarker) String() string {
-	e := b.Exercise
-
-	if e == nil || e.ID == "" {
-		b.logger.Error("nil or empty exercise")
-		return "Advent of Code: INVALID EXERCISE"
-	}
-
-	return fmt.Sprintf("Advent of Code %d, Day %d: %s", e.Year, e.Day, e.Title)
-}
-
 func calcNormalizationFactor() float64 {
 	start := time.Now()
 	m := map[int]string{}

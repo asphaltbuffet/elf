@@ -187,24 +187,26 @@ func TestBenchmarker_String(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want string
 	}{
 		{
 			name: "empty exercise",
 			args: args{exercise: &Exercise{}},
-			want: "Advent of Code: INVALID EXERCISE",
+		},
+		{
+			name: "valid exercise",
+			args: args{exercise: &Exercise{
+				ID:    "2015-02",
+				Year:  2015,
+				Day:   2,
+				Title: "Fake Title",
+			}},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			b := &Benchmarker{
-				Exercise:        tt.args.exercise,
-				exerciseBaseDir: "",
-			}
+			b := &Benchmarker{Exercise: tt.args.exercise}
 
-			b.logger = slog.New(slog.NewTextHandler(io.Discard, nil))
-
-			assert.Equal(t, tt.want, b.String())
+			assert.Equal(t, tt.args.exercise.String(), b.String())
 		})
 	}
 }

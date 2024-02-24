@@ -1,6 +1,7 @@
 package advent
 
 import (
+	"fmt"
 	"log/slog"
 
 	"github.com/spf13/afero"
@@ -57,4 +58,16 @@ func (e *Exercise) LogValue() slog.Value {
 		slog.String("dir", e.Dir()),
 		slog.String("lang", e.Language),
 	)
+}
+
+func (e *Exercise) String() string {
+	if *e == *(&Exercise{}) { //nolint:staticcheck // this is needed for the comparison
+		return "INVALID EXERCISE"
+	}
+
+	if e.runner == nil {
+		return fmt.Sprintf("Advent of Code %d, Day %d: %s (?)", e.Year, e.Day, e.Title)
+	}
+
+	return fmt.Sprintf("Advent of Code %d, Day %d: %s (%s)", e.Year, e.Day, e.Title, e.runner.String())
 }
