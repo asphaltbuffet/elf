@@ -20,11 +20,8 @@ import (
 )
 
 type Benchmarker struct {
-	appFs           afero.Fs
 	exerciseBaseDir string
-	exercise        *Exercise
-	lang            string
-	logger          *slog.Logger
+	*Exercise
 }
 
 type BenchmarkData struct {
@@ -53,8 +50,11 @@ type PartData struct {
 
 func NewBenchmarker(config krampus.ExerciseConfiguration, options ...func(*Benchmarker)) (*Benchmarker, error) {
 	b := &Benchmarker{
-		exercise: &Exercise{Language: "go"},
-		logger:   config.GetLogger().With(slog.String("fn", "benchmark")),
+		Exercise: &Exercise{
+			appFs:    config.GetFs(),
+			Language: "go",
+			logger:   config.GetLogger().With(slog.String("fn", "benchmark")),
+		},
 	}
 
 	for _, option := range options {
@@ -62,8 +62,8 @@ func NewBenchmarker(config krampus.ExerciseConfiguration, options ...func(*Bench
 	}
 
 	switch {
-	case b.exercise.Path != "":
-		if err := b.exercise.loadInfo(config.GetFs()); err != nil {
+	case b.Path != "":
+		if err := b.Exercise.loadInfo(config.GetFs()); err != nil {
 			return nil, err
 		}
 
@@ -76,13 +76,13 @@ func NewBenchmarker(config krampus.ExerciseConfiguration, options ...func(*Bench
 
 func WithExerciseDir(dir string) func(*Benchmarker) {
 	return func(b *Benchmarker) {
-		b.exercise.Path = dir
+		b.Path = dir
 	}
 }
 
 func (b *Benchmarker) Benchmark(afs afero.Fs, iterations int) ([]tasks.Result, error) {
 	logger := b.logger
-	e := b.exercise
+	e := b.Exercise
 	normFactor := calcNormalizationFactor()
 
 	impls, err := e.GetImplementations(afs)
@@ -153,7 +153,7 @@ func (b *Benchmarker) Benchmark(afs afero.Fs, iterations int) ([]tasks.Result, e
 }
 
 func (b *Benchmarker) String() string {
-	e := b.exercise
+	e := b.Exercise
 
 	if e == nil || e.ID == "" {
 		b.logger.Error("nil or empty exercise")
@@ -181,7 +181,7 @@ func calcNormalizationFactor() float64 {
 }
 
 func (b *Benchmarker) runBenchmark(iterations int) ([]tasks.Result, *ImplementationData, error) {
-	e := b.exercise
+	e := b.Exercise
 	logger := b.logger
 
 	var (

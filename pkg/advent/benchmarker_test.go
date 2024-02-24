@@ -15,7 +15,12 @@ import (
 func TestExercise_Benchmark(t *testing.T) {
 	type args struct {
 		iterations int
-		exercise   *Exercise
+		id         string
+		lang       string
+		year       int
+		day        int
+		data       *Data
+		path       string
 	}
 
 	tests := []struct {
@@ -29,19 +34,12 @@ func TestExercise_Benchmark(t *testing.T) {
 			name: "no implementations",
 			args: args{
 				iterations: 1,
-				exercise: &Exercise{
-					ID:       "2017-02",
-					Title:    "",
-					Language: "go",
-					Year:     2017,
-					Day:      2,
-					URL:      "",
-					Data:     &Data{},
-					Path:     "exercises/2017/02-fakeEmptyDay",
-					runner:   nil,
-					appFs:    nil,
-					logger:   slog.New(slog.NewTextHandler(io.Discard, nil)),
-				},
+				id:         "2017-02",
+				lang:       "go",
+				year:       2017,
+				day:        2,
+				data:       &Data{},
+				path:       "exercises/2017/02-fakeEmptyDay",
 			},
 			want:      0,
 			wantErr:   ErrNoImplementations,
@@ -51,24 +49,17 @@ func TestExercise_Benchmark(t *testing.T) {
 			name: "no input",
 			args: args{
 				iterations: 1,
-				exercise: &Exercise{
-					ID:       "2017-03",
-					Title:    "",
-					Language: "go",
-					Year:     2017,
-					Day:      3,
-					URL:      "",
-					Data: &Data{
-						InputData:     "",
-						InputFileName: "fakeInput.txt",
-						TestCases:     TestCase{},
-						Answers:       Answer{},
-					},
-					Path:   "exercises/2017/03-fakeGoDay",
-					runner: nil,
-					appFs:  nil,
-					logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+				id:         "2017-03",
+				lang:       "go",
+				year:       2017,
+				day:        3,
+				data: &Data{
+					InputData:     "",
+					InputFileName: "fakeInput.txt",
+					TestCases:     TestCase{},
+					Answers:       Answer{},
 				},
+				path: "exercises/2017/03-fakeGoDay",
 			},
 			want:      0,
 			wantErr:   ErrNotFound,
@@ -87,11 +78,20 @@ func TestExercise_Benchmark(t *testing.T) {
 
 			// set up mocks
 			mockBenchmarker := &Benchmarker{
-				appFs:           testFs,
+				Exercise: &Exercise{
+					ID:       tt.args.id,
+					Title:    "Fake Title",
+					Language: tt.args.lang,
+					Year:     tt.args.year,
+					Day:      tt.args.day,
+					URL:      "www.fake.com",
+					Data:     tt.args.data,
+					Path:     tt.args.path,
+					runner:   nil,
+					appFs:    testFs,
+					logger:   slog.New(slog.NewTextHandler(io.Discard, nil)),
+				},
 				exerciseBaseDir: "",
-				exercise:        tt.args.exercise,
-				lang:            "",
-				logger:          slog.New(slog.NewTextHandler(io.Discard, nil)),
 			}
 
 			got, err := mockBenchmarker.Benchmark(mockBenchmarker.appFs, tt.args.iterations)
@@ -173,8 +173,8 @@ func TestNewBenchmarker(t *testing.T) {
 			if err == nil {
 				require.NotNil(t, got)
 
-				assert.Equal(t, tt.wants.path, got.exercise.Path)
-				assert.Equal(t, tt.wants.exerciseID, got.exercise.ID)
+				assert.Equal(t, tt.wants.path, got.Path)
+				assert.Equal(t, tt.wants.exerciseID, got.ID)
 			}
 		})
 	}
@@ -198,12 +198,11 @@ func TestBenchmarker_String(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b := &Benchmarker{
-				appFs:           nil, // testFs,
+				Exercise:        tt.args.exercise,
 				exerciseBaseDir: "",
-				exercise:        tt.args.exercise,
-				lang:            "",
-				logger:          slog.New(slog.NewTextHandler(io.Discard, nil)),
 			}
+
+			b.logger = slog.New(slog.NewTextHandler(io.Discard, nil))
 
 			assert.Equal(t, tt.want, b.String())
 		})
