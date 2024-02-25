@@ -53,8 +53,6 @@ type Test struct {
 func (e *Exercise) LogValue() slog.Value {
 	return slog.GroupValue(
 		slog.String("id", e.ID),
-		// slog.String("title", e.Title),
-		// slog.String("url", e.URL),
 		slog.String("dir", e.Dir()),
 		slog.String("lang", e.Language),
 	)

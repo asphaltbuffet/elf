@@ -207,7 +207,9 @@ func Test_GetImplementations(t *testing.T) {
 			teardownSubTest := setupSubTest(t)
 			defer teardownSubTest(t)
 
-			got, err := tt.args.e.GetImplementations(testFs)
+			tt.args.e.appFs = testFs
+
+			got, err := tt.args.e.GetImplementations()
 
 			require.ErrorIs(t, err, tt.wantErr)
 			if err == nil {

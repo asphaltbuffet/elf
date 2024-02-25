@@ -106,13 +106,13 @@ func (e *Exercise) loadFromURL() error {
 	return ErrNotImplemented
 }
 
-// Dir returns the path to the exercise directory.
+// Dir returns the base of the exercise directory.
 // It will return an empty string if the exercise does not exist.
 //
 // Example: 01-someExerciseTitle.
 func (e *Exercise) Dir() string {
-	if e == nil || e.Path == "" {
-		slog.Error("nil exercise or no path available")
+	if e.Path == "" {
+		e.logger.Error("no path available")
 		return ""
 	}
 
@@ -124,8 +124,8 @@ func makeExerciseID(year, day int) string {
 }
 
 // GetImplementations returns a list of available implementations for the exercise.
-func (e *Exercise) GetImplementations(fs afero.Fs) ([]string, error) {
-	dirEntries, err := afero.ReadDir(fs, e.Path)
+func (e *Exercise) GetImplementations() ([]string, error) {
+	dirEntries, err := afero.ReadDir(e.appFs, e.Path)
 	if err != nil {
 		return nil, err
 	}

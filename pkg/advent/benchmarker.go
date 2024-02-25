@@ -87,23 +87,22 @@ func WithExerciseDir(dir string) func(*Benchmarker) {
 
 func (b *Benchmarker) Benchmark(afs afero.Fs, iterations int) ([]tasks.Result, error) {
 	logger := b.logger
-	e := b.Exercise
 	normFactor := NormalizationFactor()
 
 	// TODO: add way to specify which implementations to run (e.g. --impls go,py or --impls all)
-	impls, err := e.GetImplementations(afs)
+	impls, err := b.GetImplementations()
 	if err != nil {
 		return nil, fmt.Errorf("get impls: %w", err)
 	}
 
-	inputFile := filepath.Join(e.Path, e.Data.InputFileName)
+	inputFile := filepath.Join(b.Path, b.Data.InputFileName)
 	input, err := afero.ReadFile(afs, inputFile)
 	if err != nil {
 		logger.Error("reading input file", slog.String("path", inputFile), tint.Err(err))
 		return nil, err
 	}
 
-	e.Data.InputData = string(input)
+	b.Data.InputData = string(input)
 
 	benchmarks := make([]*ImplementationData, 0, len(impls))
 
@@ -116,8 +115,8 @@ func (b *Benchmarker) Benchmark(afs afero.Fs, iterations int) ([]tasks.Result, e
 			return nil, fmt.Errorf("%w: %s", ErrNoRunner, impl)
 		}
 
-		e.Language = impl
-		e.runner = implRunner(e.Path)
+		b.Language = impl
+		b.runner = implRunner(b.Path)
 
 		var implData *ImplementationData
 
@@ -137,15 +136,15 @@ func (b *Benchmarker) Benchmark(afs afero.Fs, iterations int) ([]tasks.Result, e
 	var benchmarkData []BenchmarkData
 	benchmarkData = append(benchmarkData, BenchmarkData{
 		Date:            time.Now().UTC(),
-		Day:             e.Day,
-		Title:           e.Title,
-		Year:            e.Year,
+		Day:             b.Day,
+		Title:           b.Title,
+		Year:            b.Year,
 		Runs:            iterations,
 		Implementations: benchmarks,
 		Normalization:   normFactor,
 	})
 
-	outfile := filepath.Join(e.Path, "benchmark.json")
+	outfile := filepath.Join(b.Path, "benchmark.json")
 
 	// TODO: add flag to append/overwrite/fail?
 
