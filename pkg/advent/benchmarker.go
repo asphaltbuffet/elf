@@ -3,6 +3,7 @@ package advent
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"math"
 	"os"
@@ -20,11 +21,9 @@ import (
 )
 
 type Benchmarker struct {
-	appFs           afero.Fs
+	*Exercise
 	exerciseBaseDir string
-	exercise        *Exercise
-	lang            string
-	logger          *slog.Logger
+	writer          io.Writer
 }
 
 type BenchmarkData struct {
@@ -51,10 +50,16 @@ type PartData struct {
 	Data []float64 `json:"data,omitempty"`
 }
 
+var ErrRunnerStart = fmt.Errorf("runner start error")
+
 func NewBenchmarker(config krampus.ExerciseConfiguration, options ...func(*Benchmarker)) (*Benchmarker, error) {
 	b := &Benchmarker{
-		exercise: &Exercise{Language: "go"},
-		logger:   config.GetLogger().With(slog.String("fn", "benchmark")),
+		Exercise: &Exercise{
+			appFs:    config.GetFs(),
+			Language: "go",
+			logger:   config.GetLogger().With(slog.String("fn", "benchmark")),
+		},
+		writer: os.Stdout,
 	}
 
 	for _, option := range options {
@@ -62,8 +67,8 @@ func NewBenchmarker(config krampus.ExerciseConfiguration, options ...func(*Bench
 	}
 
 	switch {
-	case b.exercise.Path != "":
-		if err := b.exercise.loadInfo(config.GetFs()); err != nil {
+	case b.Path != "":
+		if err := b.Exercise.loadInfo(config.GetFs()); err != nil {
 			return nil, err
 		}
 
@@ -76,28 +81,28 @@ func NewBenchmarker(config krampus.ExerciseConfiguration, options ...func(*Bench
 
 func WithExerciseDir(dir string) func(*Benchmarker) {
 	return func(b *Benchmarker) {
-		b.exercise.Path = dir
+		b.Path = dir
 	}
 }
 
 func (b *Benchmarker) Benchmark(afs afero.Fs, iterations int) ([]tasks.Result, error) {
 	logger := b.logger
-	e := b.exercise
-	normFactor := calcNormalizationFactor()
+	normFactor := NormalizationFactor()
 
-	impls, err := e.GetImplementations(afs)
+	// TODO: add way to specify which implementations to run (e.g. --impls go,py or --impls all)
+	impls, err := b.GetImplementations()
 	if err != nil {
 		return nil, fmt.Errorf("get impls: %w", err)
 	}
 
-	inputFile := filepath.Join(e.Path, e.Data.InputFileName)
+	inputFile := filepath.Join(b.Path, b.Data.InputFileName)
 	input, err := afero.ReadFile(afs, inputFile)
 	if err != nil {
 		logger.Error("reading input file", slog.String("path", inputFile), tint.Err(err))
 		return nil, err
 	}
 
-	e.Data.InputData = string(input)
+	b.Data.InputData = string(input)
 
 	benchmarks := make([]*ImplementationData, 0, len(impls))
 
@@ -107,11 +112,11 @@ func (b *Benchmarker) Benchmark(afs afero.Fs, iterations int) ([]tasks.Result, e
 		logger.Debug("running benchmark", slog.String("impl", impl))
 		implRunner, ok := runners.Available[impl]
 		if !ok {
-			return nil, fmt.Errorf("no runner available for implementation %s", impl)
+			return nil, fmt.Errorf("%w: %s", ErrNoRunner, impl)
 		}
 
-		e.Language = impl
-		e.runner = implRunner(e.Path)
+		b.Language = impl
+		b.runner = implRunner(b.Path)
 
 		var implData *ImplementationData
 
@@ -131,15 +136,15 @@ func (b *Benchmarker) Benchmark(afs afero.Fs, iterations int) ([]tasks.Result, e
 	var benchmarkData []BenchmarkData
 	benchmarkData = append(benchmarkData, BenchmarkData{
 		Date:            time.Now().UTC(),
-		Day:             e.Day,
-		Title:           e.Title,
-		Year:            e.Year,
+		Day:             b.Day,
+		Title:           b.Title,
+		Year:            b.Year,
 		Runs:            iterations,
 		Implementations: benchmarks,
 		Normalization:   normFactor,
 	})
 
-	outfile := filepath.Join(e.Path, "benchmark.json")
+	outfile := filepath.Join(b.Path, "benchmark.json")
 
 	// TODO: add flag to append/overwrite/fail?
 
@@ -152,18 +157,7 @@ func (b *Benchmarker) Benchmark(afs afero.Fs, iterations int) ([]tasks.Result, e
 	return results, afero.WriteFile(afs, outfile, jsonData, 0o600)
 }
 
-func (b *Benchmarker) String() string {
-	e := b.exercise
-
-	if e == nil || e.ID == "" {
-		b.logger.Error("nil or empty exercise")
-		return "Advent of Code: INVALID EXERCISE"
-	}
-
-	return fmt.Sprintf("Advent of Code %d, Day %d: %s", e.Year, e.Day, e.Title)
-}
-
-func calcNormalizationFactor() float64 {
+func NormalizationFactor() float64 {
 	start := time.Now()
 	m := map[int]string{}
 
@@ -181,7 +175,6 @@ func calcNormalizationFactor() float64 {
 }
 
 func (b *Benchmarker) runBenchmark(iterations int) ([]tasks.Result, *ImplementationData, error) {
-	e := b.exercise
 	logger := b.logger
 
 	var (
@@ -197,12 +190,12 @@ func (b *Benchmarker) runBenchmark(iterations int) ([]tasks.Result, *Implementat
 			&runners.Task{
 				TaskID: tasks.MakeTaskID(tasks.Benchmark, runners.PartOne, i),
 				Part:   runners.PartOne,
-				Input:  e.Data.InputData,
+				Input:  b.Data.InputData,
 			},
 			&runners.Task{
 				TaskID: tasks.MakeTaskID(tasks.Benchmark, runners.PartTwo, i),
 				Part:   runners.PartTwo,
-				Input:  e.Data.InputData,
+				Input:  b.Data.InputData,
 			})
 	}
 
@@ -210,22 +203,23 @@ func (b *Benchmarker) runBenchmark(iterations int) ([]tasks.Result, *Implementat
 		len(benchmarkTasks),
 		progressbar.OptionSetPredictTime(true),
 		progressbar.OptionSetDescription(
-			fmt.Sprintf("Benchmarking %q (%s)", e.Title, e.runner),
+			fmt.Sprintf("Benchmarking %q (%s)", b.Title, b.runner),
 		),
+		progressbar.OptionSetWriter(b.writer),
 	)
 
-	if err := e.runner.Start(); err != nil {
-		logger.Error("starting runner", tint.Err(err))
+	if err := b.runner.Start(); err != nil {
+		logger.Error("start runner", tint.Err(err))
 		return nil, nil, err
 	}
 
 	defer func() {
-		_ = e.runner.Stop()
-		_ = e.runner.Cleanup()
+		_ = b.runner.Stop()
+		_ = b.runner.Cleanup()
 	}()
 
 	for _, t := range benchmarkTasks {
-		benchResult, err := e.runner.Run(t)
+		benchResult, err := b.runner.Run(t)
 		if err != nil {
 			logger.Error("running benchmark", tint.Err(err))
 			return nil, nil, err
@@ -244,7 +238,7 @@ func (b *Benchmarker) runBenchmark(iterations int) ([]tasks.Result, *Implementat
 		}
 	}
 
-	stats, err := b.calculateMetrics(metricsResults)
+	stats, err := calculateMetrics(metricsResults)
 	if err != nil {
 		logger.Error("getting stats from results", tint.Err(err))
 		return results, nil, err
@@ -252,17 +246,14 @@ func (b *Benchmarker) runBenchmark(iterations int) ([]tasks.Result, *Implementat
 
 	return results,
 		&ImplementationData{
-			Name:    e.runner.String(),
+			Name:    b.runner.String(),
 			PartOne: stats[runners.PartOne],
 			PartTwo: stats[runners.PartTwo],
 		}, nil
 }
 
-func (b *Benchmarker) calculateMetrics(results map[runners.Part][]float64) (map[runners.Part]*PartData, error) {
-	logger := b.logger
+func calculateMetrics(results map[runners.Part][]float64) (map[runners.Part]*PartData, error) {
 	metrics := make(map[runners.Part]*PartData)
-
-	logger.Debug("calculating stats", "results", results)
 
 	for part, durations := range results {
 		data := stats.LoadRawData(durations)

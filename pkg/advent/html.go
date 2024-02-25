@@ -3,13 +3,11 @@ package advent
 import (
 	"bytes"
 	"fmt"
-	"log/slog"
 
-	"github.com/lmittmann/tint"
 	"golang.org/x/net/html"
 )
 
-func H2(doc *html.Node) (*html.Node, error) {
+func getH2NodeFromHTML(doc *html.Node) (*html.Node, error) {
 	var (
 		h2      *html.Node
 		crawler func(*html.Node)
@@ -39,8 +37,7 @@ func renderNode(n *html.Node) string {
 	var buf bytes.Buffer
 
 	if err := html.Render(&buf, n); err != nil {
-		slog.Error("failed to render node", tint.Err(err))
-		panic(err)
+		panic("render html node")
 	}
 
 	return buf.String()
