@@ -336,6 +336,7 @@ issues:
         - bodyclose
         - dupl
         - exhaustruct
+        - exhaustive
         - funlen
         - goconst
         - gosec

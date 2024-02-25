@@ -3,6 +3,7 @@ package advent
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"math"
 	"os"
@@ -20,8 +21,9 @@ import (
 )
 
 type Benchmarker struct {
-	exerciseBaseDir string
 	*Exercise
+	exerciseBaseDir string
+	writer          io.Writer
 }
 
 type BenchmarkData struct {
@@ -48,6 +50,8 @@ type PartData struct {
 	Data []float64 `json:"data,omitempty"`
 }
 
+var ErrRunnerStart = fmt.Errorf("runner start error")
+
 func NewBenchmarker(config krampus.ExerciseConfiguration, options ...func(*Benchmarker)) (*Benchmarker, error) {
 	b := &Benchmarker{
 		Exercise: &Exercise{
@@ -55,6 +59,7 @@ func NewBenchmarker(config krampus.ExerciseConfiguration, options ...func(*Bench
 			Language: "go",
 			logger:   config.GetLogger().With(slog.String("fn", "benchmark")),
 		},
+		writer: os.Stdout,
 	}
 
 	for _, option := range options {
@@ -83,8 +88,9 @@ func WithExerciseDir(dir string) func(*Benchmarker) {
 func (b *Benchmarker) Benchmark(afs afero.Fs, iterations int) ([]tasks.Result, error) {
 	logger := b.logger
 	e := b.Exercise
-	normFactor := calcNormalizationFactor()
+	normFactor := NormalizationFactor()
 
+	// TODO: add way to specify which implementations to run (e.g. --impls go,py or --impls all)
 	impls, err := e.GetImplementations(afs)
 	if err != nil {
 		return nil, fmt.Errorf("get impls: %w", err)
@@ -107,7 +113,7 @@ func (b *Benchmarker) Benchmark(afs afero.Fs, iterations int) ([]tasks.Result, e
 		logger.Debug("running benchmark", slog.String("impl", impl))
 		implRunner, ok := runners.Available[impl]
 		if !ok {
-			return nil, fmt.Errorf("no runner available for implementation %s", impl)
+			return nil, fmt.Errorf("%w: %s", ErrNoRunner, impl)
 		}
 
 		e.Language = impl
@@ -152,7 +158,7 @@ func (b *Benchmarker) Benchmark(afs afero.Fs, iterations int) ([]tasks.Result, e
 	return results, afero.WriteFile(afs, outfile, jsonData, 0o600)
 }
 
-func calcNormalizationFactor() float64 {
+func NormalizationFactor() float64 {
 	start := time.Now()
 	m := map[int]string{}
 
@@ -170,7 +176,6 @@ func calcNormalizationFactor() float64 {
 }
 
 func (b *Benchmarker) runBenchmark(iterations int) ([]tasks.Result, *ImplementationData, error) {
-	e := b.Exercise
 	logger := b.logger
 
 	var (
@@ -186,12 +191,12 @@ func (b *Benchmarker) runBenchmark(iterations int) ([]tasks.Result, *Implementat
 			&runners.Task{
 				TaskID: tasks.MakeTaskID(tasks.Benchmark, runners.PartOne, i),
 				Part:   runners.PartOne,
-				Input:  e.Data.InputData,
+				Input:  b.Data.InputData,
 			},
 			&runners.Task{
 				TaskID: tasks.MakeTaskID(tasks.Benchmark, runners.PartTwo, i),
 				Part:   runners.PartTwo,
-				Input:  e.Data.InputData,
+				Input:  b.Data.InputData,
 			})
 	}
 
@@ -199,22 +204,23 @@ func (b *Benchmarker) runBenchmark(iterations int) ([]tasks.Result, *Implementat
 		len(benchmarkTasks),
 		progressbar.OptionSetPredictTime(true),
 		progressbar.OptionSetDescription(
-			fmt.Sprintf("Benchmarking %q (%s)", e.Title, e.runner),
+			fmt.Sprintf("Benchmarking %q (%s)", b.Title, b.runner),
 		),
+		progressbar.OptionSetWriter(b.writer),
 	)
 
-	if err := e.runner.Start(); err != nil {
-		logger.Error("starting runner", tint.Err(err))
+	if err := b.runner.Start(); err != nil {
+		logger.Error("start runner", tint.Err(err))
 		return nil, nil, err
 	}
 
 	defer func() {
-		_ = e.runner.Stop()
-		_ = e.runner.Cleanup()
+		_ = b.runner.Stop()
+		_ = b.runner.Cleanup()
 	}()
 
 	for _, t := range benchmarkTasks {
-		benchResult, err := e.runner.Run(t)
+		benchResult, err := b.runner.Run(t)
 		if err != nil {
 			logger.Error("running benchmark", tint.Err(err))
 			return nil, nil, err
@@ -233,7 +239,7 @@ func (b *Benchmarker) runBenchmark(iterations int) ([]tasks.Result, *Implementat
 		}
 	}
 
-	stats, err := b.calculateMetrics(metricsResults)
+	stats, err := calculateMetrics(metricsResults)
 	if err != nil {
 		logger.Error("getting stats from results", tint.Err(err))
 		return results, nil, err
@@ -241,17 +247,14 @@ func (b *Benchmarker) runBenchmark(iterations int) ([]tasks.Result, *Implementat
 
 	return results,
 		&ImplementationData{
-			Name:    e.runner.String(),
+			Name:    b.runner.String(),
 			PartOne: stats[runners.PartOne],
 			PartTwo: stats[runners.PartTwo],
 		}, nil
 }
 
-func (b *Benchmarker) calculateMetrics(results map[runners.Part][]float64) (map[runners.Part]*PartData, error) {
-	logger := b.logger
+func calculateMetrics(results map[runners.Part][]float64) (map[runners.Part]*PartData, error) {
 	metrics := make(map[runners.Part]*PartData)
-
-	logger.Debug("calculating stats", "results", results)
 
 	for part, durations := range results {
 		data := stats.LoadRawData(durations)
