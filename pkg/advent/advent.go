@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"os"
 	"path"
 	"path/filepath"
 	"strings"
@@ -69,6 +70,12 @@ func WithLanguage(lang string) func(*Exercise) {
 	}
 }
 
+func WithInputFile(file string) func(*Exercise) {
+	return func(e *Exercise) {
+		e.customInput = file
+	}
+}
+
 func (e *Exercise) loadInfo() error {
 	logger := e.logger.With(slog.String("fn", "loadInfo"))
 	logger.Debug("populating exercise from info file", "path", e.Path)
@@ -91,6 +98,11 @@ func (e *Exercise) loadInfo() error {
 	if e.Day == 0 || e.Year == 0 || e.Title == "" || e.URL == "" {
 		logger.Error("incomplete info data", slog.Any("data", e.LogValue()))
 		return fmt.Errorf("%w: %w", ErrLoadInfo, ErrInvalidData)
+	}
+
+	// replace input file if custom input is set
+	if e.customInput != "" {
+		e.Data.InputFileName = e.customInput
 	}
 
 	// instantiate runner for language

@@ -2,8 +2,8 @@ package advent
 
 import (
 	"bytes"
+	"io"
 	"log/slog"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -43,7 +43,27 @@ func Test_NewWithOpts(t *testing.T) {
 				Year:     2017,
 				Day:      1,
 				URL:      "https://fake.fk/2017/day/1",
-				Data:     &Data{},
+				Data:     &Data{InputFileName: "input.txt"},
+			},
+			assertion: require.NoError,
+		},
+		{
+			name: "with custom input file",
+			args: args{
+				opts: []func(*Exercise){
+					WithDir("exercises/2017/01-fakeFullDay"),
+					WithLanguage("py"),
+					WithInputFile("fakeInput.txt"),
+				},
+			},
+			want: &Exercise{
+				ID:       "2017-01",
+				Title:    "Fake Full Day",
+				Language: "py",
+				Year:     2017,
+				Day:      1,
+				URL:      "https://fake.fk/2017/day/1",
+				Data:     &Data{InputFileName: "fakeInput.txt"},
 			},
 			assertion: require.NoError,
 		},
@@ -112,7 +132,7 @@ func Test_NewWithOpts(t *testing.T) {
 			// set up mocks
 			mockConfig := mocks.NewMockExerciseConfiguration(t)
 			mockConfig.EXPECT().GetFs().Return(testFs)
-			mockConfig.EXPECT().GetLogger().Return(slog.New(slog.NewTextHandler(os.Stderr, nil)))
+			mockConfig.EXPECT().GetLogger().Return(slog.New(slog.NewTextHandler(io.Discard, nil)))
 
 			got, err := New(mockConfig, tt.args.opts...)
 
@@ -127,6 +147,7 @@ func Test_NewWithOpts(t *testing.T) {
 				assert.Equal(t, tt.want.Year, got.Year)
 				assert.Equal(t, tt.want.Day, got.Day)
 				assert.Equal(t, tt.want.URL, got.URL)
+				assert.Equal(t, tt.want.Data.InputFileName, got.Data.InputFileName)
 			}
 		})
 	}
