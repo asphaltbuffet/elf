@@ -68,7 +68,7 @@ func NewBenchmarker(config krampus.ExerciseConfiguration, options ...func(*Bench
 
 	switch {
 	case b.Path != "":
-		if err := b.Exercise.loadInfo(config.GetFs()); err != nil {
+		if err := b.Exercise.loadInfo(); err != nil {
 			return nil, err
 		}
 

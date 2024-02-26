@@ -29,7 +29,7 @@ func Test_NewWithOpts(t *testing.T) {
 		assertion require.ErrorAssertionFunc
 	}{
 		{
-			name: "valid exercise",
+			name: "with required opts",
 			args: args{
 				opts: []func(*Exercise){
 					WithDir("exercises/2017/01-fakeFullDay"),
@@ -111,10 +111,6 @@ func Test_NewWithOpts(t *testing.T) {
 
 			// set up mocks
 			mockConfig := mocks.NewMockExerciseConfiguration(t)
-			// // mockConfig.EXPECT().GetLanguage().Return(tt.args.lang)
-			// mockConfig.EXPECT().GetConfigDir().Return("")
-			// mockConfig.EXPECT().GetCacheDir().Return("testCache")
-			// mockConfig.EXPECT().GetToken().Return("fakeToken")
 			mockConfig.EXPECT().GetFs().Return(testFs)
 			mockConfig.EXPECT().GetLogger().Return(slog.New(slog.NewTextHandler(os.Stderr, nil)))
 
