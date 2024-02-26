@@ -29,6 +29,7 @@ var (
 func New(config krampus.ExerciseConfiguration, options ...func(*Exercise)) (*Exercise, error) {
 	e := &Exercise{
 		logger: config.GetLogger().With(slog.String("fn", "exercise")),
+		writer: os.Stdout,
 	}
 
 	for _, option := range options {

@@ -2,6 +2,7 @@ package advent
 
 import (
 	"fmt"
+	"io"
 	"log/slog"
 
 	"github.com/spf13/afero"
@@ -22,6 +23,7 @@ type Exercise struct {
 	runner runners.Runner `json:"-"`
 	appFs  afero.Fs       `json:"-"`
 	logger *slog.Logger   `json:"-"`
+	writer io.Writer      `json:"-"`
 
 	customInput string `json:"-"`
 }

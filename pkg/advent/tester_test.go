@@ -2,6 +2,7 @@ package advent
 
 import (
 	"bytes"
+	"io"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -106,24 +107,30 @@ func Test_runTestTasks(t *testing.T) {
 		Duration: 0.042,
 	}, nil)
 
-	_, err := runTests(mockRunner, &Data{
-		InputData: "FAKE INPUT",
-		TestCases: TestCase{
-			One: []*Test{
-				{
-					Input:    "FAKE INPUT",
-					Expected: "FAKE OUTPUT",
+	e := &Exercise{
+		runner: mockRunner,
+		Data: &Data{
+			InputData: "FAKE INPUT",
+			TestCases: TestCase{
+				One: []*Test{
+					{
+						Input:    "FAKE INPUT",
+						Expected: "FAKE OUTPUT",
+					},
+				},
+				Two: []*Test{
+					{
+						Input:    "FAKE INPUT",
+						Expected: "FAKE OUTPUT",
+					},
 				},
 			},
-			Two: []*Test{
-				{
-					Input:    "FAKE INPUT",
-					Expected: "FAKE OUTPUT",
-				},
-			},
+			Answers: Answer{},
 		},
-		Answers: Answer{},
-	})
+		writer: io.Discard,
+	}
+
+	_, err := e.runTests()
 
 	require.NoError(t, err)
 }

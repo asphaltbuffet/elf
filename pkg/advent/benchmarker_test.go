@@ -401,9 +401,9 @@ func TestRunBenchmark(t *testing.T) {
 					runner:   mockRunner,
 					appFs:    testFs,
 					logger:   slog.New(slog.NewTextHandler(io.Discard, nil)),
+					writer:   io.Discard,
 				},
 				exerciseBaseDir: tt.fields.exerciseBaseDir,
-				writer:          io.Discard,
 			}
 
 			got, got1, err := b.runBenchmark(tt.args.iterations)

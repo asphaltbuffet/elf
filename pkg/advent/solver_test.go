@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -25,7 +24,14 @@ func Test_runMainTasks(t *testing.T) {
 		Duration: 0.042,
 	}, nil).Times(2)
 
-	_, err := runMainTasks(mockRunner, &Data{InputData: "FAKE INPUT"})
+	e := &Exercise{
+		runner: mockRunner,
+		Data:   &Data{InputData: "FAKE INPUT"},
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		writer: io.Discard,
+	}
+
+	_, err := e.runMainTasks()
 
 	require.NoError(t, err)
 
@@ -38,7 +44,7 @@ func Test_runMainTasks(t *testing.T) {
 		Duration: 0.666,
 	}, fmt.Errorf("FAKE ERROR")).Once()
 
-	_, err = runMainTasks(mockRunner, &Data{InputData: "FAKE INPUT"})
+	_, err = e.runMainTasks()
 
 	require.Error(t, err)
 }
@@ -47,6 +53,7 @@ func Test_handleMainResult(t *testing.T) {
 	type args struct {
 		r *runners.Result
 	}
+
 	tests := []struct {
 		name string
 		args args
@@ -95,6 +102,7 @@ func Test_handleMainResult(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := handleTaskResult(io.Discard, tt.args.r, "good output")
@@ -104,114 +112,134 @@ func Test_handleMainResult(t *testing.T) {
 	}
 }
 
-func TestExercise_SolveMissingInput(t *testing.T) {
-	base := afero.NewBasePathFs(afero.NewOsFs(), "testdata")
-	roBase = afero.NewReadOnlyFs(base)
-
-	testFs = afero.NewCopyOnWriteFs(roBase, afero.NewMemMapFs())
-
-	e := &Exercise{
-		ID:       "1111-22",
-		Title:    "Fake Title",
-		Language: "fakeLang",
-		Year:     1111,
-		Day:      22,
-		Data: &Data{
-			InputData:     "",
-			InputFileName: "missingInput.txt",
-			TestCases:     TestCase{},
-			Answers:       Answer{},
-		},
-		Path:   "",
-		runner: nil,
-		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
-		appFs:  testFs,
+func TestSolve(t *testing.T) {
+	type fields struct {
+		inputFile string
 	}
 
-	// execute the function under test
-	_, err := e.Solve(false)
-
-	require.Error(t, err)
-}
-
-func TestExercise_SolveRunnerStartError(t *testing.T) {
-	base := afero.NewBasePathFs(afero.NewOsFs(), "testdata")
-	roBase = afero.NewReadOnlyFs(base)
-
-	testFs = afero.NewCopyOnWriteFs(roBase, afero.NewMemMapFs())
-	f, err := testFs.Create("input.fake")
-	require.NoError(t, err)
-	_, err = f.WriteString("fake input data")
-	require.NoError(t, err)
-	f.Close()
-
-	// set up mock runner
-	mockRunner := mocks.NewMockRunner(t)
-	mockRunner.EXPECT().Start().Return(fmt.Errorf("FAKE ERROR")).Once()
-
-	e := &Exercise{
-		ID:       "1111-22",
-		Title:    "Fake Title",
-		Language: "fakeLang",
-		Year:     1111,
-		Day:      22,
-		Data: &Data{
-			InputData:     "",
-			InputFileName: "input.fake",
-			TestCases:     TestCase{},
-			Answers:       Answer{},
-		},
-		Path:   "",
-		runner: mockRunner,
-		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
-		appFs:  testFs,
+	type args struct {
+		skipTests bool
 	}
 
-	// execute the function under test
-	_, err = e.Solve(false)
-
-	require.Error(t, err)
-}
-
-func TestExercise_SolveRunnerRunError(t *testing.T) {
-	base := afero.NewBasePathFs(afero.NewOsFs(), "testdata")
-	roBase = afero.NewReadOnlyFs(base)
-
-	testFs = afero.NewCopyOnWriteFs(roBase, afero.NewMemMapFs())
-	f, err := testFs.Create("input.fake")
-	require.NoError(t, err)
-	_, err = f.WriteString("fake input data")
-	require.NoError(t, err)
-	f.Close()
-
-	// set up mock runner
-	mockRunner := mocks.NewMockRunner(t)
-	mockRunner.EXPECT().Start().Return(nil).Once()
-	mockRunner.EXPECT().Run(mock.Anything).Return(nil, fmt.Errorf("FAKE ERROR"))
-	mockRunner.EXPECT().String().Return("fakeRunner")
-	mockRunner.EXPECT().Stop().Return(nil).Once()
-	mockRunner.EXPECT().Cleanup().Return(nil).Once()
-
-	e := &Exercise{
-		ID:       "1111-22",
-		Title:    "Fake Title",
-		Language: "fakeLang",
-		Year:     1111,
-		Day:      22,
-		Data: &Data{
-			InputData:     "",
-			InputFileName: "input.fake",
-			TestCases:     TestCase{},
-			Answers:       Answer{},
+	tests := []struct {
+		name      string
+		setup     func(*mocks.MockRunner)
+		fields    fields
+		args      args
+		want      []tasks.Result
+		assertion require.ErrorAssertionFunc
+		wantErr   error
+	}{
+		{
+			name:  "missing input file",
+			setup: func(_m *mocks.MockRunner) {},
+			fields: fields{
+				inputFile: "missingInput.fake",
+			},
+			args: args{
+				skipTests: false,
+			},
+			want:      nil,
+			assertion: require.Error,
 		},
-		Path:   "",
-		runner: mockRunner,
-		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
-		appFs:  testFs,
+		{
+			name: "runner start error",
+			setup: func(_m *mocks.MockRunner) {
+				_m.EXPECT().Start().Return(fmt.Errorf("FAKE ERROR"))
+			},
+			fields: fields{
+				inputFile: "input.fake",
+			},
+			args: args{
+				skipTests: false,
+			},
+			want:      nil,
+			assertion: require.Error,
+		},
+		{
+			name: "runner run error",
+			setup: func(_m *mocks.MockRunner) {
+				_m.EXPECT().Start().Return(nil)
+				_m.EXPECT().Run(mock.Anything).Return(nil, fmt.Errorf("FAKE ERROR"))
+				_m.EXPECT().String().Return("fakeRunner")
+				_m.EXPECT().Stop().Return(nil)
+				_m.EXPECT().Cleanup().Return(nil)
+			},
+			fields: fields{
+				inputFile: "input.fake",
+			},
+			args: args{
+				skipTests: false,
+			},
+			want:      nil,
+			assertion: require.Error,
+		},
 	}
 
-	// execute the function under test
-	_, err = e.Solve(true)
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
 
-	require.Error(t, err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			teardownSubTest := setupSubTest(t)
+			defer teardownSubTest(t)
+
+			f, err := testFs.Create("input.fake")
+			require.NoError(t, err)
+			_, err = f.WriteString("fake input data")
+			require.NoError(t, err)
+			f.Close()
+
+			// set up mocks
+			mockRunner := mocks.NewMockRunner(t)
+			tt.setup(mockRunner)
+
+			e := &Exercise{
+				ID:       "1111-22",
+				Title:    "Fake Title",
+				Language: "fakeLang",
+				Year:     1111,
+				Day:      22,
+				Data: &Data{
+					InputData:     "",
+					InputFileName: tt.fields.inputFile,
+					TestCases: TestCase{
+						One: []*Test{
+							{Input: "fake test 1.1", Expected: "fake result 1.1"},
+							{Input: "fake test 1.2", Expected: "fake result 1.2"},
+						},
+						Two: []*Test{
+							{Input: "fake test 2.1", Expected: "fake result 2.1"},
+							{Input: "fake test 2.2", Expected: "fake result 2.2"},
+						},
+					},
+					Answers: Answer{},
+				},
+				Path:   "",
+				runner: mockRunner,
+				logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+				appFs:  testFs,
+				writer: io.Discard,
+			}
+
+			// execute the function under test
+			// skipTests == false
+			got, err := e.Solve(false)
+
+			// verify results
+			tt.assertion(t, err)
+			if err == nil {
+				assert.Equal(t, tt.want, got)
+			}
+
+			// skipTests == true
+			got, err = e.Solve(true)
+
+			// verify results
+			tt.assertion(t, err)
+			if err == nil {
+				assert.Equal(t, tt.want, got)
+			}
+		})
+	}
 }
