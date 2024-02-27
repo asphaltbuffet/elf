@@ -44,22 +44,6 @@ func (e *Exercise) Test() ([]tasks.Result, error) {
 	return results, nil
 }
 
-func makeTestID(part runners.Part, n int) string {
-	return fmt.Sprintf("test.%d.%d", part, n)
-}
-
-func parseTestID(id string) (runners.Part, int) {
-	var a runners.Part
-	var b int
-
-	_, err := fmt.Sscanf(id, "test.%d.%d", &a, &b)
-	if err != nil {
-		panic(err)
-	}
-
-	return a, b
-}
-
 type testTask struct {
 	task     *runners.Task
 	expected string

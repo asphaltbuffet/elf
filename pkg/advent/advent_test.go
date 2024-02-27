@@ -235,3 +235,41 @@ func Test_GetImplementations(t *testing.T) {
 		})
 	}
 }
+
+func Test_Dir(t *testing.T) {
+	tests := []struct {
+		name string
+		path string
+		want string
+	}{
+		{
+			name: "relative path",
+			path: "exercises/2017/01-fakeFullDay",
+			want: "01-fakeFullDay",
+		},
+		{
+			name: "absolute path",
+			path: "/home/bob/aoc/exercises/2017/01-fakeDay",
+			want: "01-fakeDay",
+		},
+		{
+			name: "empty path",
+			path: "",
+			want: "",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			e := &Exercise{
+				Path:        tt.path,
+				runner:      nil,
+				appFs:       nil,
+				logger:      slog.New(slog.NewTextHandler(io.Discard, nil)),
+				writer:      io.Discard,
+				customInput: "",
+			}
+
+			assert.Equal(t, tt.want, e.Dir())
+		})
+	}
+}

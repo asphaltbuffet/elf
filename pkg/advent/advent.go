@@ -47,11 +47,6 @@ func New(config krampus.ExerciseConfiguration, options ...func(*Exercise)) (*Exe
 			return nil, err
 		}
 
-	case e.URL != "":
-		if err := e.loadFromURL(); err != nil {
-			return nil, err
-		}
-
 	default:
 		return nil, fmt.Errorf("instantiate exercise: %w", ErrNotFound)
 	}
@@ -115,10 +110,6 @@ func (e *Exercise) loadInfo() error {
 	e.runner = rc(e.Path)
 
 	return nil
-}
-
-func (e *Exercise) loadFromURL() error {
-	return ErrNotImplemented
 }
 
 // Dir returns the base of the exercise directory.
