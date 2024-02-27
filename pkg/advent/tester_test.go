@@ -1,7 +1,9 @@
 package advent
 
 import (
-	"bytes"
+	"fmt"
+	"io"
+	"log/slog"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,90 +15,98 @@ import (
 	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
-func Test_makeTestID(t *testing.T) {
-	type args struct {
-		part runners.Part
-		n    int
+func Test_Test(t *testing.T) {
+	type fields struct {
+		data *Data
 	}
+
 	tests := []struct {
-		name string
-		args args
-		want string
+		name      string
+		setup     func(*mocks.MockRunner)
+		fields    fields
+		want      []tasks.Result
+		assertion require.ErrorAssertionFunc
+		wantErr   error
 	}{
 		{
-			name: "success",
-			args: args{
-				part: runners.PartOne,
-				n:    1,
+			name: "runner start error",
+			setup: func(_m *mocks.MockRunner) {
+				_m.EXPECT().Start().Return(fmt.Errorf("FAKE ERROR"))
 			},
-			want: "test.1.1",
+			fields:    fields{},
+			want:      nil,
+			assertion: require.Error,
 		},
 		{
-			name: "empty",
-			args: args{},
-			want: "test.0.0",
+			name: "runner run error",
+			setup: func(_m *mocks.MockRunner) {
+				_m.EXPECT().Start().Return(nil)
+				_m.EXPECT().Run(mock.Anything).Return(nil, fmt.Errorf("FAKE ERROR"))
+				_m.EXPECT().Stop().Return(nil)
+				_m.EXPECT().Cleanup().Return(nil)
+			},
+			fields: fields{
+				data: &Data{
+					InputData:     "",
+					InputFileName: "input.fake",
+					TestCases: TestCase{
+						One: []*Test{
+							{Input: "fake test 1.1", Expected: "fake result 1.1"},
+							{Input: "fake test 1.2", Expected: "fake result 1.2"},
+						},
+						Two: []*Test{
+							{Input: "fake test 2.1", Expected: "fake result 2.1"},
+							{Input: "fake test 2.2", Expected: "fake result 2.2"},
+						},
+					},
+					Answers: Answer{},
+				},
+			},
+			want:      nil,
+			assertion: require.Error,
 		},
 	}
+
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, makeTestID(tt.args.part, tt.args.n))
+			teardownSubTest := setupSubTest(t)
+			defer teardownSubTest(t)
+
+			// set up mocks
+			mockRunner := mocks.NewMockRunner(t)
+			mockRunner.EXPECT().String().Return("MOCK").Maybe()
+			tt.setup(mockRunner)
+
+			e := &Exercise{
+				ID:       "1111-22",
+				Title:    "Fake Title",
+				Language: "fakeLang",
+				Year:     1111,
+				Day:      22,
+				Data:     tt.fields.data,
+				Path:     "",
+				runner:   mockRunner,
+				logger:   slog.New(slog.NewTextHandler(io.Discard, nil)),
+				appFs:    testFs,
+				writer:   io.Discard,
+			}
+
+			// execute the function under test
+			got, err := e.Test()
+
+			// verify results
+			tt.assertion(t, err)
+			if err == nil {
+				assert.Equal(t, tt.want, got)
+			}
 		})
 	}
 }
 
-func Test_parseTestID(t *testing.T) {
-	type args struct {
-		id string
-	}
-
-	type wants struct {
-		part runners.Part
-		n    int
-	}
-
-	tests := []struct {
-		name string
-		args args
-		want wants
-	}{
-		{"success", args{id: "test.1.1"}, wants{part: runners.PartOne, n: 1}},
-		{"part 2", args{id: "test.2.23"}, wants{part: runners.PartTwo, n: 23}},
-		{"part 3", args{id: "test.3.23"}, wants{part: 3, n: 23}},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			gotPart, gotN := parseTestID(tt.args.id)
-
-			assert.Equal(t, tt.want.part, gotPart)
-			assert.Equal(t, tt.want.n, gotN)
-		})
-	}
-}
-
-func TestParseTestIDWithPanic(t *testing.T) {
-	type args struct {
-		id string
-	}
-
-	tests := []struct {
-		name string
-		args args
-	}{
-		{"negative", args{id: "test.-1.1"}},
-		{"too big", args{id: "test.9001.1"}},
-		{"not a part number", args{id: "test.foo.1"}},
-		{"not a test number", args{id: "test.1.foo"}},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Panics(t, func() { parseTestID(tt.args.id) })
-		})
-	}
-}
-
-func Test_runTestTasks(t *testing.T) {
+func Test_runTests(t *testing.T) {
 	mockRunner := mocks.NewMockRunner(t)
 
 	mockRunner.EXPECT().Run(mock.Anything).Return(&runners.Result{
@@ -106,85 +116,30 @@ func Test_runTestTasks(t *testing.T) {
 		Duration: 0.042,
 	}, nil)
 
-	_, err := runTests(mockRunner, &Data{
-		InputData: "FAKE INPUT",
-		TestCases: TestCase{
-			One: []*Test{
-				{
-					Input:    "FAKE INPUT",
-					Expected: "FAKE OUTPUT",
+	e := &Exercise{
+		runner: mockRunner,
+		Data: &Data{
+			InputData: "FAKE INPUT",
+			TestCases: TestCase{
+				One: []*Test{
+					{
+						Input:    "FAKE INPUT",
+						Expected: "FAKE OUTPUT",
+					},
+				},
+				Two: []*Test{
+					{
+						Input:    "FAKE INPUT",
+						Expected: "FAKE OUTPUT",
+					},
 				},
 			},
-			Two: []*Test{
-				{
-					Input:    "FAKE INPUT",
-					Expected: "FAKE OUTPUT",
-				},
-			},
+			Answers: Answer{},
 		},
-		Answers: Answer{},
-	})
+		writer: io.Discard,
+	}
+
+	_, err := e.runTests()
 
 	require.NoError(t, err)
-}
-
-func Test_handleTestResult(t *testing.T) {
-	type args struct {
-		r *runners.Result
-	}
-	tests := []struct {
-		name string
-		args args
-		want tasks.Result
-	}{
-		{
-			name: "sucessful run",
-			args: args{
-				r: &runners.Result{
-					TaskID:   "test.1.1",
-					Ok:       true,
-					Output:   "good output",
-					Duration: 0.042,
-				},
-			},
-			want: tasks.Result{
-				ID:       "test.1.1",
-				Type:     tasks.Test,
-				Part:     1,
-				SubPart:  1,
-				Status:   tasks.StatusPassed,
-				Output:   "good output",
-				Expected: "good output",
-				Duration: 0.042,
-			},
-		},
-		{
-			name: "not ok",
-			args: args{
-				r: &runners.Result{
-					TaskID:   "test.1.2",
-					Ok:       false,
-					Output:   "error text",
-					Duration: 0.042,
-				},
-			},
-			want: tasks.Result{
-				ID:       "test.1.2",
-				Type:     tasks.Test,
-				Part:     1,
-				SubPart:  2,
-				Status:   tasks.StatusError,
-				Output:   "⤷ saying:error text",
-				Expected: "",
-				Duration: 0.042,
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			w := &bytes.Buffer{}
-			got := handleTaskResult(w, tt.args.r, "good output")
-			assert.Equal(t, tt.want, got)
-		})
-	}
 }

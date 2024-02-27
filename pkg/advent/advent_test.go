@@ -2,8 +2,8 @@ package advent
 
 import (
 	"bytes"
+	"io"
 	"log/slog"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -29,7 +29,7 @@ func Test_NewWithOpts(t *testing.T) {
 		assertion require.ErrorAssertionFunc
 	}{
 		{
-			name: "valid exercise",
+			name: "with required opts",
 			args: args{
 				opts: []func(*Exercise){
 					WithDir("exercises/2017/01-fakeFullDay"),
@@ -43,7 +43,27 @@ func Test_NewWithOpts(t *testing.T) {
 				Year:     2017,
 				Day:      1,
 				URL:      "https://fake.fk/2017/day/1",
-				Data:     &Data{},
+				Data:     &Data{InputFileName: "input.txt"},
+			},
+			assertion: require.NoError,
+		},
+		{
+			name: "with custom input file",
+			args: args{
+				opts: []func(*Exercise){
+					WithDir("exercises/2017/01-fakeFullDay"),
+					WithLanguage("py"),
+					WithInputFile("fakeInput.txt"),
+				},
+			},
+			want: &Exercise{
+				ID:       "2017-01",
+				Title:    "Fake Full Day",
+				Language: "py",
+				Year:     2017,
+				Day:      1,
+				URL:      "https://fake.fk/2017/day/1",
+				Data:     &Data{InputFileName: "fakeInput.txt"},
 			},
 			assertion: require.NoError,
 		},
@@ -111,12 +131,8 @@ func Test_NewWithOpts(t *testing.T) {
 
 			// set up mocks
 			mockConfig := mocks.NewMockExerciseConfiguration(t)
-			// // mockConfig.EXPECT().GetLanguage().Return(tt.args.lang)
-			// mockConfig.EXPECT().GetConfigDir().Return("")
-			// mockConfig.EXPECT().GetCacheDir().Return("testCache")
-			// mockConfig.EXPECT().GetToken().Return("fakeToken")
 			mockConfig.EXPECT().GetFs().Return(testFs)
-			mockConfig.EXPECT().GetLogger().Return(slog.New(slog.NewTextHandler(os.Stderr, nil)))
+			mockConfig.EXPECT().GetLogger().Return(slog.New(slog.NewTextHandler(io.Discard, nil)))
 
 			got, err := New(mockConfig, tt.args.opts...)
 
@@ -131,6 +147,7 @@ func Test_NewWithOpts(t *testing.T) {
 				assert.Equal(t, tt.want.Year, got.Year)
 				assert.Equal(t, tt.want.Day, got.Day)
 				assert.Equal(t, tt.want.URL, got.URL)
+				assert.Equal(t, tt.want.Data.InputFileName, got.Data.InputFileName)
 			}
 		})
 	}
@@ -215,6 +232,44 @@ func Test_GetImplementations(t *testing.T) {
 			if err == nil {
 				assert.Equal(t, tt.want, got)
 			}
+		})
+	}
+}
+
+func Test_Dir(t *testing.T) {
+	tests := []struct {
+		name string
+		path string
+		want string
+	}{
+		{
+			name: "relative path",
+			path: "exercises/2017/01-fakeFullDay",
+			want: "01-fakeFullDay",
+		},
+		{
+			name: "absolute path",
+			path: "/home/bob/aoc/exercises/2017/01-fakeDay",
+			want: "01-fakeDay",
+		},
+		{
+			name: "empty path",
+			path: "",
+			want: "",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			e := &Exercise{
+				Path:        tt.path,
+				runner:      nil,
+				appFs:       nil,
+				logger:      slog.New(slog.NewTextHandler(io.Discard, nil)),
+				writer:      io.Discard,
+				customInput: "",
+			}
+
+			assert.Equal(t, tt.want, e.Dir())
 		})
 	}
 }

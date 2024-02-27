@@ -14,6 +14,7 @@ import (
 var (
 	solveCmd *cobra.Command
 	language string
+	input    string
 	noTest   bool
 )
 
@@ -38,6 +39,7 @@ func GetSolveCmd() *cobra.Command {
 	}
 
 	solveCmd.Flags().StringP("config-file", "c", "", "configuration file")
+	solveCmd.Flags().StringVarP(&input, "input-file", "i", "", "override input file")
 
 	return solveCmd
 }
@@ -71,7 +73,10 @@ func runSolveCmd(cmd *cobra.Command, args []string) error {
 
 	cfg.GetLogger().Debug("solving exercise", slog.Group("exercise", "dir", dir, "language", language))
 
-	ch, err = advent.New(&cfg, advent.WithLanguage(language), advent.WithDir(dir))
+	ch, err = advent.New(&cfg,
+		advent.WithLanguage(language),
+		advent.WithDir(dir),
+		advent.WithInputFile(filepath.Clean(input)))
 	if err != nil {
 		return err
 	}

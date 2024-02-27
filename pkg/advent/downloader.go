@@ -180,7 +180,7 @@ func (d *Downloader) Download() error {
 	exPath, ok := d.getExercisePath(year, day)
 	if ok {
 		d.Exercise.Path = exPath
-		err = d.loadInfo(d.appFs)
+		err = d.loadInfo()
 	} else {
 		err = d.loadFromURL(year, day)
 	}

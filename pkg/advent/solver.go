@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"os"
 	"path/filepath"
 
 	"github.com/charmbracelet/lipgloss"
@@ -40,14 +39,14 @@ func (e *Exercise) Solve(skipTests bool) ([]tasks.Result, error) {
 		_ = e.runner.Cleanup()
 	}()
 
-	fmt.Fprintln(os.Stdout, headerStyle(fmt.Sprintf("ADVENT OF CODE %d\nDay %d: %s", e.Year, e.Day, e.Title)))
+	fmt.Fprintln(e.writer, headerStyle(fmt.Sprintf("ADVENT OF CODE %d\nDay %d: %s", e.Year, e.Day, e.Title)))
 
 	if !skipTests {
-		fmt.Printf("Testing (%s)...\n", e.runner)
+		fmt.Fprintf(e.writer, "Testing (%s)...\n", e.runner)
 
 		var tr []tasks.Result
 
-		tr, err = runTests(e.runner, e.Data)
+		tr, err = e.runTests()
 		if err != nil {
 			logger.Error("running tests", tint.Err(err))
 			return nil, err
@@ -56,9 +55,9 @@ func (e *Exercise) Solve(skipTests bool) ([]tasks.Result, error) {
 		results = append(results, tr...)
 	}
 
-	fmt.Printf("Solving (%s)...\n", e.runner)
+	fmt.Fprintf(e.writer, "Solving (%s)...\n", e.runner)
 
-	mainResults, err := runMainTasks(e.runner, e.Data)
+	mainResults, err := e.runMainTasks()
 	if err != nil {
 		logger.Error("running main tasks", tint.Err(err))
 		return nil, err
@@ -69,22 +68,21 @@ func (e *Exercise) Solve(skipTests bool) ([]tasks.Result, error) {
 	return results, nil
 }
 
-func runMainTasks(runner runners.Runner, data *Data) ([]tasks.Result, error) {
+func (e *Exercise) runMainTasks() ([]tasks.Result, error) {
 	var solveTasks []testTask
 
-	solveTasks = append(solveTasks, makeMainTasks(runners.PartOne, data)...)
-	solveTasks = append(solveTasks, makeMainTasks(runners.PartTwo, data)...)
+	solveTasks = append(solveTasks, makeMainTasks(runners.PartOne, e.Data)...)
+	solveTasks = append(solveTasks, makeMainTasks(runners.PartTwo, e.Data)...)
 
 	results := make([]tasks.Result, 0, len(solveTasks))
 
 	for _, t := range solveTasks {
-		result, err := runner.Run(t.task)
+		result, err := e.runner.Run(t.task)
 		if err != nil {
-			slog.Error("running task", slog.String("id", t.task.TaskID), tint.Err(err))
 			return nil, err
 		}
 
-		r := handleTaskResult(os.Stdout, result, t.expected)
+		r := handleTaskResult(e.writer, result, t.expected)
 		results = append(results, r)
 	}
 
@@ -154,7 +152,6 @@ func handleTaskResult(w io.Writer, r *runners.Result, expected string) tasks.Res
 		result.Output = r.Output
 
 		output = statusStyle.Foreground(newAns).Background(lipgloss.Color("0")).SetString("NEW")
-		// followUpText = timeStyle.SetString(humanize.SIWithDigits(r.Duration, 1, "s"))
 		followUpText = timeStyle.SetString(fmt.Sprintf("%.2f ms", r.Duration*1000))
 
 		extra = extraStyle.SetString("⤷ " + r.Output)
@@ -166,7 +163,6 @@ func handleTaskResult(w io.Writer, r *runners.Result, expected string) tasks.Res
 		result.Expected = expected
 
 		output = lipgloss.NewStyle().Bold(true).Align(lipgloss.Right).Foreground(lipgloss.Color("46")).SetString("PASS")
-		// followUpText = timeStyle.SetString(humanize.SIWithDigits(r.Duration, 1, "s"))
 		followUpText = timeStyle.SetString(fmt.Sprintf("%.2f ms", r.Duration*1000))
 
 		if taskType == tasks.Solve {
@@ -179,8 +175,6 @@ func handleTaskResult(w io.Writer, r *runners.Result, expected string) tasks.Res
 		result.Output = fmt.Sprintf("⤷ got %q, but expected %q", r.Output, expected)
 
 		output = statusStyle.Foreground(bad).SetString("FAIL")
-		// followUpText = mainNoteStyle(humanize.SIWithDigits(r.Duration, 1, "s"), r.Ok)
-
 		extra = extraStyle.Foreground(bad).SetString()
 		printExtra = true
 
@@ -189,8 +183,6 @@ func handleTaskResult(w io.Writer, r *runners.Result, expected string) tasks.Res
 		result.Output = r.Output
 		result.Expected = expected
 	}
-
-	slog.Debug("handling result", slog.Group("result", "id", r.TaskID, "ok", r.Ok, "output", r.Output))
 
 	if taskType != tasks.Benchmark {
 		fmt.Fprintln(w, name, output, followUpText)

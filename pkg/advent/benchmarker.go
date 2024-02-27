@@ -3,7 +3,6 @@ package advent
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"log/slog"
 	"math"
 	"os"
@@ -23,7 +22,6 @@ import (
 type Benchmarker struct {
 	*Exercise
 	exerciseBaseDir string
-	writer          io.Writer
 }
 
 type BenchmarkData struct {
@@ -58,8 +56,8 @@ func NewBenchmarker(config krampus.ExerciseConfiguration, options ...func(*Bench
 			appFs:    config.GetFs(),
 			Language: "go",
 			logger:   config.GetLogger().With(slog.String("fn", "benchmark")),
+			writer:   os.Stdout,
 		},
-		writer: os.Stdout,
 	}
 
 	for _, option := range options {
@@ -68,7 +66,7 @@ func NewBenchmarker(config krampus.ExerciseConfiguration, options ...func(*Bench
 
 	switch {
 	case b.Path != "":
-		if err := b.Exercise.loadInfo(config.GetFs()); err != nil {
+		if err := b.Exercise.loadInfo(); err != nil {
 			return nil, err
 		}
 

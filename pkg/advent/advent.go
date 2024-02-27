@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"os"
 	"path"
 	"path/filepath"
 	"strings"
@@ -22,11 +23,13 @@ var (
 	ErrNoRunner          = fmt.Errorf("no runner available")
 	ErrInvalidData       = fmt.Errorf("invalid data")
 	ErrNoImplementations = fmt.Errorf("no implementations found")
+	ErrLoadInfo          = fmt.Errorf("load info")
 )
 
 func New(config krampus.ExerciseConfiguration, options ...func(*Exercise)) (*Exercise, error) {
 	e := &Exercise{
 		logger: config.GetLogger().With(slog.String("fn", "exercise")),
+		writer: os.Stdout,
 	}
 
 	for _, option := range options {
@@ -40,12 +43,7 @@ func New(config krampus.ExerciseConfiguration, options ...func(*Exercise)) (*Exe
 		return nil, ErrEmptyLanguage
 
 	case e.Path != "":
-		if err := e.loadInfo(e.appFs); err != nil {
-			return nil, err
-		}
-
-	case e.URL != "":
-		if err := e.loadFromURL(); err != nil {
+		if err := e.loadInfo(); err != nil {
 			return nil, err
 		}
 
@@ -68,27 +66,39 @@ func WithLanguage(lang string) func(*Exercise) {
 	}
 }
 
-func (e *Exercise) loadInfo(fs afero.Fs) error {
-	slog.Debug("populating exercise from info file", "path", e.Path)
+func WithInputFile(file string) func(*Exercise) {
+	return func(e *Exercise) {
+		e.customInput = file
+	}
+}
+
+func (e *Exercise) loadInfo() error {
+	logger := e.logger.With(slog.String("fn", "loadInfo"))
+	logger.Debug("populating exercise from info file", "path", e.Path)
 
 	// populate exercise info from info.json
 	fn := filepath.Join(e.Path, "info.json")
 
-	data, err := afero.ReadFile(fs, path.Clean(fn))
+	data, err := afero.ReadFile(e.appFs, path.Clean(fn))
 	if err != nil {
-		slog.Error("reading info file", tint.Err(err), slog.String("path", fn))
-		return err
+		logger.Error("reading info file", tint.Err(err), slog.String("path", fn))
+		return fmt.Errorf("%w: %w", ErrLoadInfo, err)
 	}
 
 	err = json.Unmarshal(data, e)
 	if err != nil {
-		slog.Error("unmarshal json into info struct", tint.Err(err), slog.String("path", fn))
-		return fmt.Errorf("unmarshal info file %s: %w", fn, err)
+		logger.Error("unmarshal json into info struct", tint.Err(err), slog.String("path", fn))
+		return fmt.Errorf("%w: %w", ErrLoadInfo, err)
 	}
 
 	if e.Day == 0 || e.Year == 0 || e.Title == "" || e.URL == "" {
-		slog.Error("incomplete info data", slog.Any("data", e.LogValue()))
-		return fmt.Errorf("%s: %w", fn, ErrInvalidData)
+		logger.Error("incomplete info data", slog.Any("data", e.LogValue()))
+		return fmt.Errorf("%w: %w", ErrLoadInfo, ErrInvalidData)
+	}
+
+	// replace input file if custom input is set
+	if e.customInput != "" {
+		e.Data.InputFileName = e.customInput
 	}
 
 	// instantiate runner for language
@@ -100,10 +110,6 @@ func (e *Exercise) loadInfo(fs afero.Fs) error {
 	e.runner = rc(e.Path)
 
 	return nil
-}
-
-func (e *Exercise) loadFromURL() error {
-	return ErrNotImplemented
 }
 
 // Dir returns the base of the exercise directory.
