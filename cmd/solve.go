@@ -71,6 +71,10 @@ func runSolveCmd(cmd *cobra.Command, args []string) error {
 		language = cfg.GetLanguage()
 	}
 
+	if input == "" {
+		input = cfg.GetInputFilename()
+	}
+
 	cfg.GetLogger().Debug("solving exercise", slog.Group("exercise", "dir", dir, "language", language))
 
 	ch, err = advent.New(&cfg,

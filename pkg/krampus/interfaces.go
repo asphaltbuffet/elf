@@ -10,9 +10,6 @@ import (
 type ConfigurationReader interface {
 	// GetConfigFileUsed returns the configuration file used.
 	GetConfigFileUsed() string
-
-	// GetFs returns the file system.
-	GetFs() afero.Fs
 }
 
 // ExerciseConfiguration represents the interface for exercise configuration.
