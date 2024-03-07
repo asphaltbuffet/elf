@@ -54,7 +54,7 @@ func GetRootCommand() *cobra.Command {
 	rootCmd.AddCommand(GetTestCmd())
 	rootCmd.AddCommand(GetDownloadCmd())
 	rootCmd.AddCommand(GetBenchmarkCmd())
-	rootCmd.AddCommand(GetGraphCmd())
+	rootCmd.AddCommand(GetAnalyzeCmd())
 
 	return rootCmd
 }

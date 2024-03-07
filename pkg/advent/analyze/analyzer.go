@@ -1,9 +1,10 @@
-package advent
+package analyze
 
 import (
 	"encoding/json"
 	"fmt"
 	"image/color"
+	"io"
 	"io/fs"
 	"log/slog"
 	"math"
@@ -12,17 +13,31 @@ import (
 	"strings"
 
 	"github.com/dustin/go-humanize"
+	"github.com/spf13/afero"
 	"gonum.org/v1/plot"
 	"gonum.org/v1/plot/plotter"
 	"gonum.org/v1/plot/plotutil"
 	"gonum.org/v1/plot/vg"
 	"gonum.org/v1/plot/vg/draw"
 	"gonum.org/v1/plot/vg/vgimg"
+
+	"github.com/asphaltbuffet/elf/pkg/advent"
+	"github.com/asphaltbuffet/elf/pkg/analysis"
+	"github.com/asphaltbuffet/elf/pkg/krampus"
 )
 
-type Plotter struct {
-	dir  string
-	data []*BenchmarkData
+type Analyzer struct {
+	Dir    string
+	Output string
+	Data   []*advent.BenchmarkData
+
+	yearly  bool
+	daily   bool
+	compare bool
+
+	appFs  afero.Fs
+	writer io.Writer
+	logger *slog.Logger
 }
 
 var langColor = map[string]color.Color{
@@ -30,47 +45,98 @@ var langColor = map[string]color.Color{
 	"Python": color.RGBA{R: 55, G: 118, B: 171, A: 255},
 }
 
-func NewGraph(path string) (*Plotter, error) {
-	files, err := getBenchmarkFiles(path)
+func NewAnalyzer(config krampus.ExerciseConfiguration, opts ...func(*Analyzer)) (*Analyzer, error) {
+	analyzer := &Analyzer{
+		appFs:  afero.NewOsFs(),
+		writer: os.Stdout,
+		logger: config.GetLogger(),
+	}
+
+	for _, opt := range opts {
+		opt(analyzer)
+	}
+
+	if analyzer.Dir == "" {
+		return nil, fmt.Errorf("no directory specified")
+	}
+
+	return analyzer, nil
+}
+
+func WithDirectory(dir string) func(*Analyzer) {
+	return func(a *Analyzer) {
+		a.Dir = dir
+	}
+}
+
+func WithYearly(yearly bool) func(*Analyzer) {
+	return func(a *Analyzer) {
+		a.yearly = yearly
+	}
+}
+
+func WithOutput(name string) func(*Analyzer) {
+	return func(a *Analyzer) {
+		a.Output = name
+	}
+}
+
+func WithDaily(daily bool) func(*Analyzer) {
+	return func(a *Analyzer) {
+		a.daily = daily
+	}
+}
+
+func WithCompare(compare bool) func(*Analyzer) {
+	return func(a *Analyzer) {
+		a.compare = compare
+	}
+}
+
+func (a *Analyzer) Load() error {
+	files, err := getBenchmarkFiles(a.Dir)
 	if err != nil {
-		return nil, fmt.Errorf("getting benchmark files: %w", err)
+		return fmt.Errorf("getting benchmark files: %w", err)
 	}
 
 	// load benchmark data from files
 	slog.Debug("found benchmark files", "count", len(files))
-	benchData := make([]*BenchmarkData, 0, len(files))
+	benchData := make([]*advent.BenchmarkData, 0, len(files))
 
 	for _, bf := range files {
-		var data []*BenchmarkData
+		var data []*advent.BenchmarkData
 
 		data, err = readBenchmarkFile(bf)
 		if err != nil {
-			return nil, fmt.Errorf("reading benchmark file: %w", err)
+			return fmt.Errorf("reading benchmark file: %w", err)
 		}
 
 		benchData = append(benchData, data...)
 	}
 
-	return &Plotter{
-		dir:  path,
-		data: benchData,
-	}, nil
-}
-
-func (p *Plotter) Graph(outfile string) error {
-	err := generateLineGraph(p.data, outfile)
-	if err != nil {
-		return fmt.Errorf("generating graph: %w", err)
-	}
-
-	fmt.Printf("wrote %d graph to %s\n", p.data[0].Year, outfile)
-
-	err = generateBoxPlots(p.data, "boxplot.png")
-	if err != nil {
-		return fmt.Errorf("generating box plot: %w", err)
-	}
+	a.Data = benchData
 
 	return nil
+}
+
+func (a *Analyzer) Graph(gt analysis.GraphType) error {
+	switch gt {
+	case analysis.Line:
+		return generateLineGraph(a.Data, a.Output)
+
+	case analysis.Box:
+		return generateBoxPlots(a.Data, a.Output)
+
+	case analysis.Invalid:
+		fallthrough
+
+	default:
+		return fmt.Errorf("invalid graph type: %s", gt)
+	}
+}
+
+func (a *Analyzer) Stats() error {
+	return advent.ErrNotImplemented
 }
 
 func getBenchmarkFiles(dir string) ([]string, error) {
@@ -95,8 +161,8 @@ func getBenchmarkFiles(dir string) ([]string, error) {
 	return benchFiles, nil
 }
 
-func readBenchmarkFile(path string) ([]*BenchmarkData, error) {
-	var bd []*BenchmarkData
+func readBenchmarkFile(path string) ([]*advent.BenchmarkData, error) {
+	var bd []*advent.BenchmarkData
 
 	f, err := os.ReadFile(filepath.Clean(path))
 	if err != nil {
@@ -111,7 +177,7 @@ func readBenchmarkFile(path string) ([]*BenchmarkData, error) {
 	return bd, nil
 }
 
-func benchmarkToPlotterXYs(benchmarks []*BenchmarkData) map[string][]plotter.XYs {
+func benchmarkToPlotterXYs(benchmarks []*advent.BenchmarkData) map[string][]plotter.XYs {
 	dataMap := make(map[string][]plotter.XYs)
 
 	for _, bd := range benchmarks {
@@ -143,7 +209,7 @@ func benchmarkToPlotterXYs(benchmarks []*BenchmarkData) map[string][]plotter.XYs
 	return dataMap
 }
 
-func generateLineGraph(benchData []*BenchmarkData, outfile string) error {
+func generateLineGraph(benchData []*advent.BenchmarkData, outfile string) error {
 	if len(benchData) == 0 {
 		return fmt.Errorf("no benchmark data to graph")
 	}
@@ -340,7 +406,7 @@ func (t HumanizedLogTicks) Ticks(min, max float64) []plot.Tick {
 
 type ImplDataMap map[string]map[int]map[int]plotter.Values
 
-func benchmarkToPlotterValues(benchmarks []*BenchmarkData) map[string]map[int]map[int]plotter.Values {
+func benchmarkToPlotterValues(benchmarks []*advent.BenchmarkData) map[string]map[int]map[int]plotter.Values {
 	// dataMap is a map of language -> day -> part -> values
 	dataMap := make(map[string]map[int]map[int]plotter.Values)
 
@@ -374,7 +440,7 @@ func benchmarkToPlotterValues(benchmarks []*BenchmarkData) map[string]map[int]ma
 	return dataMap
 }
 
-func generateBoxPlots(benchData []*BenchmarkData, _ string) error {
+func generateBoxPlots(benchData []*advent.BenchmarkData, _ string) error {
 	if len(benchData) == 0 {
 		return fmt.Errorf("no benchmark data to graph")
 	}

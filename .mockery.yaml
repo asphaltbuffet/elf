@@ -23,3 +23,7 @@ packages:
             Challenge:
             ChallengeTester:
             Grapher:
+    github.com/asphaltbuffet/elf/pkg/analysis:
+        config:
+        interfaces:
+            Analyzer:
