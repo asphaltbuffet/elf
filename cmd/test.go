@@ -68,11 +68,11 @@ func runTestCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	slog.Debug("testing exercise", slog.Any("challenge", ch))
+	cfg.GetLogger().Debug("testing exercise", slog.Any("challenge", ch))
 
 	_, err = ch.Test()
 	if err != nil {
-		slog.Error("testing exercise", tint.Err(err))
+		cfg.GetLogger().Error("testing exercise", tint.Err(err))
 		cmd.Printf("Failed to run tests: %v\n", err)
 	}
 

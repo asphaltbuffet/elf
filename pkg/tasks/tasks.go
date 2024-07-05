@@ -53,7 +53,7 @@ func ParseTaskID(id string) (TaskType, runners.Part, int) {
 
 	switch t := StringToTaskType(tokens[0]); t {
 	case Benchmark, Test, Visualize:
-		if len(tokens) != 3 {
+		if len(tokens) != 3 { //nolint:mnd // 2 is the expected length
 			break
 		}
 
@@ -70,7 +70,7 @@ func ParseTaskID(id string) (TaskType, runners.Part, int) {
 		return t, runners.Part(p), n
 
 	case Solve:
-		if len(tokens) != 2 {
+		if len(tokens) != 2 { //nolint:mnd // 2 is the expected length
 			break
 		}
 

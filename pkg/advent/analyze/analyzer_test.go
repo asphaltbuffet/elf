@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	mocks "github.com/asphaltbuffet/elf/mocks/krampus"
+	"github.com/asphaltbuffet/elf/pkg/advent"
 	"github.com/asphaltbuffet/elf/pkg/advent/analyze"
 )
 
@@ -26,7 +27,7 @@ func Test_NewAnalyzer(t *testing.T) {
 	}{
 		{
 			name:  "no dir",
-			setup: func(_m *mocks.MockExerciseConfiguration) {},
+			setup: func(_ *mocks.MockExerciseConfiguration) {},
 			args: args{
 				opts: []func(*analyze.Analyzer){},
 			},
@@ -35,7 +36,7 @@ func Test_NewAnalyzer(t *testing.T) {
 		},
 		{
 			name: "with directory",
-			setup: func(_m *mocks.MockExerciseConfiguration) {
+			setup: func(_ *mocks.MockExerciseConfiguration) {
 				// _m.EXPECT().GetFs().Return(afero.NewMemMapFs())
 			},
 			args: args{
@@ -44,15 +45,16 @@ func Test_NewAnalyzer(t *testing.T) {
 				},
 			},
 			want: &analyze.Analyzer{
-				Dir:    "foo/bar",
-				Output: "",
-				Data:   nil,
+				Data:      []*advent.BenchmarkData{},
+				Dir:       "foo/bar",
+				GraphType: 1,
+				Output:    "",
 			},
 			assertion: require.NoError,
 		},
 		{
 			name: "with yearly",
-			setup: func(_m *mocks.MockExerciseConfiguration) {
+			setup: func(_ *mocks.MockExerciseConfiguration) {
 				// _m.EXPECT().GetFs().Return(afero.NewMemMapFs())
 			},
 			args: args{
@@ -62,15 +64,16 @@ func Test_NewAnalyzer(t *testing.T) {
 				},
 			},
 			want: &analyze.Analyzer{
-				Dir:    "foo/bar",
-				Output: "",
-				Data:   nil,
+				Data:      []*advent.BenchmarkData{},
+				Dir:       "foo/bar",
+				GraphType: 1,
+				Output:    "",
 			},
 			assertion: require.NoError,
 		},
 		{
 			name: "with daily",
-			setup: func(_m *mocks.MockExerciseConfiguration) {
+			setup: func(_ *mocks.MockExerciseConfiguration) {
 				// _m.EXPECT().GetFs().Return(afero.NewMemMapFs())
 			},
 			args: args{
@@ -80,15 +83,16 @@ func Test_NewAnalyzer(t *testing.T) {
 				},
 			},
 			want: &analyze.Analyzer{
-				Dir:    "foo/bar",
-				Output: "",
-				Data:   nil,
+				Data:      []*advent.BenchmarkData{},
+				Dir:       "foo/bar",
+				GraphType: 1,
+				Output:    "",
 			},
 			assertion: require.NoError,
 		},
 		{
 			name: "with output",
-			setup: func(_m *mocks.MockExerciseConfiguration) {
+			setup: func(_ *mocks.MockExerciseConfiguration) {
 				// _m.EXPECT().GetFs().Return(afero.NewMemMapFs())
 			},
 			args: args{
@@ -98,9 +102,10 @@ func Test_NewAnalyzer(t *testing.T) {
 				},
 			},
 			want: &analyze.Analyzer{
-				Dir:    "foo/bar",
-				Output: "fakeOutput.png",
-				Data:   nil,
+				Data:      []*advent.BenchmarkData{},
+				Dir:       "foo/bar",
+				GraphType: 1,
+				Output:    "fakeOutput.png",
 			},
 			assertion: require.NoError,
 		},

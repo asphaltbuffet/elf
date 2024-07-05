@@ -1,7 +1,7 @@
 package advent
 
 import (
-	"fmt"
+	"errors"
 	"io"
 	"log/slog"
 	"testing"
@@ -42,7 +42,7 @@ func Test_runMainTasks(t *testing.T) {
 		Ok:       false,
 		Output:   "fakey fake",
 		Duration: 0.666,
-	}, fmt.Errorf("FAKE ERROR")).Once()
+	}, errors.New("FAKE ERROR")).Once()
 
 	_, err = e.runMainTasks()
 
@@ -132,7 +132,7 @@ func TestSolve(t *testing.T) {
 	}{
 		{
 			name:  "missing input file",
-			setup: func(_m *mocks.MockRunner) {},
+			setup: func(_ *mocks.MockRunner) {},
 			fields: fields{
 				inputFile: "missingInput.fake",
 			},
@@ -145,7 +145,7 @@ func TestSolve(t *testing.T) {
 		{
 			name: "runner start error",
 			setup: func(_m *mocks.MockRunner) {
-				_m.EXPECT().Start().Return(fmt.Errorf("FAKE ERROR"))
+				_m.EXPECT().Start().Return(errors.New("FAKE ERROR"))
 			},
 			fields: fields{
 				inputFile: "input.fake",
@@ -160,7 +160,7 @@ func TestSolve(t *testing.T) {
 			name: "runner run error",
 			setup: func(_m *mocks.MockRunner) {
 				_m.EXPECT().Start().Return(nil)
-				_m.EXPECT().Run(mock.Anything).Return(nil, fmt.Errorf("FAKE ERROR"))
+				_m.EXPECT().Run(mock.Anything).Return(nil, errors.New("FAKE ERROR"))
 				_m.EXPECT().String().Return("fakeRunner")
 				_m.EXPECT().Stop().Return(nil)
 				_m.EXPECT().Cleanup().Return(nil)

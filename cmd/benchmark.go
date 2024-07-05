@@ -16,6 +16,8 @@ var (
 	iterations   int
 )
 
+const DefaultIterations = 10
+
 const benchmarkExample = `
 elf benchmark --num=5 /path/to/exercise
 elf benchmark /path/to/exercise`
@@ -31,7 +33,7 @@ func GetBenchmarkCmd() *cobra.Command {
 			RunE:    runBenchmarkCmd,
 		}
 
-		benchmarkCmd.Flags().IntVarP(&iterations, "num", "n", 10, "number of iterations")
+		benchmarkCmd.Flags().IntVarP(&iterations, "num", "n", DefaultIterations, "number of iterations")
 		benchmarkCmd.Flags().StringP("config-file", "c", "", "configuration file")
 	}
 

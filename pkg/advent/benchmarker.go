@@ -2,6 +2,7 @@ package advent
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"math"
@@ -48,7 +49,7 @@ type PartData struct {
 	Data []float64 `json:"data,omitempty"`
 }
 
-var ErrRunnerStart = fmt.Errorf("runner start error")
+var ErrRunnerStart = errors.New("runner start error")
 
 func NewBenchmarker(config krampus.ExerciseConfiguration, options ...func(*Benchmarker)) (*Benchmarker, error) {
 	b := &Benchmarker{
@@ -163,7 +164,7 @@ func NormalizationFactor() float64 {
 		m[i] = fmt.Sprintf("%2.3f", 1/float64(i))
 
 		if _, ok := m[i/3]; ok {
-			delete(m, i/2)
+			delete(m, i/2) //nolint:mnd // hard-coding for now
 		}
 	}
 
@@ -175,10 +176,12 @@ func NormalizationFactor() float64 {
 func (b *Benchmarker) runBenchmark(iterations int) ([]tasks.Result, *ImplementationData, error) {
 	logger := b.logger
 
+	const numParts int = 2
+
 	var (
 		benchmarkTasks []*runners.Task
-		metricsResults = make(map[runners.Part][]float64, 2*iterations)
-		results        = make([]tasks.Result, 0, 2*iterations)
+		metricsResults = make(map[runners.Part][]float64, numParts*iterations)
+		results        = make([]tasks.Result, 0, numParts*iterations)
 	)
 
 	// generate all the tasks needed for this benchmark run
