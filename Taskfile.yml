@@ -108,7 +108,7 @@ tasks:
 
     install-mockery:
         cmds:
-            - go install github.com/vektra/mockery/v2@v2.40.1
+            - go install github.com/vektra/mockery/v2@v2.43.1
         status:
             - if ! command -v mockery &> /dev/null; then exit 1; fi
 
