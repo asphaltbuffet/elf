@@ -19,10 +19,10 @@ tasks:
     ci:
         desc: ci build pipeline
         cmds:
-            - task: mod-tidy
             - task: install
             - task: generate
             - task: mock
+            - task: mod-tidy
             - task: test
             - task: cover
             - task: build
