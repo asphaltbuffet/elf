@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 
@@ -63,6 +64,9 @@ func runAnalyzeCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	switch {
+	case outFile != "":
+		return aa.Graph(analysis.StringToGraphType(graphType))
+
 	case byYear:
 		return aa.Stats()
 
@@ -72,10 +76,7 @@ func runAnalyzeCmd(cmd *cobra.Command, args []string) error {
 	case compare:
 		return aa.Stats()
 
-	case outFile == "":
-		return aa.Graph(analysis.StringToGraphType(graphType))
-
 	default:
-		return fmt.Errorf("no analysis type")
+		return errors.New("no analysis type")
 	}
 }
