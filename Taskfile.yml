@@ -19,10 +19,10 @@ tasks:
     ci:
         desc: ci build pipeline
         cmds:
+            - task: mod-tidy
             - task: install
             - task: generate
             - task: mock
-            - task: mod-tidy
             - task: test
             - task: cover
             - task: build
@@ -58,16 +58,16 @@ tasks:
         desc: install tools
         cmds:
             - curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.58.2
-            - task: install-gofumpt
             - task: install-stringer
             - task: install-mockery
             - task: install-gotestsum
-            - task: install-goreleaser
 
     install-goreleaser:
-        internal: true
+        internal: false
         cmds:
-            - go install github.com/goreleaser/goreleaser@latest
+            - curl -sSfLO https://github.com/goreleaser/goreleaser-pro/releases/download/v2.0.1-pro/goreleaser-pro_2.0.1.pro_amd64.deb
+            - sudo dpkg -i goreleaser-pro*.deb
+            - rm goreleaser-pro*.deb
         status:
             - if ! command -v goreleaser &> /dev/null; then exit 1; fi
 
