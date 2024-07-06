@@ -195,7 +195,6 @@ func benchmarkToPlotterXYs(benchmarks []*advent.BenchmarkData) map[string][]plot
 
 	for _, bd := range benchmarks {
 		for _, impl := range bd.Implementations {
-			impl := impl
 			day := float64(bd.Day)
 
 			if _, ok := dataMap[impl.Name]; !ok {
@@ -286,8 +285,8 @@ func generateLineGraph(benchData []*advent.BenchmarkData, outfile string) error 
 
 	canvases := plot.Align(plots, t, dc)
 
-	for r := 0; r < rows; r++ {
-		for c := 0; c < cols; c++ {
+	for r := range rows {
+		for c := range cols {
 			if plots[r][c] != nil {
 				plots[r][c].Draw(canvases[r][c])
 			}
@@ -318,10 +317,10 @@ func NewBenchmarkPlots(year int) ([][]*plot.Plot, error) {
 
 	plots := make([][]*plot.Plot, rows)
 
-	for j := 0; j < rows; j++ {
-		plots[j] = make([]*plot.Plot, cols)
+	for r := range rows {
+		plots[r] = make([]*plot.Plot, cols)
 
-		for i := 0; i < cols; i++ {
+		for c := range cols {
 			p := plot.New()
 
 			p.X.Label.Text = "Day"
@@ -349,7 +348,7 @@ func NewBenchmarkPlots(year int) ([][]*plot.Plot, error) {
 			// part1Plot.X.Label.Position = draw.PosRight
 			// part1Plot.Y.Label.Position = draw.PosTop
 
-			plots[j][i] = p
+			plots[r][c] = p
 		}
 	}
 
@@ -432,8 +431,6 @@ func benchmarkToPlotterValues(benchmarks []*advent.BenchmarkData) map[string]map
 	dataMap := make(map[string]map[int]map[int]plotter.Values)
 
 	for _, b := range benchmarks {
-		b := b
-
 		for _, language := range b.Implementations {
 			impl := language
 
@@ -535,7 +532,7 @@ func addDayPartsToPlot(p *plot.Plot, dayMap map[int]map[int]plotter.Values) erro
 	const fontWidth = 10
 	const numParts = 2
 
-	for idx := 0; idx < numParts; idx++ {
+	for idx := range numParts {
 		w := vg.Points(fontWidth)
 
 		//nolint:mnd // color definition

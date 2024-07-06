@@ -185,7 +185,7 @@ func (b *Benchmarker) runBenchmark(iterations int) ([]tasks.Result, *Implementat
 	)
 
 	// generate all the tasks needed for this benchmark run
-	for i := 0; i < iterations; i++ {
+	for i := range iterations {
 		benchmarkTasks = append(
 			benchmarkTasks,
 			&runners.Task{
