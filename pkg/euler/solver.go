@@ -1,7 +1,7 @@
 package euler
 
-import "fmt"
+import "errors"
 
 func (p *Problem) Solve(_ bool) error {
-	return fmt.Errorf("not implemented")
+	return errors.New("not implemented")
 }

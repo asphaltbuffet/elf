@@ -1,6 +1,7 @@
 package advent
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -12,7 +13,7 @@ import (
 
 func (e *Exercise) Test() ([]tasks.Result, error) {
 	if *e == (Exercise{}) {
-		return nil, fmt.Errorf("exercise is empty")
+		return nil, errors.New("exercise is empty")
 	}
 
 	logger := e.logger.With(slog.String("fn", "Test"), slog.String("exercise", e.Title))

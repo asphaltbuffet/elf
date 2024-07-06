@@ -2,6 +2,7 @@ package advent
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -17,13 +18,13 @@ import (
 )
 
 var (
-	ErrEmptyLanguage     = fmt.Errorf("no language specified")
+	ErrEmptyLanguage     = errors.New("no language specified")
 	ErrNotFound          = afero.ErrFileNotFound
-	ErrNotImplemented    = fmt.Errorf("not implemented")
-	ErrNoRunner          = fmt.Errorf("no runner available")
-	ErrInvalidData       = fmt.Errorf("invalid data")
-	ErrNoImplementations = fmt.Errorf("no implementations found")
-	ErrLoadInfo          = fmt.Errorf("load info")
+	ErrNotImplemented    = errors.New("not implemented")
+	ErrNoRunner          = errors.New("no runner available")
+	ErrInvalidData       = errors.New("invalid data")
+	ErrNoImplementations = errors.New("no implementations found")
+	ErrLoadInfo          = errors.New("load info")
 )
 
 func New(config krampus.ExerciseConfiguration, options ...func(*Exercise)) (*Exercise, error) {

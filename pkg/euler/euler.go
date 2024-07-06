@@ -12,6 +12,8 @@ type Problem struct {
 	ID       int
 	Language string
 	Runner   runners.Runner
+
+	logger *slog.Logger
 }
 
 func New(id int, lang string) *Problem {
@@ -23,7 +25,7 @@ func New(id int, lang string) *Problem {
 }
 
 func (p *Problem) SetLanguage(lang string) {
-	slog.Debug("setting language", slog.String("language", lang))
+	p.logger.Debug("setting language", slog.String("language", lang))
 	p.Language = lang
 }
 

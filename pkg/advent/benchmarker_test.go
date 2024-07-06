@@ -1,7 +1,7 @@
 package advent
 
 import (
-	"fmt"
+	"errors"
 	"io"
 	"log/slog"
 	"testing"
@@ -38,7 +38,7 @@ func TestBenchmark(t *testing.T) {
 	}{
 		{
 			name:  "no implementations",
-			setup: func(_m *mocks.MockRunner) {},
+			setup: func(_ *mocks.MockRunner) {},
 			args: args{
 				iterations: 1,
 				id:         "2017-02",
@@ -53,7 +53,7 @@ func TestBenchmark(t *testing.T) {
 		},
 		{
 			name:  "no input",
-			setup: func(_m *mocks.MockRunner) {},
+			setup: func(_ *mocks.MockRunner) {},
 			args: args{
 				iterations: 1,
 				id:         "2017-03",
@@ -336,7 +336,7 @@ func TestRunBenchmark(t *testing.T) {
 		{
 			name: "runner start error",
 			setup: func(_m *mocks.MockRunner) {
-				_m.EXPECT().Start().Return(fmt.Errorf("fake start error"))
+				_m.EXPECT().Start().Return(errors.New("fake start error"))
 			},
 			fields:      fields{exerciseBaseDir: ""},
 			args:        args{iterations: 10},
@@ -348,7 +348,7 @@ func TestRunBenchmark(t *testing.T) {
 			name: "runner run error",
 			setup: func(_m *mocks.MockRunner) {
 				_m.EXPECT().Start().Return(nil)
-				_m.EXPECT().Run(mock.Anything).Return(nil, fmt.Errorf("fake run error"))
+				_m.EXPECT().Run(mock.Anything).Return(nil, errors.New("fake run error"))
 			},
 			fields:      fields{exerciseBaseDir: ""},
 			args:        args{iterations: 10},
@@ -439,12 +439,12 @@ func Test_calculateMetrics(t *testing.T) {
 		{
 			name: "one result",
 			args: args{
-				results: map[runners.Part][]float64{
+				results: map[runners.Part][]float64{ //nolint:exhaustive // not testing visualize
 					runners.PartOne: {1.0},
 					runners.PartTwo: {2.0},
 				},
 			},
-			want: map[runners.Part]*PartData{
+			want: map[runners.Part]*PartData{ //nolint:exhaustive // not testing visualize
 				runners.PartOne: {Mean: 1.0, Min: 1.0, Max: 1.0, Data: []float64{1.0}},
 				runners.PartTwo: {Mean: 2.0, Min: 2.0, Max: 2.0, Data: []float64{2.0}},
 			},
@@ -453,12 +453,12 @@ func Test_calculateMetrics(t *testing.T) {
 		{
 			name: "multiple results",
 			args: args{
-				results: map[runners.Part][]float64{
+				results: map[runners.Part][]float64{ //nolint:exhaustive // not testing visualize
 					runners.PartOne: {1.0, 2.0, 3.0},
 					runners.PartTwo: {2.0, 3.0, 4.0},
 				},
 			},
-			want: map[runners.Part]*PartData{
+			want: map[runners.Part]*PartData{ //nolint:exhaustive // not testing visualize
 				runners.PartOne: {Mean: 2.0, Min: 1.0, Max: 3.0, Data: []float64{1.0, 2.0, 3.0}},
 				runners.PartTwo: {Mean: 3.0, Min: 2.0, Max: 4.0, Data: []float64{2.0, 3.0, 4.0}},
 			},

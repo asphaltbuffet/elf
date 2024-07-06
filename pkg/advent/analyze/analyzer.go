@@ -1,9 +1,11 @@
-package advent
+package analyze
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"image/color"
+	"io"
 	"io/fs"
 	"log/slog"
 	"math"
@@ -12,72 +14,149 @@ import (
 	"strings"
 
 	"github.com/dustin/go-humanize"
+	"github.com/spf13/afero"
 	"gonum.org/v1/plot"
+	"gonum.org/v1/plot/font"
 	"gonum.org/v1/plot/plotter"
 	"gonum.org/v1/plot/plotutil"
 	"gonum.org/v1/plot/vg"
 	"gonum.org/v1/plot/vg/draw"
 	"gonum.org/v1/plot/vg/vgimg"
+
+	"github.com/asphaltbuffet/elf/pkg/advent"
+	"github.com/asphaltbuffet/elf/pkg/analysis"
+	"github.com/asphaltbuffet/elf/pkg/krampus"
 )
 
-type Plotter struct {
-	dir  string
-	data []*BenchmarkData
+type Analyzer struct {
+	Data      []*advent.BenchmarkData
+	Dir       string
+	Output    string
+	GraphType analysis.GraphType
+
+	yearly  bool
+	daily   bool
+	compare bool
+
+	appFs  afero.Fs
+	writer io.Writer
+	logger *slog.Logger
 }
 
+//nolint:mnd // color definition
 var langColor = map[string]color.Color{
 	"Golang": color.RGBA{R: 0, G: 173, B: 216, A: 255},
 	"Python": color.RGBA{R: 55, G: 118, B: 171, A: 255},
 }
 
-func NewGraph(path string) (*Plotter, error) {
-	files, err := getBenchmarkFiles(path)
+func NewAnalyzer(config krampus.ExerciseConfiguration, opts ...func(*Analyzer)) (*Analyzer, error) {
+	analyzer := &Analyzer{
+		appFs:  afero.NewOsFs(),
+		writer: os.Stdout,
+		logger: config.GetLogger(),
+	}
+
+	for _, opt := range opts {
+		opt(analyzer)
+	}
+
+	if analyzer.Dir == "" {
+		return nil, errors.New("no directory specified")
+	}
+
+	if analyzer.GraphType == analysis.Invalid {
+		analyzer.GraphType = analysis.Line
+	}
+
+	err := analyzer.Load()
 	if err != nil {
-		return nil, fmt.Errorf("getting benchmark files: %w", err)
+		return nil, fmt.Errorf("loading benchmark data: %w", err)
+	}
+
+	return analyzer, nil
+}
+
+func WithDirectory(dir string) func(*Analyzer) {
+	return func(a *Analyzer) {
+		a.Dir = dir
+	}
+}
+
+func WithYearly(yearly bool) func(*Analyzer) {
+	return func(a *Analyzer) {
+		a.yearly = yearly
+	}
+}
+
+func WithOutput(name string) func(*Analyzer) {
+	return func(a *Analyzer) {
+		a.Output = name
+	}
+}
+
+func WithDaily(daily bool) func(*Analyzer) {
+	return func(a *Analyzer) {
+		a.daily = daily
+	}
+}
+
+func WithCompare(compare bool) func(*Analyzer) {
+	return func(a *Analyzer) {
+		a.compare = compare
+	}
+}
+
+func (a *Analyzer) Load() error {
+	files, err := getBenchmarkFiles(a.Dir)
+	if err != nil {
+		return fmt.Errorf("getting benchmark files: %w", err)
 	}
 
 	// load benchmark data from files
-	slog.Debug("found benchmark files", "count", len(files))
-	benchData := make([]*BenchmarkData, 0, len(files))
+	a.logger.Debug("found benchmark files", "count", len(files))
+	benchData := make([]*advent.BenchmarkData, 0, len(files))
 
 	for _, bf := range files {
-		var data []*BenchmarkData
+		var data []*advent.BenchmarkData
 
 		data, err = readBenchmarkFile(bf)
 		if err != nil {
-			return nil, fmt.Errorf("reading benchmark file: %w", err)
+			return fmt.Errorf("reading %s: %w", bf, err)
 		}
 
 		benchData = append(benchData, data...)
 	}
 
-	return &Plotter{
-		dir:  path,
-		data: benchData,
-	}, nil
-}
-
-func (p *Plotter) Graph(outfile string) error {
-	err := generateLineGraph(p.data, outfile)
-	if err != nil {
-		return fmt.Errorf("generating graph: %w", err)
-	}
-
-	fmt.Printf("wrote %d graph to %s\n", p.data[0].Year, outfile)
-
-	err = generateBoxPlots(p.data, "boxplot.png")
-	if err != nil {
-		return fmt.Errorf("generating box plot: %w", err)
-	}
+	a.Data = benchData
 
 	return nil
 }
 
-func getBenchmarkFiles(dir string) ([]string, error) {
+func (a *Analyzer) Graph(gt analysis.GraphType) error {
+	switch gt {
+	case analysis.Line:
+		return generateLineGraph(a.Data, a.Output)
+
+	case analysis.Box:
+		return generateBoxPlots(a.Data, a.Output)
+
+	case analysis.Invalid:
+		fallthrough
+
+	default:
+		return fmt.Errorf("invalid graph type: %s", gt)
+	}
+}
+
+func (a *Analyzer) Stats() error {
+	return advent.ErrNotImplemented
+}
+
+func getBenchmarkFiles(dir string) ([]string, error) { //nolint:unparam // expected behavior when walking directories
 	benchFiles := []string{}
 
 	// get all benchmark.json files recursively
-	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+	_ = filepath.WalkDir(dir, func(path string, _ fs.DirEntry, err error) error {
 		if err != nil {
 			return nil //nolint:nilerr // expected behavior when walking directories
 		}
@@ -88,15 +167,15 @@ func getBenchmarkFiles(dir string) ([]string, error) {
 
 		return nil
 	})
-	if err != nil {
-		return nil, err
-	}
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	return benchFiles, nil
 }
 
-func readBenchmarkFile(path string) ([]*BenchmarkData, error) {
-	var bd []*BenchmarkData
+func readBenchmarkFile(path string) ([]*advent.BenchmarkData, error) {
+	var bd []*advent.BenchmarkData
 
 	f, err := os.ReadFile(filepath.Clean(path))
 	if err != nil {
@@ -111,16 +190,15 @@ func readBenchmarkFile(path string) ([]*BenchmarkData, error) {
 	return bd, nil
 }
 
-func benchmarkToPlotterXYs(benchmarks []*BenchmarkData) map[string][]plotter.XYs {
+func benchmarkToPlotterXYs(benchmarks []*advent.BenchmarkData) map[string][]plotter.XYs {
 	dataMap := make(map[string][]plotter.XYs)
 
 	for _, bd := range benchmarks {
 		for _, impl := range bd.Implementations {
-			impl := impl
 			day := float64(bd.Day)
 
 			if _, ok := dataMap[impl.Name]; !ok {
-				dataMap[impl.Name] = make([]plotter.XYs, 2)
+				dataMap[impl.Name] = make([]plotter.XYs, 2) //nolint:mnd
 			}
 
 			dataMap[impl.Name][0] = append(dataMap[impl.Name][0], plotter.XY{
@@ -143,9 +221,14 @@ func benchmarkToPlotterXYs(benchmarks []*BenchmarkData) map[string][]plotter.XYs
 	return dataMap
 }
 
-func generateLineGraph(benchData []*BenchmarkData, outfile string) error {
+func generateLineGraph(benchData []*advent.BenchmarkData, outfile string) error {
+	const plotWidthInches font.Length = 12.5 * vg.Inch
+	const plotHeightInches font.Length = 5 * vg.Inch
+	const plotDPI int = 300
+	const softYMax float64 = 60
+
 	if len(benchData) == 0 {
-		return fmt.Errorf("no benchmark data to graph")
+		return errors.New("no benchmark data to graph")
 	}
 
 	plots, err := NewBenchmarkPlots(benchData[0].Year)
@@ -177,7 +260,7 @@ func generateLineGraph(benchData []*BenchmarkData, outfile string) error {
 	}
 
 	// make sure both plots have the same Y axis for alignment
-	max := max(plots[0][0].Y.Max, plots[0][1].Y.Max, 60)
+	max := max(plots[0][0].Y.Max, plots[0][1].Y.Max, softYMax)
 	plots[0][0].Y.Max = max
 	plots[0][1].Y.Max = max
 
@@ -185,7 +268,7 @@ func generateLineGraph(benchData []*BenchmarkData, outfile string) error {
 	plots[0][0].Y.Min = min
 	plots[0][1].Y.Min = min
 
-	img := vgimg.NewWith(vgimg.UseWH(12.5*vg.Inch, 5*vg.Inch), vgimg.UseDPI(300))
+	img := vgimg.NewWith(vgimg.UseWH(plotWidthInches, plotHeightInches), vgimg.UseDPI(plotDPI))
 	dc := draw.New(img)
 
 	const rows, cols = 1, 2
@@ -202,8 +285,8 @@ func generateLineGraph(benchData []*BenchmarkData, outfile string) error {
 
 	canvases := plot.Align(plots, t, dc)
 
-	for r := 0; r < rows; r++ {
-		for c := 0; c < cols; c++ {
+	for r := range rows {
+		for c := range cols {
 			if plots[r][c] != nil {
 				plots[r][c].Draw(canvases[r][c])
 			}
@@ -229,12 +312,15 @@ func generateLineGraph(benchData []*BenchmarkData, outfile string) error {
 
 func NewBenchmarkPlots(year int) ([][]*plot.Plot, error) {
 	const rows, cols = 1, 2
+	const yPosRedline = 15
+	const redlineDashPattern = 2
+
 	plots := make([][]*plot.Plot, rows)
 
-	for j := 0; j < rows; j++ {
-		plots[j] = make([]*plot.Plot, cols)
+	for r := range rows {
+		plots[r] = make([]*plot.Plot, cols)
 
-		for i := 0; i < cols; i++ {
+		for c := range cols {
 			p := plot.New()
 
 			p.X.Label.Text = "Day"
@@ -262,7 +348,7 @@ func NewBenchmarkPlots(year int) ([][]*plot.Plot, error) {
 			// part1Plot.X.Label.Position = draw.PosRight
 			// part1Plot.Y.Label.Position = draw.PosTop
 
-			plots[j][i] = p
+			plots[r][c] = p
 		}
 	}
 
@@ -281,9 +367,9 @@ func NewBenchmarkPlots(year int) ([][]*plot.Plot, error) {
 	part1Plot.Add(g)
 	part2Plot.Add(g)
 
-	redline := plotter.NewFunction(func(x float64) float64 { return 15 })
-	redline.Color = color.RGBA{R: 255, G: 0, B: 0, A: 255}
-	redline.Dashes = plotutil.Dashes(2)
+	redline := plotter.NewFunction(func(_ float64) float64 { return yPosRedline })
+	redline.Color = color.RGBA{R: 255, G: 0, B: 0, A: 255} //nolint:mnd // color definition
+	redline.Dashes = plotutil.Dashes(redlineDashPattern)
 	part1Plot.Add(redline)
 	part2Plot.Add(redline)
 
@@ -340,13 +426,11 @@ func (t HumanizedLogTicks) Ticks(min, max float64) []plot.Tick {
 
 type ImplDataMap map[string]map[int]map[int]plotter.Values
 
-func benchmarkToPlotterValues(benchmarks []*BenchmarkData) map[string]map[int]map[int]plotter.Values {
+func benchmarkToPlotterValues(benchmarks []*advent.BenchmarkData) map[string]map[int]map[int]plotter.Values {
 	// dataMap is a map of language -> day -> part -> values
 	dataMap := make(map[string]map[int]map[int]plotter.Values)
 
 	for _, b := range benchmarks {
-		b := b
-
 		for _, language := range b.Implementations {
 			impl := language
 
@@ -374,9 +458,12 @@ func benchmarkToPlotterValues(benchmarks []*BenchmarkData) map[string]map[int]ma
 	return dataMap
 }
 
-func generateBoxPlots(benchData []*BenchmarkData, _ string) error {
+func generateBoxPlots(benchData []*advent.BenchmarkData, _ string) error {
+	const plotWidthInches font.Length = 4 * vg.Inch
+	const plotHeightInches font.Length = 8 * vg.Inch
+
 	if len(benchData) == 0 {
-		return fmt.Errorf("no benchmark data to graph")
+		return errors.New("no benchmark data to graph")
 	}
 
 	// pValues is a map of language -> day -> part -> values
@@ -388,7 +475,7 @@ func generateBoxPlots(benchData []*BenchmarkData, _ string) error {
 	}
 
 	for out, p := range plots {
-		if err = p.Save(4*vg.Inch, 8*vg.Inch, out); err != nil {
+		if err = p.Save(plotWidthInches, plotHeightInches, out); err != nil {
 			return fmt.Errorf("saving plot: %w", err)
 		}
 	}
@@ -442,17 +529,21 @@ func dayTicker(min, max float64) []plot.Tick {
 }
 
 func addDayPartsToPlot(p *plot.Plot, dayMap map[int]map[int]plotter.Values) error {
-	for idx := 0; idx < 2; idx++ {
-		w := vg.Points(10)
+	const fontWidth = 10
+	const numParts = 2
 
+	for idx := range numParts {
+		w := vg.Points(fontWidth)
+
+		//nolint:mnd // color definition
 		colors := []color.Color{
 			color.RGBA{R: 0, G: 173, B: 216, A: 255},
 			color.RGBA{R: 55, G: 118, B: 171, A: 255},
 		}
 
-		// d is a map of day -> part -> values
+		// dayMap is a map of day -> part -> values
 		for day, partData := range dayMap {
-			if len(partData[idx]) < 2 {
+			if _, ok := partData[idx]; !ok {
 				continue
 			}
 

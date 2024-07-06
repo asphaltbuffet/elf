@@ -1,7 +1,7 @@
 package advent
 
 import (
-	"fmt"
+	"errors"
 	"io"
 	"log/slog"
 	"testing"
@@ -31,7 +31,7 @@ func Test_Test(t *testing.T) {
 		{
 			name: "runner start error",
 			setup: func(_m *mocks.MockRunner) {
-				_m.EXPECT().Start().Return(fmt.Errorf("FAKE ERROR"))
+				_m.EXPECT().Start().Return(errors.New("FAKE ERROR"))
 			},
 			fields:    fields{},
 			want:      nil,
@@ -41,7 +41,7 @@ func Test_Test(t *testing.T) {
 			name: "runner run error",
 			setup: func(_m *mocks.MockRunner) {
 				_m.EXPECT().Start().Return(nil)
-				_m.EXPECT().Run(mock.Anything).Return(nil, fmt.Errorf("FAKE ERROR"))
+				_m.EXPECT().Run(mock.Anything).Return(nil, errors.New("FAKE ERROR"))
 				_m.EXPECT().Stop().Return(nil)
 				_m.EXPECT().Cleanup().Return(nil)
 			},

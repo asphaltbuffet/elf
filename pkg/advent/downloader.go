@@ -289,7 +289,7 @@ func extractTitle(page []byte) (string, error) {
 	re := regexp.MustCompile(`--- Day \d{1,2}: (.*) ---`)
 
 	matches := re.FindStringSubmatch(rendNode)
-	if len(matches) != 2 { //nolint:gomnd // we expect 2 matches
+	if len(matches) != 2 { //nolint:mnd // we expect 2 matches
 		return "", fmt.Errorf("%w: no match", ErrInvalidData)
 	}
 
@@ -317,7 +317,7 @@ func ParseURL(url string) (int, int, error) {
 	re := regexp.MustCompile(`^https?://(www\.)?adventofcode\.com/(?P<year>\d{4})/day/(?P<day>\d{1,2})`)
 
 	matches := findNamedMatches(re, url)
-	if len(matches) != 2 { //nolint:gomnd // we expect 2 matches
+	if len(matches) != 2 { //nolint:mnd // we expect 2 matches
 		return 0, 0, fmt.Errorf("parse %s: %w", url, ErrInvalidURL)
 	}
 
@@ -396,10 +396,10 @@ func (d *Downloader) downloadPage(year, day int) ([]byte, error) {
 	re := regexp.MustCompile(`(?s)<article.*?>(.*)</article>`)
 	matches := re.FindSubmatch(resp.Body())
 
-	if len(matches) != 2 { //nolint:gomnd // we expect 2 matches
+	if len(matches) != 2 { //nolint:mnd // we expect 2 matches
 		logger.Debug("extracting page data", slog.String("url", resp.Request.URL), slog.Any("found", matches))
 
-		return nil, fmt.Errorf("extracting page data: no match")
+		return nil, errors.New("extracting page data: no match")
 	}
 
 	pd := bytes.TrimSpace(matches[1])

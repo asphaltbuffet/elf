@@ -5,6 +5,7 @@ import (
 	"io"
 	"log/slog"
 	"path/filepath"
+	"time"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/lmittmann/tint"
@@ -112,6 +113,7 @@ func makeMainTasks(part runners.Part, data *Data) []testTask {
 	return solveTasks
 }
 
+//nolint:funlen // this function is long, but it's mostly formatting
 func handleTaskResult(w io.Writer, r *runners.Result, expected string) tasks.Result {
 	taskType, part, subpart := tasks.ParseTaskID(r.TaskID)
 
@@ -121,6 +123,11 @@ func handleTaskResult(w io.Writer, r *runners.Result, expected string) tasks.Res
 		Part:     part,
 		SubPart:  subpart,
 		Duration: r.Duration,
+	}
+
+	dur, err := time.ParseDuration(fmt.Sprintf("%fs", r.Duration)) // TODO: store duration as time.Duration
+	if err != nil {
+		panic(err)
 	}
 
 	name := taskStyle(int(part), subpart)
@@ -152,7 +159,7 @@ func handleTaskResult(w io.Writer, r *runners.Result, expected string) tasks.Res
 		result.Output = r.Output
 
 		output = statusStyle.Foreground(newAns).Background(lipgloss.Color("0")).SetString("NEW")
-		followUpText = timeStyle.SetString(fmt.Sprintf("%.2f ms", r.Duration*1000))
+		followUpText = timeStyle.SetString(dur.String())
 
 		extra = extraStyle.SetString("⤷ " + r.Output)
 		printExtra = true
@@ -163,7 +170,7 @@ func handleTaskResult(w io.Writer, r *runners.Result, expected string) tasks.Res
 		result.Expected = expected
 
 		output = lipgloss.NewStyle().Bold(true).Align(lipgloss.Right).Foreground(lipgloss.Color("46")).SetString("PASS")
-		followUpText = timeStyle.SetString(fmt.Sprintf("%.2f ms", r.Duration*1000))
+		followUpText = timeStyle.SetString(dur.String())
 
 		if taskType == tasks.Solve {
 			extra = extraStyle.Foreground(lipgloss.Color("7")).SetString("⤷ " + r.Output)

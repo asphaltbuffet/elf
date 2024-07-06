@@ -8,8 +8,13 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
-  ci:
+  govulncheck:
+    uses: asphaltbuffet/.github/.github/workflows/vulncheck.yml@main
+  test:
     name: Build and Test
     strategy:
       fail-fast: true
@@ -32,10 +37,10 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: "go.mod"
+          go-version: stable
 
       - name: Build
-        run: task ci -f
+        run: task ci
 
       - name: Archive code coverage results
         uses: actions/upload-artifact@v4
@@ -52,7 +57,7 @@ jobs:
           flags: ${{ runner.os }}
 
   sonarCloudTrigger:
-    needs: ci
+    needs: test
     name: SonarCloud Trigger
     runs-on: ubuntu-latest
     steps:
@@ -73,38 +78,32 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-  release-test:
-    needs: ci
-    name: Release Test
+  snapshot:
+    needs: test
     runs-on: ubuntu-latest
     steps:
-      - name: Clone Repository
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Fetch all tags
-        run: git fetch --force --tags
-
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: "go.mod"
-
-      - name: Run GoReleaser - snapshot
-        uses: goreleaser/goreleaser-action@v4
+          go-version: stable
+      - uses: crazy-max/ghaction-upx@v3
+        with:
+          install-only: true
+      # More assembly might be required: Docker logins, GPG, etc.
+      # It all depends on your needs.
+      - name: Release Test
+        uses: goreleaser/goreleaser-action@v6
         with:
           # either 'goreleaser' (default) or 'goreleaser-pro'
-          distribution: goreleaser
-          version: latest
-          args: release --clean --snapshot --skip=publish
+          distribution: goreleaser-pro
+          # 'latest', 'nightly', or a semver
+          version: "~> v2"
+          args: release --clean --snapshot
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Your GoReleaser Pro key, if you are using the 'goreleaser-pro' distribution
-          # GORELEASER_KEY: ${{ secrets.GORELEASER_KEY }}
-
-      - name: Archive dist
-        uses: actions/upload-artifact@v4
-        with:
-          name: snapshot
-          path: dist
+          GORELEASER_KEY: ${{ secrets.GORELEASER_KEY }}

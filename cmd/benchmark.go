@@ -1,10 +1,8 @@
 package cmd
 
 import (
-	"log/slog"
 	"path/filepath"
 
-	"github.com/lmittmann/tint"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
@@ -17,6 +15,8 @@ var (
 	benchmarkCmd *cobra.Command
 	iterations   int
 )
+
+const DefaultIterations = 10
 
 const benchmarkExample = `
 elf benchmark --num=5 /path/to/exercise
@@ -33,7 +33,7 @@ func GetBenchmarkCmd() *cobra.Command {
 			RunE:    runBenchmarkCmd,
 		}
 
-		benchmarkCmd.Flags().IntVarP(&iterations, "num", "n", 10, "number of iterations")
+		benchmarkCmd.Flags().IntVarP(&iterations, "num", "n", DefaultIterations, "number of iterations")
 		benchmarkCmd.Flags().StringP("config-file", "c", "", "configuration file")
 	}
 
@@ -60,23 +60,20 @@ func runBenchmarkCmd(cmd *cobra.Command, args []string) error {
 
 	dir, err := filepath.Abs(args[0])
 	if err != nil {
-		slog.Error("getting current directory", tint.Err(err))
 		return err
 	}
 
-	slog.Debug("benchmarking exercise", slog.Group("exercise", "dir", dir))
-
 	ex, err = advent.NewBenchmarker(&cfg, advent.WithExerciseDir(dir))
 	if err != nil {
-		slog.Error("creating exercise", tint.Err(err))
 		return err
 	}
 
 	_, err = ex.Benchmark(cfg.GetFs(), iterations)
 	if err != nil {
-		slog.Error("solving exercise", tint.Err(err))
-		cmd.PrintErrln("Failed to solve: ", err)
+		cmd.PrintErrln("benchmark failed:", err)
 	}
 
+	// return nil regardless of failure; this wasn't necessarily user error and
+	// we don't need to print the error message twice
 	return nil
 }

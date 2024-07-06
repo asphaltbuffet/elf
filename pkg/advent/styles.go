@@ -6,6 +6,15 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+const (
+	StatusWidth  int = 4
+	TaskWidth    int = 6
+	ExtraPadding int = 6
+	TimeWidth    int = 20
+
+	HeaderWidth int = 40
+)
+
 var (
 	// good   = lipgloss.AdaptiveColor{Light: "#008000", Dark: "#00ff00"} // green
 	// warn   = lipgloss.AdaptiveColor{Light: "#808000", Dark: "#ffff00"} // yellow.
@@ -17,14 +26,14 @@ var (
 
 	// theme = lipgloss.AdaptiveColor{Light: "#800080", Dark: "#ff00ff"} // magenta.
 
-	statusStyle = lipgloss.NewStyle().Bold(true).Width(4)
-	extraStyle  = lipgloss.NewStyle().Italic(true).PaddingLeft(6)
-	timeStyle   = lipgloss.NewStyle().Faint(true).Italic(true).Foreground(minor).Width(20).Align(lipgloss.Right)
+	statusStyle = lipgloss.NewStyle().Bold(true).Width(StatusWidth)
+	extraStyle  = lipgloss.NewStyle().Italic(true).PaddingLeft(ExtraPadding)
+	timeStyle   = lipgloss.NewStyle().Faint(true).Italic(true).Foreground(minor).Width(TimeWidth).Align(lipgloss.Right)
 )
 
 func headerStyle(s string) lipgloss.Style {
 	headerStyle := lipgloss.NewStyle().
-		Width(40).
+		Width(HeaderWidth).
 		Bold(true).
 		Align(lipgloss.Center).
 		BorderStyle(lipgloss.Border{
@@ -78,7 +87,7 @@ func headerStyle(s string) lipgloss.Style {
 // }
 
 func taskStyle(part, subpart int) lipgloss.Style {
-	style := lipgloss.NewStyle().Align(lipgloss.Right).Width(6).Foreground(lipgloss.Color("6"))
+	style := lipgloss.NewStyle().Align(lipgloss.Right).Width(TaskWidth).Foreground(lipgloss.Color("6"))
 
 	// TODO: return a []style so "Part" is different formatting from numbers
 	if subpart >= 0 {

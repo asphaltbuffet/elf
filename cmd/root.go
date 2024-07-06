@@ -35,7 +35,7 @@ func GetRootCommand() *cobra.Command {
 			Use:     "elf [command]",
 			Version: fmt.Sprintf("%s\n%s", Version, Date),
 			Short:   "elf is a programming challenge helper application",
-			Run: func(cmd *cobra.Command, args []string) {
+			Run: func(cmd *cobra.Command, _ []string) {
 				cfg, err := krampus.NewConfig(krampus.WithFile(cfgFile))
 				if err != nil {
 					cmd.PrintErr(err)
@@ -54,7 +54,7 @@ func GetRootCommand() *cobra.Command {
 	rootCmd.AddCommand(GetTestCmd())
 	rootCmd.AddCommand(GetDownloadCmd())
 	rootCmd.AddCommand(GetBenchmarkCmd())
-	rootCmd.AddCommand(GetGraphCmd())
+	rootCmd.AddCommand(GetAnalyzeCmd())
 
 	return rootCmd
 }

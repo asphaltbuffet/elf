@@ -1,11 +1,16 @@
-# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+# yaml-language-server: $schema=https://goreleaser.com/static/schema-pro.json
+---
+version: 2
+
 before:
   hooks:
     - go mod download
     - go install golang.org/x/tools/cmd/stringer@latest
     - go generate ./...
 builds:
-  - ldflags:
+  - flags:
+      - -trimpath
+    ldflags:
       - -s -w -X {{.ModulePath}}/cmd.Version={{.Summary}} -X {{.ModulePath}}/cmd.Date={{.Date}}
     env:
       - CGO_ENABLED=0
@@ -23,17 +28,20 @@ builds:
         goarch: "386"
       - goos: darwin
         goarch: arm
-      
+upx:
+  - enabled: true
+    compress: best
+
 archives:
   - format: tgz
     name_template: >-
-      {{ .ProjectName }}_
-      {{- title .Os }}_
-      {{- if eq .Arch "amd64" }}x86-64
-      {{- else if eq .Arch "arm" }}arm-v6
-      {{- else if eq .Arch "arm64" }}arm-v8
+      {{ .ProjectName }}-
+      {{- .Version }}-
+      {{- .Os }}-
+      {{- if eq .Arch "amd64" }}x86_64
       {{- else if eq .Arch "386" }}i386
       {{- else }}{{ .Arch}}{{ end }}
+      {{- if .Arm }}_v{{ .Arm }}{{ end }}
     format_overrides:
       - goos: windows
         format: zip
@@ -47,12 +55,19 @@ archives:
       - src: LICENSE*
         dst: docs
 checksum:
-  name_template: 'checksums.txt'
+  name_template: "checksums.txt"
 snapshot:
-  name_template: "{{ incpatch .Version }}-next-{{ .Now.Format \"0102-150405\" }}"
+  name_template: "{{ .Tag }}-snapshot"
 changelog:
   disable: true
 release:
+  github:
+    owner: asphaltbuffet
+    name: elf
   prerelease: auto
+nightly:
+  tag_name: devel
+  publish_release: true
+  keep_single_release: true
 announce:
-  skip: 'true'
+  skip: "true"
