@@ -7,6 +7,7 @@ before:
     - go mod tidy
     - go install golang.org/x/tools/cmd/stringer@latest
     - go generate ./...
+    - ./scripts/completions.sh
     - ./scripts/manpages.sh
 
 builds:

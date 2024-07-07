@@ -166,3 +166,5 @@ elf.toml
 
 # generated files
 **/*_string.go
+completions/
+manpages/
