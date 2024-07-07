@@ -1,5 +1,3 @@
-//go:build test
-
 package advent
 
 import (

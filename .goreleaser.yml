@@ -5,7 +5,6 @@ version: 2
 before:
   hooks:
     - go mod tidy
-    - go install golang.org/x/tools/cmd/stringer@latest
     - go generate ./...
     - ./scripts/completions.sh
     - ./scripts/manpages.sh
@@ -22,16 +21,12 @@ builds:
     goarch:
       - "386"
       - amd64
-      - arm
       - arm64
-      - ppc64
     goarm:
       - "7"
     ignore:
       - goos: darwin
         goarch: "386"
-      - goos: windows
-        goarch: arm
     ldflags:
       - -s -w -X {{.ModulePath}}/cmd.Version={{.Version}} -X {{.ModulePath}}/cmd.Date={{.Date}}
     mod_timestamp: "{{ .CommitTimestamp }}"
