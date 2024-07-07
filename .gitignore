@@ -165,5 +165,4 @@ bin/
 elf.toml
 
 # generated files
-mocks/
 **/*_string.go

@@ -4,8 +4,6 @@ version: 2
 
 before:
   hooks:
-    - go install github.com/vektra/mockery/v2@v2.43.1
-    - mockery --log-level=warn
     - go mod tidy
     - go install golang.org/x/tools/cmd/stringer@latest
     - go generate ./...
@@ -70,7 +68,7 @@ checksum:
   name_template: "checksums.txt"
 
 snapshot:
-  name_template: "{{ .Tag }}-snapshot"
+  name_template: "{{ .Version }}-snapshot"
 
 changelog:
   disable: true
