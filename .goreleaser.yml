@@ -4,33 +4,44 @@ version: 2
 
 before:
   hooks:
-    - go mod download
+    - go install github.com/vektra/mockery/v2@v2.43.1
+    - mockery --log-level=warn
+    - go mod tidy
     - go install golang.org/x/tools/cmd/stringer@latest
     - go generate ./...
+
 builds:
-  - flags:
-      - -trimpath
-    ldflags:
-      - -s -w -X {{.ModulePath}}/cmd.Version={{.Summary}} -X {{.ModulePath}}/cmd.Date={{.Date}}
-    env:
+  - env:
       - CGO_ENABLED=0
+    flags:
+      - -trimpath
     goos:
+      - darwin
       - linux
       - windows
-      - darwin
     goarch:
       - "386"
       - amd64
       - arm
       - arm64
+      - ppc64
+    goarm:
+      - "7"
     ignore:
       - goos: darwin
         goarch: "386"
-      - goos: darwin
+      - goos: windows
         goarch: arm
+    ldflags:
+      - -s -w -X {{.ModulePath}}/cmd.Version={{.Version}} -X {{.ModulePath}}/cmd.Date={{.Date}}
+    mod_timestamp: "{{ .CommitTimestamp }}"
+
 upx:
   - enabled: true
     compress: best
+git:
+  ignore_tags:
+    - "{{ if not .IsNightly }}nightly{{ end }}"
 
 archives:
   - format: tgz
@@ -54,20 +65,70 @@ archives:
         dst: docs
       - src: LICENSE*
         dst: docs
+
 checksum:
   name_template: "checksums.txt"
+
 snapshot:
   name_template: "{{ .Tag }}-snapshot"
+
 changelog:
   disable: true
+
 release:
   github:
     owner: asphaltbuffet
     name: elf
   prerelease: auto
+
 nightly:
-  tag_name: devel
   publish_release: true
   keep_single_release: true
+  name_template: "{{ incminor .Version }}-nightly"
+
 announce:
   skip: "true"
+
+nfpms:
+  - file_name_template: "{{ .ConventionalFileName }}"
+    id: packages
+    homepage: https://github.com/asphaltbuffet/elf
+    description: |-
+      A helper for programming exercises.
+      Elf takes care of the boring parts of programming exercises so you can 
+      focus on the fun parts.
+    maintainer: Ben Lechlitner <otherland@gmail.com>
+    license: MIT
+    vendor: asphaltbuffet
+    bindir: /usr/bin
+    section: utils
+    contents:
+      - src: ./completions/elf.bash
+        dst: /usr/share/bash-completion/completions/elf
+        file_info:
+          mode: 0644
+      - src: ./completions/elf.fish
+        dst: /usr/share/fish/vendor_completions.d/elf.fish
+        file_info:
+          mode: 0644
+      - src: ./completions/elf.zsh
+        dst: /usr/share/zsh/vendor-completions/_elf
+        file_info:
+          mode: 0644
+      - src: ./manpages/
+        dst: /usr/share/man/man1/
+        file_info:
+          mode: 0644
+      - src: ./LICENSE
+        dst: /usr/share/doc/elf/copyright
+        file_info:
+          mode: 0644
+    formats:
+      - apk
+      - deb
+      - rpm
+    dependencies:
+      - golang
+    recommends:
+      - python3
+    
