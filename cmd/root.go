@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/asphaltbuffet/elf/cmd/man"
 	"github.com/asphaltbuffet/elf/pkg/krampus"
 )
 
@@ -55,6 +56,7 @@ func GetRootCommand() *cobra.Command {
 	rootCmd.AddCommand(GetDownloadCmd())
 	rootCmd.AddCommand(GetBenchmarkCmd())
 	rootCmd.AddCommand(GetAnalyzeCmd())
+	rootCmd.AddCommand(man.NewManCmd())
 
 	return rootCmd
 }

@@ -7,6 +7,7 @@ before:
     - go mod tidy
     - go install golang.org/x/tools/cmd/stringer@latest
     - go generate ./...
+    - ./scripts/manpages.sh
 
 builds:
   - env:
@@ -93,7 +94,7 @@ nfpms:
     homepage: https://github.com/asphaltbuffet/elf
     description: |-
       A helper for programming exercises.
-      Elf takes care of the boring parts of programming exercises so you can 
+      Elf takes care of the boring parts of programming exercises so you can
       focus on the fun parts.
     maintainer: Ben Lechlitner <otherland@gmail.com>
     license: MIT
@@ -129,4 +130,3 @@ nfpms:
       - golang
     recommends:
       - python3
-    
