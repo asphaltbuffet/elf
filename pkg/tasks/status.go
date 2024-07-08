@@ -2,7 +2,7 @@ package tasks
 
 import "github.com/asphaltbuffet/elf/pkg/runners"
 
-//go:generate stringer -type=TaskStatus --linecomment
+//go:generate go run golang.org/x/tools/cmd/stringer@latest -type=TaskStatus --linecomment
 type TaskStatus int
 
 const (
