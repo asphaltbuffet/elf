@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/asphaltbuffet/elf/cmd/analyze"
+	"github.com/asphaltbuffet/elf/cmd/benchmark"
 	"github.com/asphaltbuffet/elf/cmd/man"
 	"github.com/asphaltbuffet/elf/pkg/krampus"
 )
@@ -48,16 +49,16 @@ func GetRootCommand() *cobra.Command {
 				cmd.Println("token:", cfg.GetToken())
 			},
 		}
+
+		rootCmd.Flags().StringVarP(&cfgFile, "config-file", "c", "", "configuration file")
+
+		rootCmd.AddCommand(GetSolveCmd())
+		rootCmd.AddCommand(GetTestCmd())
+		rootCmd.AddCommand(GetDownloadCmd())
+		rootCmd.AddCommand(benchmark.GetBenchmarkCmd())
+		rootCmd.AddCommand(analyze.GetAnalyzeCmd())
+		rootCmd.AddCommand(man.NewManCmd())
 	}
-
-	rootCmd.Flags().StringVarP(&cfgFile, "config-file", "c", "", "configuration file")
-
-	rootCmd.AddCommand(GetSolveCmd())
-	rootCmd.AddCommand(GetTestCmd())
-	rootCmd.AddCommand(GetDownloadCmd())
-	rootCmd.AddCommand(GetBenchmarkCmd())
-	rootCmd.AddCommand(analyze.GetAnalyzeCmd())
-	rootCmd.AddCommand(man.NewManCmd())
 
 	return rootCmd
 }
