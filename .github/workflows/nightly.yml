@@ -1,16 +1,17 @@
 # yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
 ---
     name: Nightly Release Workflow
-  
+
     on:
       schedule:
-        - cron: '0 0 * * 5'
-  
+        - cron: '0 0 * * *'
+      workflow_dispatch:
+
     permissions:
       contents: write
       packages: write
       # issues: write
-  
+
     jobs:
       goreleaser:
         runs-on: ubuntu-latest
