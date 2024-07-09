@@ -12,6 +12,7 @@ import (
 	"github.com/asphaltbuffet/elf/cmd/download"
 	"github.com/asphaltbuffet/elf/cmd/man"
 	"github.com/asphaltbuffet/elf/cmd/solve"
+	"github.com/asphaltbuffet/elf/cmd/test"
 	"github.com/asphaltbuffet/elf/pkg/krampus"
 )
 
@@ -55,7 +56,7 @@ func GetRootCommand() *cobra.Command {
 		rootCmd.Flags().StringVarP(&cfgFile, "config-file", "c", "", "configuration file")
 
 		rootCmd.AddCommand(solve.GetSolveCmd())
-		rootCmd.AddCommand(GetTestCmd())
+		rootCmd.AddCommand(test.GetTestCmd())
 		rootCmd.AddCommand(download.GetDownloadCmd())
 		rootCmd.AddCommand(benchmark.GetBenchmarkCmd())
 		rootCmd.AddCommand(analyze.GetAnalyzeCmd())
