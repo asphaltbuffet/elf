@@ -32,8 +32,10 @@ builds:
     mod_timestamp: "{{ .CommitTimestamp }}"
 
 upx:
-  - enabled: true
+  - goos: [linux]
+    enabled: true
     compress: best
+
 git:
   ignore_tags:
     - "{{ if not .IsNightly }}nightly{{ end }}"
