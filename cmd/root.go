@@ -2,19 +2,18 @@
 package cmd
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
 
+	"github.com/asphaltbuffet/elf/cmd/analyze"
+	"github.com/asphaltbuffet/elf/cmd/benchmark"
+	"github.com/asphaltbuffet/elf/cmd/download"
 	"github.com/asphaltbuffet/elf/cmd/man"
+	"github.com/asphaltbuffet/elf/cmd/solve"
+	"github.com/asphaltbuffet/elf/cmd/test"
+	versionCmd "github.com/asphaltbuffet/elf/cmd/version"
 	"github.com/asphaltbuffet/elf/pkg/krampus"
-)
-
-// application build information set by the linker.
-var (
-	Version string
-	Date    string
 )
 
 var rootCmd *cobra.Command
@@ -33,9 +32,8 @@ func GetRootCommand() *cobra.Command {
 	var cfgFile string
 	if rootCmd == nil {
 		rootCmd = &cobra.Command{
-			Use:     "elf [command]",
-			Version: fmt.Sprintf("%s\n%s", Version, Date),
-			Short:   "elf is a programming challenge helper application",
+			Use:   "elf [command]",
+			Short: "elf is a programming challenge helper application",
 			Run: func(cmd *cobra.Command, _ []string) {
 				cfg, err := krampus.NewConfig(krampus.WithFile(cfgFile))
 				if err != nil {
@@ -47,16 +45,17 @@ func GetRootCommand() *cobra.Command {
 				cmd.Println("token:", cfg.GetToken())
 			},
 		}
+
+		rootCmd.Flags().StringVarP(&cfgFile, "config-file", "c", "", "configuration file")
+
+		rootCmd.AddCommand(analyze.GetAnalyzeCmd())
+		rootCmd.AddCommand(benchmark.GetBenchmarkCmd())
+		rootCmd.AddCommand(download.GetDownloadCmd())
+		rootCmd.AddCommand(man.NewManCmd())
+		rootCmd.AddCommand(solve.GetSolveCmd())
+		rootCmd.AddCommand(test.GetTestCmd())
+		rootCmd.AddCommand(versionCmd.NewVersionCmd())
 	}
-
-	rootCmd.Flags().StringVarP(&cfgFile, "config-file", "c", "", "configuration file")
-
-	rootCmd.AddCommand(GetSolveCmd())
-	rootCmd.AddCommand(GetTestCmd())
-	rootCmd.AddCommand(GetDownloadCmd())
-	rootCmd.AddCommand(GetBenchmarkCmd())
-	rootCmd.AddCommand(GetAnalyzeCmd())
-	rootCmd.AddCommand(man.NewManCmd())
 
 	return rootCmd
 }

@@ -1,4 +1,4 @@
-package cmd
+package benchmark
 
 import (
 	"path/filepath"

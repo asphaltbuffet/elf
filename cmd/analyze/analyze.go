@@ -1,4 +1,4 @@
-package cmd
+package analyze
 
 import (
 	"errors"
@@ -31,14 +31,14 @@ func GetAnalyzeCmd() *cobra.Command {
 			Short:   "analysis of run-time metrics",
 			RunE:    runAnalyzeCmd,
 		}
+
+		analyzeCmd.Flags().StringVarP(&outFile, "graph", "g", "./run-times.png", "graph output file")
+		analyzeCmd.Flags().StringVarP(&graphType, "type", "t", "line", "type of output graph")
+
+		analyzeCmd.Flags().BoolVarP(&byYear, "year", "y", true, "generate analysis by each year")
+		analyzeCmd.Flags().BoolVarP(&byDay, "day", "d", false, "generate separate analysis for each day")
+		analyzeCmd.Flags().BoolVarP(&compare, "compare", "c", false, "compare run-time metrics")
 	}
-
-	analyzeCmd.Flags().StringVarP(&outFile, "graph", "g", "./run-times.png", "graph output file")
-	analyzeCmd.Flags().StringVarP(&graphType, "type", "t", "line", "type of output graph")
-
-	analyzeCmd.Flags().BoolVarP(&byYear, "year", "y", true, "generate analysis by each year")
-	analyzeCmd.Flags().BoolVarP(&byDay, "day", "d", false, "generate separate analysis for each day")
-	analyzeCmd.Flags().BoolVarP(&compare, "compare", "c", false, "compare run-time metrics")
 
 	return analyzeCmd
 }

@@ -1,4 +1,4 @@
-package cmd
+package download
 
 import (
 	"fmt"
@@ -18,6 +18,7 @@ type Downloader interface {
 var (
 	downloadCmd *cobra.Command
 	skipLang    bool
+	language    string
 	forceAll    bool
 	forceInfo   bool
 	forceReadme bool
@@ -27,7 +28,7 @@ var (
 const exampleDownloadText = `  elf download https://example.com --lang=go
     elf download https://example.com --force --lang=py
 
-  If no language is given, the default language is used: 
+  If no language is given, the default language is used:
 
     elf download https://example.com`
 
@@ -43,7 +44,7 @@ func GetDownloadCmd() *cobra.Command {
 		}
 
 		downloadCmd.Flags().BoolVarP(&skipLang, "skip-lang", "L", false, "skip creating implementation files")
-
+		downloadCmd.Flags().StringVarP(&language, "lang", "l", "", "solution language")
 		downloadCmd.Flags().BoolVarP(&forceAll, "force-all", "A", false, "overwrite existing files")
 		downloadCmd.Flags().BoolVarP(&forceInfo, "force-info", "N", false, "overwrite existing info file")
 		downloadCmd.Flags().BoolVarP(&forceReadme, "force-readme", "R", false, "overwrite existing README file")
