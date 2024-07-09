@@ -12,7 +12,10 @@ import (
 	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
-var testCmd *cobra.Command
+var (
+	testCmd  *cobra.Command
+	language string
+)
 
 type ChallengeTester interface {
 	Test() ([]tasks.Result, error)

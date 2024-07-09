@@ -1,4 +1,4 @@
-package cmd
+package solve
 
 import (
 	"log/slog"
@@ -36,10 +36,10 @@ func GetSolveCmd() *cobra.Command {
 
 		solveCmd.Flags().BoolVarP(&noTest, "no-test", "X", false, "skip tests")
 		solveCmd.Flags().StringVarP(&language, "lang", "l", "", "solution language")
-	}
 
-	solveCmd.Flags().StringP("config-file", "c", "", "configuration file")
-	solveCmd.Flags().StringVarP(&input, "input-file", "i", "", "override input file")
+		solveCmd.Flags().StringP("config-file", "c", "", "configuration file")
+		solveCmd.Flags().StringVarP(&input, "input-file", "i", "", "override input file")
+	}
 
 	return solveCmd
 }
