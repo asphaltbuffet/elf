@@ -8,6 +8,7 @@ before:
     - go generate ./...
     - ./scripts/completions.sh
     - ./scripts/manpages.sh
+    - ./scripts/release_notes.sh {{ incminor .RawVersion }}
 
 builds:
   - env:
@@ -34,6 +35,7 @@ builds:
 upx:
   - enabled: true
     compress: best
+
 git:
   ignore_tags:
     - "{{ if not .IsNightly }}nightly{{ end }}"
@@ -53,13 +55,13 @@ archives:
         format: zip
     files:
       - info:
+          owner: root
+          group: root
+          mode: 0644
           mtime: "{{ .CommitDate }}"
       - src: CHANGELOG*
-        dst: docs
       - src: README*
-        dst: docs
       - src: LICENSE*
-        dst: docs
 
 checksum:
   name_template: "checksums.txt"
@@ -82,7 +84,7 @@ nightly:
   name_template: "{{ incminor .Version }}-nightly"
 
 announce:
-  skip: "true"
+  skip: true
 
 nfpms:
   - file_name_template: "{{ .ConventionalFileName }}"

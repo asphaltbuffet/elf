@@ -168,3 +168,4 @@ elf.toml
 **/*_string.go
 completions/
 manpages/
+release_notes/
