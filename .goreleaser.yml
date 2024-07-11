@@ -8,7 +8,7 @@ before:
     - go generate ./...
     - ./scripts/completions.sh
     - ./scripts/manpages.sh
-    - ./scripts/release_notes.sh {{ incminor .RawVersion }}
+    - ./scripts/release_notes.sh {{ .RawVersion }}
 
 builds:
   - env:
