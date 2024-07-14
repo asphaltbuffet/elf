@@ -1,11 +1,10 @@
 version: "3"
 
 vars:
-  SRC_ROOT:
-    sh: git rev-parse --show-toplevel
-  TOOLS_MOD_DIR: "{{.SRC_ROOT}}/tools"
-  TOOLS_BIN_DIR: "{{.SRC_ROOT}}/.tools"
-
+  GORELEASER_VERSION: "2.0.1-pro"
+  TOOLS_MOD_DIR: '{{joinPath .ROOT_DIR "tools" | fromSlash}}'
+  TOOLS_BIN_DIR: '{{joinPath .ROOT_DIR ".tools" | fromSlash}}'
+  
 tasks:
   build:
     desc: go build
@@ -34,6 +33,7 @@ tasks:
 
   clean:
     desc: remove files created during build pipeline
+    run: once
     cmds:
       - for: [dist, bin, completions, manpages, release_notes, .tools]
         cmd: rm -rf {{.ITEM}}
@@ -73,9 +73,8 @@ tasks:
       - 'PATH={{.TOOLS_BIN_DIR}}:$PATH && go generate ./...'
 
   install-goreleaser:
-    internal: false
     cmds:
-      - curl -sSfLO https://github.com/goreleaser/goreleaser-pro/releases/download/v2.0.1-pro/goreleaser-pro_2.0.1.pro_amd64.deb
+      - 'curl -sSfLO https://github.com/goreleaser/goreleaser-pro/releases/download/v{{.GORELEASER_VERSION}}/goreleaser-pro_{{.GORELEASER_VERSION}}_amd64.deb'
       - sudo dpkg -i goreleaser-pro*.deb
       - rm goreleaser-pro*.deb
     status:
