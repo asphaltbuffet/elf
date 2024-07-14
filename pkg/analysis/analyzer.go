@@ -7,7 +7,7 @@ type Analyzer interface {
 	Stats() error
 }
 
-//go:generate go run golang.org/x/tools/cmd/stringer@latest -type=GraphType
+//go:generate stringer -type=GraphType
 type GraphType int
 
 const (

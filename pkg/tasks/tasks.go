@@ -11,7 +11,7 @@ import (
 // TaskType represents the type of task to be executed.
 type TaskType int
 
-//go:generate go run golang.org/x/tools/cmd/stringer@latest -type=TaskType -linecomment
+//go:generate stringer -type=TaskType -linecomment
 const (
 	Invalid   TaskType = iota // invalid
 	Solve                     // solve
