@@ -1,37 +1,48 @@
 # yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
 ---
-    name: Nightly Release Workflow
+name: Nightly Release Workflow
 
-    on:
-      schedule:
-        - cron: '0 0 * * *'
-      workflow_dispatch:
+on:
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch:
 
-    permissions:
-      contents: write
-      packages: write
-      # issues: write
+permissions:
+  contents: write
+  packages: write
+  # issues: write
 
-    jobs:
-      goreleaser:
-        runs-on: ubuntu-latest
-        steps:
-          - uses: actions/checkout@v4
-            with:
-              fetch-depth: 0
-          - uses: actions/setup-go@v5
-            with:
-              go-version: stable
-          - uses: crazy-max/ghaction-upx@v3
-            with:
-              install-only: true
+jobs:
+  goreleaser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-          - name: Run GoReleaser
-            uses: goreleaser/goreleaser-action@v6
-            with:
-              distribution: goreleaser-pro
-              version: "~> v2"
-              args: release --clean --nightly
-            env:
-              GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-              GORELEASER_KEY: ${{ secrets.GORELEASER_KEY }}
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Install Task
+        uses: arduino/setup-task@v2
+        with:
+          version: 3.x
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup tooling
+        run: task setup
+
+      - uses: crazy-max/ghaction-upx@v3
+        with:
+          install-only: true
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser-pro
+          version: "~> v2"
+          args: release --clean --nightly
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GORELEASER_KEY: ${{ secrets.GORELEASER_KEY }}
