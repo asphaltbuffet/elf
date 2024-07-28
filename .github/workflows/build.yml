@@ -39,6 +39,9 @@ jobs:
         with:
           go-version: stable
 
+      - name: Set up tools
+        run: task setup -f
+        
       - name: Build
         run: task ci
 
