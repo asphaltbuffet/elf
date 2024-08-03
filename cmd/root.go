@@ -30,12 +30,15 @@ func Execute() {
 // GetRootCommand returns the root command for the CLI.
 func GetRootCommand() *cobra.Command {
 	var cfgFile string
+	var cfg *krampus.Config
+
 	if rootCmd == nil {
 		rootCmd = &cobra.Command{
 			Use:   "elf [command]",
 			Short: "elf is a programming challenge helper application",
 			Run: func(cmd *cobra.Command, _ []string) {
-				cfg, err := krampus.NewConfig(krampus.WithFile(cfgFile))
+				var err error
+				cfg, err = krampus.NewConfig(krampus.WithFile(cfgFile))
 				if err != nil {
 					cmd.PrintErr(err)
 				}

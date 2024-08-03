@@ -63,7 +63,7 @@ func runBenchmarkCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	ex, err = advent.NewBenchmarker(&cfg, advent.WithExerciseDir(dir))
+	ex, err = advent.NewBenchmarker(cfg, advent.WithExerciseDir(dir))
 	if err != nil {
 		return err
 	}

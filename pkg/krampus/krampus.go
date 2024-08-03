@@ -28,7 +28,7 @@ type Config struct {
 	fs          afero.Fs
 }
 
-func NewConfig(options ...func(*Config)) (Config, error) {
+func NewConfig(options ...func(*Config)) (*Config, error) {
 	cfg := Config{
 		viper: viper.New(),
 	}
@@ -68,14 +68,14 @@ func NewConfig(options ...func(*Config)) (Config, error) {
 	configDir, err := os.UserConfigDir()
 	if err != nil {
 		cfg.logger.Error("get default user config dir", "error", tint.Err(err))
-		return Config{}, err
+		return nil, err
 	}
 	cfg.viper.SetDefault(string(ConfigDirKey), filepath.Join(configDir, "elf"))
 
 	cacheDir, err := os.UserCacheDir()
 	if err != nil {
 		cfg.logger.Error("get default user cache dir", "error", tint.Err(err))
-		return Config{}, err
+		return nil, err
 	}
 
 	cfg.viper.SetDefault(string(CacheDirKey), filepath.Join(cacheDir, "elf"))
@@ -93,7 +93,7 @@ func NewConfig(options ...func(*Config)) (Config, error) {
 		if !errors.As(err, &viper.ConfigFileNotFoundError{}) {
 			// only return error if it's not a missing config file
 			cfg.logger.Error("failed to read config file", "error", err, "config", cfg.cfgFile)
-			return Config{}, err
+			return nil, err
 		}
 
 		cfg.logger.Warn("no config file found", slog.String("file", cfg.cfgFile), tint.Err(err))
@@ -102,7 +102,7 @@ func NewConfig(options ...func(*Config)) (Config, error) {
 		cfg.logger.Debug("starting with config file", "config", cfg.viper.ConfigFileUsed())
 	}
 
-	return cfg, nil
+	return &cfg, nil
 }
 
 // WithFile sets the configuration file and type.

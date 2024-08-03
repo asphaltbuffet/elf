@@ -81,7 +81,7 @@ func runDownloadCmd(cmd *cobra.Command, args []string) error {
 
 	switch {
 	case strings.Contains(args[0], "adventofcode.com/"):
-		chdl, err = advent.NewDownloader(&cfg,
+		chdl, err = advent.NewDownloader(cfg,
 			advent.WithURL(args[0]),
 			advent.WithDownloadLanguage(language),
 			advent.WithOverwrites(forced),

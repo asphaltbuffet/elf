@@ -66,7 +66,7 @@ func runTestCmd(cmd *cobra.Command, args []string) error {
 		language = cfg.GetLanguage()
 	}
 
-	ch, err = advent.New(&cfg, advent.WithLanguage(language), advent.WithDir(dir))
+	ch, err = advent.New(cfg, advent.WithLanguage(language), advent.WithDir(dir))
 	if err != nil {
 		return err
 	}
