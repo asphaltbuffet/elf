@@ -39,7 +39,7 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/exp v0.0.0-20240613232115-7f521ea00fb8 // indirect
 	golang.org/x/image v0.18.0 // indirect
-	golang.org/x/term v0.22.0 // indirect
+	golang.org/x/term v0.24.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 )
 
@@ -57,9 +57,9 @@ require (
 	github.com/schollz/progressbar/v3 v3.14.4
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/spf13/viper v1.19.0
-	golang.org/x/net v0.27.0
-	golang.org/x/sys v0.22.0 // indirect
-	golang.org/x/text v0.16.0
+	golang.org/x/net v0.29.0
+	golang.org/x/sys v0.25.0 // indirect
+	golang.org/x/text v0.18.0
 	gonum.org/v1/plot v0.14.0
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
