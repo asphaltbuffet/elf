@@ -2,22 +2,12 @@ version: "3"
 
 vars:
   GORELEASER_VERSION: "2.0.1-pro"
-  TOOLS_MOD_DIR: '{{joinPath .ROOT_DIR "tools" | fromSlash}}'
-  TOOLS_BIN_DIR: '{{joinPath .ROOT_DIR ".tools" | fromSlash}}'
-  
+
 tasks:
   build:
     desc: go build
     cmds:
       - go build -o dist/ ./...
-
-  build-tool:
-    internal: true
-    label: 'install_{{.name}}'
-    cmds: 
-      - 'cd {{.TOOLS_MOD_DIR}} && go build -o {{joinPath .TOOLS_BIN_DIR .name}} -trimpath {{.path}}'
-    requires:
-      vars: [name, path]
 
   ci:
     desc: ci build pipeline
@@ -35,7 +25,7 @@ tasks:
     desc: remove files created during build pipeline
     run: once
     cmds:
-      - for: [dist, bin, completions, manpages, release_notes, .tools]
+      - for: [dist, bin, completions, manpages, release_notes]
         cmd: rm -rf {{.ITEM}}
       - go clean -i -cache -testcache -modcache -fuzzcache -x
 
@@ -70,7 +60,7 @@ tasks:
     aliases: [gen]
     run: once
     cmds:
-      - 'PATH={{.TOOLS_BIN_DIR}}:$PATH && go generate ./...'
+      - 'go generate ./...'
 
   install-goreleaser:
     cmds:
@@ -87,7 +77,7 @@ tasks:
     cmds:
       - cmd: mkdir -p bin
         silent: true
-      - '{{.TOOLS_BIN_DIR}}/golangci-lint run --fix --out-format=html:bin/golangci-lint.html,colored-line-number:stdout'
+      - 'go tool golangci-lint run --fix --out-format=html:bin/golangci-lint.html,colored-line-number:stdout'
     sources:
       - "**/*.go"
       - ".golangci.yml"
@@ -98,9 +88,7 @@ tasks:
     desc: generate mocks
     run: once
     cmds:
-      - '{{.TOOLS_BIN_DIR}}/mockery --log-level=warn'
-    preconditions:
-      - 'if ! command -v {{.TOOLS_BIN_DIR}}/mockery &> /dev/null; then exit 1; fi'
+      - 'go tool mockery --log-level=warn'
 
   mod-tidy:
     desc: go mod tidy
@@ -108,7 +96,6 @@ tasks:
     run: once
     cmds:
       - go mod tidy
-      - cd {{.TOOLS_MOD_DIR | fromSlash}} && go mod tidy
     sources:
       - "**/*.go"
       - "**/go.mod"
@@ -117,31 +104,11 @@ tasks:
       - "**/go.mod"
       - "**/go.sum"
 
-  setup:
-    desc: install tools
-    aliases: ['t']
-    deps: [mod-tidy]
-    vars:
-      EXPR_PKG: 's/^\s+_\s+\"(.*)\"\s+\/\/\s+(.*)\s?/\2:\1/p'
-      TOOLS_PKGS:
-        sh: 'sed -nr "{{.EXPR_PKG}}" {{joinPath .TOOLS_MOD_DIR "tools.go" | fromSlash}}'
-    cmds:
-      - cmd: rm -rf {{.TOOLS_BIN_DIR}}
-      - cmd: mkdir -p {{.TOOLS_BIN_DIR}}
-      - for: { var: TOOLS_PKGS }
-        task: build-tool
-        vars: { name: '{{regexReplaceAll ":.*$" .ITEM ""}}', path: '{{regexReplaceAll ".*:" .ITEM ""}}' }
-    sources:
-      - "{{.TOOLS_MOD_DIR}}/*"
-    generates:
-      - "{{.TOOLS_BIN_DIR}}/*"
-
   snapshot:
     desc: goreleaser build snapshot
     deps: [mod-tidy]
     aliases: [ss]
     cmds:
-      - task: setup
       - task: generate
       - goreleaser build --clean --single-target --snapshot
     preconditions:
@@ -155,7 +122,7 @@ tasks:
     cmds:
       - cmd: mkdir -p bin
         silent: true
-      - '{{.TOOLS_BIN_DIR}}/gotestsum -- -race -covermode=atomic -coverprofile=bin/coverage.out $(go list ./... | grep -v /mocks)'
+      - 'go tool gotestsum -- -race -covermode=atomic -coverprofile=bin/coverage.out $(go list ./... | grep -v /mocks)'
     sources:
       - "**/*.go"
       - "**/testdata/**"

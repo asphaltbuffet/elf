@@ -7,7 +7,7 @@ type Analyzer interface {
 	Stats() error
 }
 
-//go:generate stringer -type=GraphType
+//go:generate go tool stringer -type=GraphType
 type GraphType int
 
 const (
