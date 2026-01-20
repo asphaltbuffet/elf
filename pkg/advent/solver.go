@@ -182,7 +182,7 @@ func handleTaskResult(w io.Writer, r *runners.Result, expected string) tasks.Res
 		result.Output = fmt.Sprintf("⤷ got %q, but expected %q", r.Output, expected)
 
 		output = statusStyle.Foreground(bad).SetString("FAIL")
-		extra = extraStyle.Foreground(bad).SetString()
+		extra = extraStyle.Foreground(bad).SetString(result.Output)
 		printExtra = true
 
 	default:
