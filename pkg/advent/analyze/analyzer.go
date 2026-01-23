@@ -148,10 +148,6 @@ func (a *Analyzer) Graph(gt analysis.GraphType) error {
 	}
 }
 
-func (a *Analyzer) Stats() error {
-	return advent.ErrNotImplemented
-}
-
 func getBenchmarkFiles(dir string) ([]string, error) { //nolint:unparam // expected behavior when walking directories
 	benchFiles := []string{}
 

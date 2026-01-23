@@ -4,7 +4,6 @@ import "strings"
 
 type Analyzer interface {
 	Graph(GraphType) error
-	Stats() error
 }
 
 //go:generate go tool stringer -type=GraphType

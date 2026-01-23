@@ -47,7 +47,7 @@ func NewConfig(options ...func(*Config)) (Config, error) {
 	w := os.Stderr
 	cfg.logger = slog.New(
 		tint.NewHandler(w, &tint.Options{
-			Level:      slog.LevelInfo,
+			Level:      slog.LevelWarn,
 			TimeFormat: time.StampMilli,
 		}),
 	)
