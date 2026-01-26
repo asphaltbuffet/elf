@@ -13,24 +13,18 @@ import (
 // Downloader is an interface for downloading challenges.
 type Downloader interface {
 	Download() error
+	FilePath() string
 }
 
 var (
 	downloadCmd *cobra.Command
-	skipLang    bool
 	language    string
-	forceAll    bool
-	forceInfo   bool
-	forceReadme bool
 	forceInput  bool
 )
 
-const exampleDownloadText = `  elf download https://example.com --lang=go
-    elf download https://example.com --force --lang=py
-
-  If no language is given, the default language is used:
-
-    elf download https://example.com`
+const exampleDownloadText = `elf download https://example.com --lang=go
+elf download https://example.com --force --lang=py
+elf download https://example.com`
 
 func GetDownloadCmd() *cobra.Command {
 	if downloadCmd == nil {
@@ -43,11 +37,7 @@ func GetDownloadCmd() *cobra.Command {
 			RunE:    runDownloadCmd,
 		}
 
-		downloadCmd.Flags().BoolVarP(&skipLang, "skip-lang", "L", false, "skip creating implementation files")
 		downloadCmd.Flags().StringVarP(&language, "lang", "l", "", "solution language")
-		downloadCmd.Flags().BoolVarP(&forceAll, "force-all", "A", false, "overwrite existing files")
-		downloadCmd.Flags().BoolVarP(&forceInfo, "force-info", "N", false, "overwrite existing info file")
-		downloadCmd.Flags().BoolVarP(&forceReadme, "force-readme", "R", false, "overwrite existing README file")
 		downloadCmd.Flags().BoolVarP(&forceInput, "force-input", "I", false, "overwrite existing input file")
 
 		downloadCmd.Flags().StringP("config-file", "c", "", "configuration file")
@@ -73,9 +63,6 @@ func runDownloadCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	forced := &advent.Overwrites{
-		// All:    forceAll,
-		// Info:   forceInfo,
-		// Readme: forceReadme,
 		Input: forceInput,
 	}
 
@@ -99,7 +86,7 @@ func runDownloadCmd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("downloading challenge: %w", err)
 	}
 
-	cmd.Printf("New challenge created in: %s", chdl)
+	fmt.Println(chdl.FilePath())
 
 	return nil
 }

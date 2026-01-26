@@ -469,7 +469,7 @@ func (d *Downloader) getInput(year, day int) ([]byte, error) {
 		return data, nil
 	}
 
-	logger.Info("no cached page")
+	logger.Info("no cached input")
 
 	return d.downloadInput(year, day)
 }
@@ -623,7 +623,7 @@ func (d *Downloader) writeInfoFile(replace bool) error {
 	}
 
 	if exists && !replace {
-		logger.Warn("info file already exists, overwrite by using --force",
+		logger.Info("info file already exists, overwrite by using --force",
 			slog.String("file", fp))
 		return nil
 	}
@@ -656,8 +656,6 @@ func (d *Downloader) addTemplatedFile(templateFile tmplFile) error {
 	if exists && !templateFile.Replace {
 		logger.Debug("file exists, skipping", "template", templateFile.LogValue())
 
-		fmt.Printf("%s already exists, overwrite by using --force\n", fp)
-
 		return nil
 	}
 
@@ -677,4 +675,8 @@ func makeExercisePath(baseDir string, year, day int, title string) string {
 		strconv.Itoa(year),
 		fmt.Sprintf("%02d-%s", day, utilities.ToCamel(title)),
 	)
+}
+
+func (d Downloader) FilePath() string {
+	return d.Path
 }
