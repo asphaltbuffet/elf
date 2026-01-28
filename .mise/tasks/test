@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+#MISE description="run test suite"
+#MISE depends=["generate", "mock"]
+#MISE sources=["**/*.go", "**/testdata/**"]
+#MISE outputs=["bin/coverage.out"]
+
+mkdir -p bin
+
+gotestsum -- \
+  -race \
+  -covermode=atomic \
+  -coverprofile=bin/coverage.out \
+  $(go list ./... | grep -v /mocks)

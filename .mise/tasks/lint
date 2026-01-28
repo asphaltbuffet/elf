@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+#MISE description="lint project files"
+#MISE depends=["generate", "mock"]
+#MISE sources=["**/*.go", ".golangci.yml"]
+#MISE outputs=["bin/golangci-lint.html"]
+
+mkdir -p bin
+
+golangci-lint run \
+  --fix \
+  --out-format=html:bin/golangci-lint.html,colored-line-number:stdout

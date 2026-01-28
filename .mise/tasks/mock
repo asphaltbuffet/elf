@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="generate mocks"
+#MISE depends=["generate"]
+
+mockery --log-level=warn

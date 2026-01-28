@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+#MISE description="git diff"
+#MISE hide=true
+
+git diff --exit-code
+
+RES=$(git status --porcelain)
+if [ -n "$RES" ]; then
+  echo "$RES" && exit 1
+fi

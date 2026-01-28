@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#MISE description="auto generate artifacts"
+#MISE alias="gen"
+#MISE sources=["./**/*.go"]
+
+go generate ./...

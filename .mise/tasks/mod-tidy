@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+#MISE description="go mod tidy"
+#MISE alias="mod"
+#MISE sources=["**/*.go", "**/go.mod", "**/go.sum"]
+#MISE outputs=["**/go.mod", "**/go.sum"]
+
+go mod tidy

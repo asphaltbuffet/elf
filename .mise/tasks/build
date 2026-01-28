@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+#MISE description="go build"
+
+go build -o dist/ ./...

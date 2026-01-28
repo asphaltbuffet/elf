@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+#MISE description="goreleaser build snapshot"
+#MISE depends=["generate", "mod-tidy"]
+#MISE alias="ss"
+
+# TODO: this should really be a pre-check
+goreleaser check -q
+
+# TODO: should set ENV for key to run pro version?
+goreleaser build --clean --single-target --snapshot

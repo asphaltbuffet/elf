@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+#MISE description="go test coverage"
+#MISE depends=["test"]
+#MISE sources=["bin/coverage.out"]
+#MISE outputs=["bin/coverage.html"]
+
+go tool cover -html=bin/coverage.out -o bin/coverage.html
+go tool cover -func=bin/coverage.out

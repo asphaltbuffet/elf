@@ -41,7 +41,7 @@ git:
     - "{{ if not .IsNightly }}nightly{{ end }}"
 
 archives:
-  - format: tgz
+  - formats: [ 'tgz' ]
     name_template: >-
       {{ .ProjectName }}-
       {{- .Version }}-
@@ -52,7 +52,7 @@ archives:
       {{- if .Arm }}_v{{ .Arm }}{{ end }}
     format_overrides:
       - goos: windows
-        format: zip
+        formats: [ 'zip' ]
     files:
       - info:
           owner: root
@@ -67,7 +67,7 @@ checksum:
   name_template: "checksums.txt"
 
 snapshot:
-  name_template: "{{ .Version }}-snapshot"
+  version_template: "{{ .Version }}-snapshot"
 
 changelog:
   disable: true
@@ -81,7 +81,7 @@ release:
 nightly:
   publish_release: true
   keep_single_release: true
-  name_template: "{{ incminor .Version }}-nightly"
+  version_template: "{{ incminor .Version }}-nightly"
 
 announce:
   skip: true
