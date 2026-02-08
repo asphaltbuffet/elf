@@ -92,6 +92,31 @@ sources = ["**/*.go", "**/go.mod", "**/go.sum"]
 outputs = ["**/go.mod", "**/go.sum"]
 run = "go mod tidy"
 
+[tasks.nix-hash]
+description = "Update flake.nix vendorHash"
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Build and capture the expected hash from error output
+OUTPUT=$(nix build .#default 2>&1 || true)
+
+# Extract the "got:" hash from the error message
+NEW_HASH=$(echo "$OUTPUT" | grep -oP 'got:\s+\Ksha256-[A-Za-z0-9+/=]+' | head -1)
+
+if [ -z "$NEW_HASH" ]; then
+  echo "Build succeeded or no hash found - vendorHash is up to date"
+  exit 0
+fi
+
+echo "Updating vendorHash to: $NEW_HASH"
+
+# Update the flake.nix file
+sed -i "s|vendorHash = \"sha256-[^\"]*\"|vendorHash = \"$NEW_HASH\"|" flake.nix
+
+echo "Updated flake.nix - run 'nix build' to verify"
+'''
+
 [tasks.snapshot]
 description = "goreleaser build snapshot"
 depends = ["generate", "mod-tidy"]
