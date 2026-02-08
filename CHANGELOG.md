@@ -15,6 +15,11 @@
 - Bump `codecov/codecov-action` from v4 to v5
 - Bump `actions/checkout` from v3 to v4 in CodeQL workflow
 - Update golangci-lint-action to use v2.8 to match local config
+- Update goreleaser config to use mise tasks instead of shell scripts
+
+### Removed
+
+- Remove nightly release workflow and configuration
 
 ## [0.2.0] - 2024-07-11
 

@@ -4,10 +4,10 @@ version: 2
 
 before:
   hooks:
-    - task setup generate
-    - ./scripts/completions.sh
-    - ./scripts/manpages.sh
-    - ./scripts/release_notes.sh {{ .RawVersion }}
+    - mise run generate
+    - mise run completions
+    - mise run manpages
+    - mise run release_notes {{ .RawVersion }}
 
 builds:
   - env:
@@ -22,8 +22,6 @@ builds:
       - "386"
       - amd64
       - arm64
-    goarm:
-      - "7"
     ignore:
       - goos: darwin
         goarch: "386"
@@ -35,10 +33,6 @@ upx:
   - goos: [linux]
     enabled: true
     compress: best
-
-git:
-  ignore_tags:
-    - "{{ if not .IsNightly }}nightly{{ end }}"
 
 archives:
   - formats: [ 'tgz' ]
@@ -77,11 +71,6 @@ release:
     owner: asphaltbuffet
     name: elf
   prerelease: auto
-
-nightly:
-  publish_release: true
-  keep_single_release: true
-  version_template: "{{ incminor .Version }}-nightly"
 
 announce:
   skip: true
