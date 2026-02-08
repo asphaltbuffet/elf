@@ -1,5 +1,6 @@
 [tools]
 "aqua:golangci/golangci-lint" = "prefix:2.8"
 "aqua:gotestyourself/gotestsum" = "latest"
+"aqua:rhysd/actionlint" = "latest"
 "aqua:vektra/mockery" = "2"
 "go:golang.org/x/tools/cmd/stringer" = "latest"

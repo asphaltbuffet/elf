@@ -11,6 +11,10 @@
 - Rename variables shadowing Go 1.21+ built-in `min`/`max` functions
 - Use consistent pointer receivers on `Downloader` methods
 - Use Cobra's `cmd.OutOrStdout()` for testable CLI output
+- Update GitHub Actions workflows to use mise instead of Task
+- Bump `codecov/codecov-action` from v4 to v5
+- Bump `actions/checkout` from v3 to v4 in CodeQL workflow
+- Update golangci-lint-action to use v2.8 to match local config
 
 ## [0.2.0] - 2024-07-11
 
