@@ -63,5 +63,5 @@ Configuration uses Viper with:
 
 ### Code Generation
 
-- **stringer**: Generates String() methods for enums (`//go:generate go tool stringer`)
+- **stringer**: Generates String() methods for enums (`//go:generate stringer`)
 - **mockery**: Generates test mocks (configured in `.mockery.yaml`)

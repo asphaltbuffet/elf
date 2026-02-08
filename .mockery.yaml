@@ -2,12 +2,13 @@ with-expecter: true
 outpkg: mocks
 dir: "mocks/{{.PackageName}}"
 log-level: "info"
+resolve-type-alias: false
+disable-version-string: true
+issue-845-fix: true
 packages:
     github.com/asphaltbuffet/elf/pkg/runners:
-        # place your package-specific config here
         config:
         interfaces:
-            # select the interfaces you want mocked
             Runner:
     github.com/asphaltbuffet/elf/pkg/krampus:
         config:
@@ -15,14 +16,22 @@ packages:
             DownloadConfiguration:
             ExerciseConfiguration:
             ConfigurationReader:
-    github.com/asphaltbuffet/elf/cmd:
+    github.com/asphaltbuffet/elf/cmd/solve:
+        config:
+        interfaces:
+            Challenge:
+    github.com/asphaltbuffet/elf/cmd/test:
+        config:
+        interfaces:
+            ChallengeTester:
+    github.com/asphaltbuffet/elf/cmd/benchmark:
         config:
         interfaces:
             Benchmarker:
+    github.com/asphaltbuffet/elf/cmd/download:
+        config:
+        interfaces:
             Downloader:
-            Challenge:
-            ChallengeTester:
-            Grapher:
     github.com/asphaltbuffet/elf/pkg/analysis:
         config:
         interfaces:

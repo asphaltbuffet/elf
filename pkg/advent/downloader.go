@@ -25,6 +25,11 @@ import (
 	"github.com/asphaltbuffet/elf/pkg/utilities"
 )
 
+const (
+	// dirPerm is the permission mode for directories (rwxr-x---).
+	dirPerm = 0o750
+)
+
 var (
 	ErrNotConfigured    = errors.New("not configured")
 	ErrNilConfiguration = errors.New("nil configuration")
@@ -36,6 +41,7 @@ var (
 
 type Downloader struct {
 	*Exercise
+
 	exerciseBaseDir string
 	cacheDir        string
 	cfgDir          string
@@ -369,7 +375,7 @@ func (d *Downloader) downloadPage(year, day int) ([]byte, error) {
 	)
 
 	// make sure we can write the cached file before we download it
-	if err := d.appFs.MkdirAll(pageCacheDir, 0o750); err != nil {
+	if err := d.appFs.MkdirAll(pageCacheDir, dirPerm); err != nil {
 		return nil, fmt.Errorf("create %q: %w", pageCacheDir, err)
 	}
 
@@ -418,7 +424,7 @@ func (d *Downloader) downloadPage(year, day int) ([]byte, error) {
 func (d *Downloader) downloadInput(year, day int) ([]byte, error) {
 	logger := d.logger.With(slog.Int("year", year), slog.Int("day", day), slog.String("fn", "downloadInput"))
 
-	err := d.appFs.MkdirAll(filepath.Join(d.cacheDir, "inputs"), 0o750)
+	err := d.appFs.MkdirAll(filepath.Join(d.cacheDir, "inputs"), dirPerm)
 	if err != nil {
 		return nil, fmt.Errorf("creating inputs directory: %w", err)
 	}
@@ -508,7 +514,7 @@ func (d *Downloader) addMissingFiles() error {
 
 	implPath := filepath.Join(d.Path, d.Language)
 
-	if err = d.appFs.MkdirAll(implPath, 0o750); err != nil {
+	if err = d.appFs.MkdirAll(implPath, dirPerm); err != nil {
 		logger.Error("add exercise implementation path", tint.Err(err))
 		return fmt.Errorf("creating %s implementation directory: %w", d.Language, err)
 	}
@@ -677,6 +683,6 @@ func makeExercisePath(baseDir string, year, day int, title string) string {
 	)
 }
 
-func (d Downloader) FilePath() string {
+func (d *Downloader) FilePath() string {
 	return d.Path
 }

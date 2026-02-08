@@ -194,7 +194,7 @@ func benchmarkToPlotterXYs(benchmarks []*advent.BenchmarkData) map[string][]plot
 			day := float64(bd.Day)
 
 			if _, ok := dataMap[impl.Name]; !ok {
-				dataMap[impl.Name] = make([]plotter.XYs, 2) //nolint:mnd
+				dataMap[impl.Name] = make([]plotter.XYs, 2) //nolint:mnd // 2 parts per day
 			}
 
 			dataMap[impl.Name][0] = append(dataMap[impl.Name][0], plotter.XY{
@@ -256,13 +256,13 @@ func generateLineGraph(benchData []*advent.BenchmarkData, outfile string) error 
 	}
 
 	// make sure both plots have the same Y axis for alignment
-	max := max(plots[0][0].Y.Max, plots[0][1].Y.Max, softYMax)
-	plots[0][0].Y.Max = max
-	plots[0][1].Y.Max = max
+	yMax := max(plots[0][0].Y.Max, plots[0][1].Y.Max, softYMax)
+	plots[0][0].Y.Max = yMax
+	plots[0][1].Y.Max = yMax
 
-	min := min(plots[0][0].Y.Min, plots[0][1].Y.Min)
-	plots[0][0].Y.Min = min
-	plots[0][1].Y.Min = min
+	yMin := min(plots[0][0].Y.Min, plots[0][1].Y.Min)
+	plots[0][0].Y.Min = yMin
+	plots[0][1].Y.Min = yMin
 
 	img := vgimg.NewWith(vgimg.UseWH(plotWidthInches, plotHeightInches), vgimg.UseDPI(plotDPI))
 	dc := draw.New(img)
@@ -290,7 +290,7 @@ func generateLineGraph(benchData []*advent.BenchmarkData, outfile string) error 
 	}
 
 	path, _ := filepath.Abs(outfile)
-	fmt.Printf("writing graph to %s\n", path)
+	slog.Info("writing graph", slog.String("path", path)) //nolint:sloglint // standalone function, no logger context
 
 	w, err := os.Create(filepath.Clean(path))
 	if err != nil {
@@ -323,10 +323,10 @@ func NewBenchmarkPlots(year int) ([][]*plot.Plot, error) {
 
 			// p.Y.Label.Text = "Running time (seconds)"
 			p.Y.Tick.Marker = HumanizedLogTicks{}
-			p.X.Tick.Marker = plot.TickerFunc(func(min, max float64) []plot.Tick {
+			p.X.Tick.Marker = plot.TickerFunc(func(minVal, maxVal float64) []plot.Tick {
 				ticks := []plot.Tick{}
 
-				for i := min; i <= max; i++ {
+				for i := minVal; i <= maxVal; i++ {
 					ticks = append(
 						ticks,
 						plot.Tick{
@@ -384,17 +384,17 @@ type HumanizedLogTicks struct {
 var _ plot.Ticker = HumanizedLogTicks{}
 
 // Ticks returns Ticks in a specified range.
-func (t HumanizedLogTicks) Ticks(min, max float64) []plot.Tick {
-	if min <= 0 || max <= 0 {
+func (t HumanizedLogTicks) Ticks(minVal, maxVal float64) []plot.Tick {
+	if minVal <= 0 || maxVal <= 0 {
 		panic("Values must be greater than 0 for a log scale.")
 	}
 
-	val := math.Pow10(int(math.Log10(min)))
-	max = math.Pow10(int(math.Ceil(math.Log10(max))) + 1) // add buffer to max so we get label
+	val := math.Pow10(int(math.Log10(minVal)))
+	maxLimit := math.Pow10(int(math.Ceil(math.Log10(maxVal))) + 1) // add buffer to max so we get label
 
 	var ticks []plot.Tick
 
-	for val < max {
+	for val < maxLimit {
 		for i := 1; i < 10; i++ {
 			if i == 1 {
 				ticks = append(
@@ -508,10 +508,10 @@ func makePlotForEachImplementation(year int, implData ImplDataMap) (map[string]*
 	return plots, nil
 }
 
-func dayTicker(min, max float64) []plot.Tick {
+func dayTicker(minDay, maxDay float64) []plot.Tick {
 	ticks := []plot.Tick{}
 
-	for i := min; i <= max; i++ {
+	for i := minDay; i <= maxDay; i++ {
 		ticks = append(
 			ticks,
 			plot.Tick{

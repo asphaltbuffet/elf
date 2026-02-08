@@ -86,7 +86,7 @@ func runDownloadCmd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("downloading challenge: %w", err)
 	}
 
-	fmt.Println(chdl.FilePath())
+	_, _ = fmt.Fprintln(cmd.OutOrStdout(), chdl.FilePath())
 
 	return nil
 }

@@ -33,7 +33,7 @@ type Data struct {
 	InputData     string   `json:"-"`
 	InputFileName string   `json:"inputFile"`
 	TestCases     TestCase `json:"testCases"`
-	Answers       Answer   `json:"answers,omitempty"`
+	Answers       Answer   `json:"answers"`
 }
 
 // TestCase contains the test case for each part of an exercise.

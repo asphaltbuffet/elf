@@ -50,6 +50,7 @@ var golangInterfaceFile []byte
 
 // Start compiles the exercise code and starts the executable.
 func (g *golangRunner) Start() error {
+	//nolint:sloglint // runner has no logger context, uses global for debug
 	slog.LogAttrs(context.TODO(), slog.LevelDebug, "setting up runner",
 		slog.String("dir", g.dir),
 	)
@@ -61,6 +62,7 @@ func (g *golangRunner) Start() error {
 
 	project = getModuleName()
 
+	//nolint:sloglint // runner has no logger context, uses global for debug
 	slog.LogAttrs(context.TODO(), slog.LevelDebug, "paths created",
 		slog.String("dir", g.dir),
 		slog.String("project", "project"),
@@ -92,6 +94,7 @@ func (g *golangRunner) Start() error {
 		return err
 	}
 
+	//nolint:sloglint // runner has no logger context, uses global for debug
 	slog.LogAttrs(context.Background(), slog.LevelDebug, "building runner",
 		slog.String("wrapper", g.wrapperFilepath),
 		slog.String("executable", g.executableFilepath),
@@ -102,7 +105,7 @@ func (g *golangRunner) Start() error {
 
 	stderrBuffer := new(bytes.Buffer)
 
-	tidycmd := exec.Command(golangInstallation, "mod", "tidy")
+	tidycmd := exec.CommandContext(context.Background(), golangInstallation, "mod", "tidy")
 
 	tidycmd.Stderr = stderrBuffer
 	if err := tidycmd.Run(); err != nil {
@@ -110,7 +113,7 @@ func (g *golangRunner) Start() error {
 	}
 
 	//nolint:gosec // no user input
-	cmd := exec.Command(golangInstallation, "build",
+	cmd := exec.CommandContext(context.Background(), golangInstallation, "build",
 		"-tags", "runtime",
 		"-o", g.executableFilepath,
 		g.wrapperFilepath)
@@ -131,8 +134,8 @@ func (g *golangRunner) Start() error {
 
 	// run executable for exercise (wrapped)
 
-	g.cmd = exec.Command(absExecPath)
-	cmd.Dir = g.dir
+	g.cmd = exec.CommandContext(context.Background(), absExecPath)
+	g.cmd.Dir = g.dir
 
 	stdin, err := setupBuffers(g.cmd)
 	if err != nil {
@@ -221,7 +224,7 @@ func getModuleName() string {
 	errBuf := new(bytes.Buffer)
 	outBuf := new(bytes.Buffer)
 
-	cmd := exec.Command(golangInstallation, "list", "-m")
+	cmd := exec.CommandContext(context.Background(), golangInstallation, "list", "-m")
 	cmd.Stdout = outBuf
 	cmd.Stderr = errBuf
 

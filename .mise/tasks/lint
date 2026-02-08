@@ -8,4 +8,5 @@ mkdir -p bin
 
 golangci-lint run \
   --fix \
-  --out-format=html:bin/golangci-lint.html,colored-line-number:stdout
+  --output.html.path=bin/golangci-lint.html \
+  --output.text.path=stdout

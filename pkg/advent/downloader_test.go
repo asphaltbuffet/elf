@@ -31,7 +31,7 @@ var (
 
 // FileExists checks whether a file exists in the given path. It also fails if
 // the path points to a directory or there is an error when trying to check the file.
-func FileExists(t *testing.T, afs afero.Fs, path string, msgAndArgs ...interface{}) bool {
+func FileExists(t *testing.T, afs afero.Fs, path string, msgAndArgs ...any) bool {
 	t.Helper()
 
 	info, err := afs.Stat(path)
@@ -387,7 +387,11 @@ func Test_downloadPage(t *testing.T) {
 				want := goldenValue(t, tt.golden)
 
 				assert.Equal(t, want, got)
-				FileExists(t, testFs, filepath.Join(mockDlr.cacheDir, "pages", makeExerciseID(tt.args.year, tt.args.day)))
+				FileExists(
+					t,
+					testFs,
+					filepath.Join(mockDlr.cacheDir, "pages", makeExerciseID(tt.args.year, tt.args.day)),
+				)
 			}
 		})
 	}

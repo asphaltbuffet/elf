@@ -1,6 +1,7 @@
 package runners
 
 import (
+	"context"
 	_ "embed"
 	"encoding/json"
 	"errors"
@@ -54,7 +55,12 @@ func (p *pythonRunner) Start() error {
 		filepath.Join(absDir, "py"),              // so we can import stuff in the exercises directory
 	}, ":")
 
-	p.cmd = exec.Command(python3Installation, "-B", pythonWrapperFilename) // -B prevents .pyc files from being written
+	p.cmd = exec.CommandContext(
+		context.Background(),
+		python3Installation,
+		"-B",
+		pythonWrapperFilename,
+	) // -B prevents .pyc files from being written
 	p.cmd.Env = append(p.cmd.Env, "PYTHONPATH="+pythonPathVar)
 	p.cmd.Dir = p.dir
 

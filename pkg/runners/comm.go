@@ -107,17 +107,18 @@ func checkWait(cmd *exec.Cmd) ([]byte, error) {
 		}
 
 		if cmd.ProcessState != nil {
+			stderrBuf, _ := cmd.Stderr.(*bytes.Buffer)
 			return nil, fmt.Errorf(
 				"run failed with exit code %d: %s",
 				cmd.ProcessState.ExitCode(),
-				cmd.Stderr.(*bytes.Buffer).String())
+				stderrBuf.String())
 		}
 
 		time.Sleep(checkWaitDelay)
 	}
 }
 
-func readJSONFromCommand(res interface{}, cmd *exec.Cmd) error {
+func readJSONFromCommand(res any, cmd *exec.Cmd) error {
 	for {
 		inp, err := checkWait(cmd)
 		if err != nil {
@@ -128,6 +129,7 @@ func readJSONFromCommand(res interface{}, cmd *exec.Cmd) error {
 		if err != nil {
 			// anything returned as an error is considered a debug message
 			style := lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
+			//nolint:forbidigo // intentional debug output to user
 			fmt.Printf("[%s] %v\n", style.Render("DBG"), strings.TrimSpace(string(inp)))
 		} else {
 			break

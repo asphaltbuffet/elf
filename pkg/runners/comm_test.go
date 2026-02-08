@@ -2,7 +2,6 @@ package runners
 
 import (
 	"bytes"
-	"fmt"
 	"os/exec"
 	"testing"
 
@@ -86,7 +85,7 @@ func Test_customWriter_GetEntry(t *testing.T) {
 			if err != nil {
 				assert.ErrorContains(t, err, tt.errText)
 			} else {
-				assert.Equal(t, tt.want, got, fmt.Sprintf("expected %q, got %q", tt.want, got))
+				assert.Equal(t, tt.want, got, "expected %q, got %q", tt.want, got)
 				assert.NotContains(t, c.entries, got)
 			}
 		})

@@ -5,6 +5,12 @@
 ### Changed
 
 - Replace Task with mise for project scripting
+- Update golangci-lint to v2.8 and fix all lint issues
+- Use `exec.CommandContext` instead of `exec.Command` for proper cancellation support
+- Use `t.TempDir()` instead of `os.MkdirTemp()` in tests for automatic cleanup
+- Rename variables shadowing Go 1.21+ built-in `min`/`max` functions
+- Use consistent pointer receivers on `Downloader` methods
+- Use Cobra's `cmd.OutOrStdout()` for testable CLI output
 
 ## [0.2.0] - 2024-07-11
 

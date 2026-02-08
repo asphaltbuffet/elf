@@ -1,4 +1,3 @@
-// Package common contains the base struct for all exercises.
 package common
 
 import (
