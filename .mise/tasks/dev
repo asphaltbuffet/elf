@@ -1,3 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="dev build pipeline"
-#MISE depends=["generate", "mock", "lint", "test", "snapshot"]

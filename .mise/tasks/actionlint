@@ -1,6 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="lint GitHub Actions workflows"
-#MISE alias="al"
-#MISE sources=[".github/workflows/*.yml"]
-
-actionlint .github/workflows/*.yml

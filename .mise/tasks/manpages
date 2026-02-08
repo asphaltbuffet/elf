@@ -1,4 +1,9 @@
-#!/bin/bash
+#!/usr/bin/env bash
+#MISE description="generate manpages"
+#MISE hide=true
+#MISE sources=["**/*.go"]
+#MISE outputs=["manpages/*.gz"]
+
 set -euo pipefail
 
 rm -rf manpages
