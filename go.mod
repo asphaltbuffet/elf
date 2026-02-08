@@ -63,7 +63,7 @@ require (
 	github.com/spf13/viper v1.21.0
 	golang.org/x/net v0.47.0
 	golang.org/x/sys v0.38.0 // indirect
-	golang.org/x/text v0.31.0
+	golang.org/x/text v0.33.0
 	gonum.org/v1/plot v0.16.0
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
