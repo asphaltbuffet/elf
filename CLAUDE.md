@@ -4,17 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Build and Development Commands
 
-This project uses [Task](https://taskfile.dev) as the build tool. Tools are managed via mise.
+This project uses [mise](https://mise.jdx.dev) for tool management and task running.
 
 ```bash
-task test        # Run tests with gotestsum (generates coverage in bin/coverage.out)
-task lint        # Run golangci-lint with auto-fix
-task generate    # Run go generate (stringer)
-task mock        # Generate mocks with mockery
-task build       # Build to dist/
-task snapshot    # Build release snapshot with goreleaser
-task dev         # Full dev pipeline: generate, mock, lint, test, snapshot
-task ci          # CI pipeline: setup, generate, mock, mod-tidy, test, cover, build, diff
+mise run test        # Run tests with gotestsum (generates coverage in bin/coverage.out)
+mise run lint        # Run golangci-lint with auto-fix
+mise run generate    # Run go generate (stringer)
+mise run mock        # Generate mocks with mockery
+mise run build       # Build to dist/
+mise run snapshot    # Build release snapshot with goreleaser
+mise run dev         # Full dev pipeline: generate, mock, lint, test, snapshot
+mise run ci          # CI pipeline: generate, mock, mod-tidy, test, cover, build, diff
 ```
 
 Run a single test:

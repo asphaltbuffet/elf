@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+#MISE description="CI build pipeline"
+#MISE depends=["generate", "mock", "mod-tidy", "test", "cover", "build", "diff"]

@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- Replace Task with mise for project scripting
+
 ## [0.2.0] - 2024-07-11
 
 ### Changed

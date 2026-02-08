@@ -1,5 +1,4 @@
 [tools]
-"aqua:go-task/task" = "latest"
 "aqua:golangci/golangci-lint" = "prefix:2.8"
 "aqua:gotestyourself/gotestsum" = "latest"
 "aqua:vektra/mockery" = "2"
