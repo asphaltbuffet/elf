@@ -51,28 +51,6 @@ jobs:
           files: ./bin/coverage.out
           flags: ${{ runner.os }}
 
-  sonarCloudTrigger:
-    needs: test
-    name: SonarCloud Trigger
-    runs-on: ubuntu-latest
-    steps:
-      - name: Clone Repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 # Shallow clones should be disabled for a better relevancy of analysis
-
-      - name: Download code coverage results
-        uses: actions/download-artifact@v4
-        with:
-          name: code-coverage-report-ubuntu-latest
-          path: bin
-
-      - name: Analyze with SonarCloud
-        uses: sonarsource/sonarcloud-github-action@master
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-
   snapshot:
     needs: test
     runs-on: ubuntu-latest
