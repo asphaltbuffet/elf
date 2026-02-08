@@ -1,4 +1,3 @@
-// Package utilities contains helper functions used by the application.
 package utilities
 
 import (

@@ -1,4 +1,8 @@
-#!/bin/bash
+#!/usr/bin/env bash
+#MISE description="generate completions"
+#MISE hide=true
+#MISE sources=["**/*.go"]
+#MISE outputs=["completions/elf.*"]
 set -euo pipefail
 
 rm -rf completions

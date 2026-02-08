@@ -42,10 +42,7 @@ func Test_newGolangRunner(t *testing.T) {
 }
 
 func Test_golangRunner_Cleanup(t *testing.T) {
-	tf, err := os.MkdirTemp("", "test-go")
-	require.NoError(t, err)
-
-	defer require.NoError(t, os.RemoveAll(tf))
+	tf := t.TempDir() // automatically cleaned up after test
 
 	exDir := filepath.Join(tf, "2015", "01-testDayOne", "go")
 	require.NoError(t, os.MkdirAll(exDir, 0o750))

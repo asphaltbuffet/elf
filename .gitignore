@@ -170,3 +170,5 @@ completions/
 manpages/
 release_notes/
 .tools/
+
+elf

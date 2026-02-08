@@ -22,11 +22,12 @@ import (
 
 type Benchmarker struct {
 	*Exercise
+
 	exerciseBaseDir string
 }
 
 type BenchmarkData struct {
-	Date time.Time `json:"run-date,omitempty"`
+	Date time.Time `json:"run-date"`
 	// Dir             string                `json:"dir"`
 	Title           string                `json:"title"`
 	Year            int                   `json:"year,omitempty"`
@@ -129,7 +130,7 @@ func (b *Benchmarker) Benchmark(afs afero.Fs, iterations int) ([]tasks.Result, e
 		benchmarks = append(benchmarks, implData)
 
 		logger.Debug("benchmarking complete", "lang", impl, "iterations", iterations)
-		fmt.Println()
+		_, _ = fmt.Fprintln(b.writer, "") // blank line between implementations
 	}
 
 	var benchmarkData []BenchmarkData
@@ -264,20 +265,20 @@ func calculateMetrics(results map[runners.Part][]float64) (map[runners.Part]*Par
 			return nil, err
 		}
 
-		max, err := data.Max()
+		maxVal, err := data.Max()
 		if err != nil {
 			return nil, err
 		}
 
-		min, err := data.Min()
+		minVal, err := data.Min()
 		if err != nil {
 			return nil, err
 		}
 
 		metrics[part] = &PartData{
 			Mean: mean,
-			Min:  min,
-			Max:  max,
+			Min:  minVal,
+			Max:  maxVal,
 			Data: durations,
 		}
 	}

@@ -1,7 +1,6 @@
 package analyze
 
 import (
-	"errors"
 	"fmt"
 	"path/filepath"
 
@@ -17,9 +16,6 @@ var (
 
 	outFile   string
 	graphType string
-	byYear    bool
-	byDay     bool
-	compare   bool
 )
 
 func GetAnalyzeCmd() *cobra.Command {
@@ -34,10 +30,6 @@ func GetAnalyzeCmd() *cobra.Command {
 
 		analyzeCmd.Flags().StringVarP(&outFile, "graph", "g", "./run-times.png", "graph output file")
 		analyzeCmd.Flags().StringVarP(&graphType, "type", "t", "line", "type of output graph")
-
-		analyzeCmd.Flags().BoolVarP(&byYear, "year", "y", true, "generate analysis by each year")
-		analyzeCmd.Flags().BoolVarP(&byDay, "day", "d", false, "generate separate analysis for each day")
-		analyzeCmd.Flags().BoolVarP(&compare, "compare", "c", false, "compare run-time metrics")
 	}
 
 	return analyzeCmd
@@ -55,28 +47,18 @@ func runAnalyzeCmd(cmd *cobra.Command, args []string) error {
 
 	dir, err := filepath.Abs(args[0])
 	if err != nil {
+		return fmt.Errorf("analysis dir: %w", err)
+	}
+
+	out, err := filepath.Abs(outFile)
+	if err != nil {
 		return fmt.Errorf("output file: %w", err)
 	}
 
-	aa, err = advent.NewAnalyzer(cfg, advent.WithDirectory(dir))
+	aa, err = advent.NewAnalyzer(cfg, advent.WithDirectory(dir), advent.WithOutput(out))
 	if err != nil {
 		return fmt.Errorf("creating grapher: %w", err)
 	}
 
-	switch {
-	case outFile != "":
-		return aa.Graph(analysis.StringToGraphType(graphType))
-
-	case byYear:
-		return aa.Stats()
-
-	case byDay:
-		return aa.Stats()
-
-	case compare:
-		return aa.Stats()
-
-	default:
-		return errors.New("no analysis type")
-	}
+	return aa.Graph(analysis.StringToGraphType(graphType))
 }

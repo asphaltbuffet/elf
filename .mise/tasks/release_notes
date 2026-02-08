@@ -1,4 +1,9 @@
-#!/bin/bash
+#!/usr/bin/env bash
+#MISE description="generate release notes"
+#MISE hide=true
+#MISE sources=["CHANGELOG.md"]
+#MISE outputs=["release_notes/notes.md"]
+
 set -euo pipefail
 
 if [ $# -ne 1 ]; then
@@ -18,10 +23,10 @@ if [ ! -f "$chglog" ]; then
 fi
 
 # extract content for specific version
-awk -v semver="$1" '
+awk -v version="$1" '
   BEGIN { found=0 }
   {
-    if ($0 ~ "^## \\[" semver "\\]") {
+    if ($0 ~ "^## \\[" version "\\]") {
       found=1;
       next
     } else if ($0 ~ "^## " || $0 ~ "^\\[") {

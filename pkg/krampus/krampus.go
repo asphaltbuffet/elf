@@ -20,6 +20,7 @@ const (
 	DefaultConfigExt      string = "toml"
 )
 
+//nolint:recvcheck // intentional: getters use value receivers to prevent modification
 type Config struct {
 	viper       *viper.Viper
 	cfgFile     string
@@ -47,7 +48,7 @@ func NewConfig(options ...func(*Config)) (Config, error) {
 	w := os.Stderr
 	cfg.logger = slog.New(
 		tint.NewHandler(w, &tint.Options{
-			Level:      slog.LevelInfo,
+			Level:      slog.LevelWarn,
 			TimeFormat: time.StampMilli,
 		}),
 	)
@@ -67,14 +68,14 @@ func NewConfig(options ...func(*Config)) (Config, error) {
 
 	configDir, err := os.UserConfigDir()
 	if err != nil {
-		cfg.logger.Error("get default user config dir", "error", tint.Err(err))
+		cfg.logger.Error("get default user config dir", tint.Err(err))
 		return Config{}, err
 	}
 	cfg.viper.SetDefault(string(ConfigDirKey), filepath.Join(configDir, "elf"))
 
 	cacheDir, err := os.UserCacheDir()
 	if err != nil {
-		cfg.logger.Error("get default user cache dir", "error", tint.Err(err))
+		cfg.logger.Error("get default user cache dir", tint.Err(err))
 		return Config{}, err
 	}
 

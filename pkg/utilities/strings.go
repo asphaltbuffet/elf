@@ -12,20 +12,20 @@ import (
 
 // CamelToTitle converts a camelCase string to a title case string.
 func CamelToTitle(x string) string {
-	var out string
+	var out strings.Builder
 
 	for i, char := range x {
 		switch {
 		case i == 0:
-			out += string(unicode.ToUpper(char))
+			out.WriteRune(unicode.ToUpper(char))
 		case unicode.IsUpper(char) && unicode.IsLetter(rune(x[i-1])):
-			out += " " + string(char)
+			out.WriteString(" " + string(char))
 		default:
-			out += string(char)
+			out.WriteRune(char)
 		}
 	}
 
-	return out
+	return out.String()
 }
 
 func ToCamel(s string) string {

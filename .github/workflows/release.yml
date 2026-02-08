@@ -27,14 +27,8 @@ jobs:
         with:
           go-version: stable
 
-      - name: Install Task
-        uses: arduino/setup-task@v2
-        with:
-          version: 3.x
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Setup tooling
-        run: task setup
+      - name: Set up mise
+        uses: jdx/mise-action@v3
 
       - uses: crazy-max/ghaction-upx@v3
         with:
