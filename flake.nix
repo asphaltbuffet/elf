@@ -17,7 +17,7 @@
           inherit version;
           src = ./.;
 
-          vendorHash = "sha256-P2CDYp0XiPCEQGvdy+a7aEKDJ5EatPHbvtGLQLTRVmw=";
+          vendorHash = "sha256-Y0AlaqsvTevLqppXnJKoQBqFG1TFDTwR6H2+gGwyvE8=";
 
           # Only build the main binary, not the tools/ submodule
           subPackages = [ "." ];
