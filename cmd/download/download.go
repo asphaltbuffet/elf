@@ -29,11 +29,11 @@ elf download https://example.com`
 func GetDownloadCmd() *cobra.Command {
 	if downloadCmd == nil {
 		downloadCmd = &cobra.Command{
-			Use:     "download [flags] url",
+			Use:     "download",
 			Aliases: []string{"d"},
 			Example: exampleDownloadText,
 			Args:    cobra.ExactArgs(1),
-			Short:   "download a challenge",
+			Short:   "download challenge info from url",
 			RunE:    runDownloadCmd,
 		}
 

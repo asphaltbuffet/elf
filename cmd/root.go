@@ -1,8 +1,10 @@
 package cmd
 
 import (
+	"context"
 	"os"
 
+	"github.com/charmbracelet/fang"
 	"github.com/spf13/cobra"
 
 	"github.com/asphaltbuffet/elf/cmd/analyze"
@@ -12,7 +14,6 @@ import (
 	"github.com/asphaltbuffet/elf/cmd/man"
 	"github.com/asphaltbuffet/elf/cmd/solve"
 	"github.com/asphaltbuffet/elf/cmd/test"
-	versionCmd "github.com/asphaltbuffet/elf/cmd/version"
 	"github.com/asphaltbuffet/elf/pkg/krampus"
 )
 
@@ -21,8 +22,9 @@ var rootCmd *cobra.Command
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
-	err := GetRootCommand().Execute()
-	if err != nil {
+	// err := GetRootCommand().Execute()
+	// if err != nil {
+	if err := fang.Execute(context.Background(), GetRootCommand()); err != nil {
 		os.Exit(1)
 	}
 }
@@ -55,7 +57,6 @@ func GetRootCommand() *cobra.Command {
 		rootCmd.AddCommand(man.NewManCmd())
 		rootCmd.AddCommand(solve.GetSolveCmd())
 		rootCmd.AddCommand(test.GetTestCmd())
-		rootCmd.AddCommand(versionCmd.NewVersionCmd())
 	}
 
 	return rootCmd

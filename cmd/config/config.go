@@ -10,9 +10,11 @@ var configCmd *cobra.Command
 func GetConfigCmd() *cobra.Command {
 	if configCmd == nil {
 		configCmd = &cobra.Command{
-			Use:   "config",
-			Short: "Manage elf configuration",
-			Long:  "Manage elf configuration files and settings.",
+			Use:               "config",
+			Short:             "Manage elf configuration",
+			Long:              "Manage elf configuration files and settings.",
+			Args:              cobra.NoArgs,
+			ValidArgsFunction: cobra.NoFileCompletions,
 		}
 
 		configCmd.AddCommand(getInitCmd())

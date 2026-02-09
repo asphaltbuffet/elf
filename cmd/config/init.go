@@ -29,7 +29,9 @@ The configuration file includes settings for:
   - Default solution language
   - Exercise directories
   - Advent of Code authentication token`,
-			RunE: runInitCmd,
+			Args:              cobra.NoArgs,
+			ValidArgsFunction: cobra.NoFileCompletions,
+			RunE:              runInitCmd,
 		}
 
 		initCmd.Flags().BoolP("global", "g", false, "create config in user config directory")

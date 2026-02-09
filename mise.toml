@@ -80,6 +80,16 @@ run = [
   "golangci-lint run --fix --output.html.path=bin/golangci-lint.html --output.text.path=stdout",
 ]
 
+[tasks.manpages]
+description = "generate man pages"
+sources = ["cmd/**/*.go"]
+outputs = ["manpages/*"]
+run = [
+  "rm -rf manpages",
+  "mkdir manpages",
+  "go run . man | gzip -c -9 >manpages/elf.1.gz",
+]
+
 [tasks.mock]
 description = "generate mocks"
 depends = ["generate"]

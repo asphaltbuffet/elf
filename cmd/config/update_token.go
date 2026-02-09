@@ -14,12 +14,8 @@ import (
 
 var updateTokenCmd *cobra.Command
 
-func getUpdateTokenCmd() *cobra.Command {
-	if updateTokenCmd == nil {
-		updateTokenCmd = &cobra.Command{
-			Use:   "update-token",
-			Short: "Update the Advent of Code authentication token",
-			Long: `Update the Advent of Code authentication token in your configuration.
+//nolint:gosec // not storing any credentials here
+var updateTokenLong = `Update the Advent of Code authentication token in your configuration.
 
 To get your token:
   1. Log in to adventofcode.com
@@ -27,9 +23,18 @@ To get your token:
   3. Go to Application/Storage > Cookies
   4. Copy the value of the 'session' cookie
 
-The token is required for downloading puzzle inputs.`,
-			Example: `  elf config update-token                    # Interactive prompt
-  elf config update-token -t "your-token"   # Direct update`,
+The token is required for downloading puzzle inputs.`
+
+func getUpdateTokenCmd() *cobra.Command {
+	if updateTokenCmd == nil {
+		updateTokenCmd = &cobra.Command{
+			Use:               "update-token",
+			Short:             "Update the Advent of Code authentication token",
+			Long:              updateTokenLong,
+			Args:              cobra.NoArgs,
+			ValidArgsFunction: cobra.NoFileCompletions,
+			Example: `elf config update-token                   # Interactive prompt
+elf config update-token -t "your-token"   # Direct update`,
 			RunE: runUpdateTokenCmd,
 		}
 

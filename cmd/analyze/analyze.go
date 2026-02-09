@@ -21,11 +21,12 @@ var (
 func GetAnalyzeCmd() *cobra.Command {
 	if analyzeCmd == nil {
 		analyzeCmd = &cobra.Command{
-			Use:     "analyze [flags] path/to/directory",
+			Use:     "analyze",
 			Aliases: []string{"a", "analyse"},
 			Args:    cobra.ExactArgs(1),
 			Short:   "analysis of run-time metrics",
 			RunE:    runAnalyzeCmd,
+			Example: "elf analyze ~/advent/2015/01-exercise/",
 		}
 
 		analyzeCmd.Flags().StringVarP(&outFile, "graph", "g", "./run-times.png", "graph output file")
