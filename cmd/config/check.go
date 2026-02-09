@@ -10,12 +10,7 @@ import (
 
 var checkCmd *cobra.Command
 
-func getCheckCmd() *cobra.Command {
-	if checkCmd == nil {
-		checkCmd = &cobra.Command{
-			Use:   "check",
-			Short: "Display and validate current configuration",
-			Long: `Display current elf configuration settings and validate them.
+const longDescr = `Display current elf configuration settings and validate them.
 
 Shows all configuration values including:
   - Config file location
@@ -25,7 +20,14 @@ Shows all configuration values including:
 
 Also validates:
   - Token is set and not placeholder
-  - Configured directories exist`,
+  - Configured directories exist`
+
+func getCheckCmd() *cobra.Command {
+	if checkCmd == nil {
+		checkCmd = &cobra.Command{
+			Use:   "check",
+			Short: "Display and validate current configuration",
+			Long:  longDescr,
 			Example: `  elf config check
   elf config check -c /path/to/elf.toml`,
 			RunE: runCheckCmd,

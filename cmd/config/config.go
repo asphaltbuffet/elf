@@ -12,12 +12,7 @@ func GetConfigCmd() *cobra.Command {
 		configCmd = &cobra.Command{
 			Use:   "config",
 			Short: "Manage elf configuration",
-			Long: `Manage elf configuration files and settings.
-
-Available subcommands:
-  init          Create a new configuration file
-  check         Display and validate current configuration
-  update-token  Update the Advent of Code authentication token`,
+			Long:  "Manage elf configuration files and settings.",
 		}
 
 		configCmd.AddCommand(getInitCmd())
