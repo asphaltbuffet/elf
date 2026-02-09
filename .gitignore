@@ -169,6 +169,7 @@ elf.toml
 completions/
 manpages/
 release_notes/
-.tools/
 
+result/
+result*
 elf
