@@ -44,3 +44,33 @@ type DownloadConfiguration interface {
 	// GetToken returns the authentication token for downloading exercises.
 	GetToken() string
 }
+
+// ConfigurationWriter is an interface for writing configuration files.
+type ConfigurationWriter interface {
+	// WriteConfig writes the configuration to the specified path.
+	WriteConfig(path string) error
+
+	// SafeWriteConfig writes the configuration only if the file doesn't exist.
+	SafeWriteConfig(path string) error
+
+	// SetToken updates the advent token value.
+	SetToken(token string)
+
+	// SetValue sets a configuration value by key.
+	SetValue(key ConfigKey, value any)
+
+	// GetAllSettings returns all configuration settings as a map.
+	GetAllSettings() map[string]any
+}
+
+// ConfigurationValidator is an interface for validating configuration.
+type ConfigurationValidator interface {
+	// ValidateToken checks if the advent token is properly configured.
+	ValidateToken() error
+
+	// ValidateDirectories checks if configured directories exist.
+	ValidateDirectories() []error
+
+	// Validate performs full validation of the configuration.
+	Validate() []error
+}
