@@ -7,6 +7,7 @@ import (
 
 	"github.com/asphaltbuffet/elf/cmd/analyze"
 	"github.com/asphaltbuffet/elf/cmd/benchmark"
+	"github.com/asphaltbuffet/elf/cmd/config"
 	"github.com/asphaltbuffet/elf/cmd/download"
 	"github.com/asphaltbuffet/elf/cmd/man"
 	"github.com/asphaltbuffet/elf/cmd/solve"
@@ -49,6 +50,7 @@ func GetRootCommand() *cobra.Command {
 
 		rootCmd.AddCommand(analyze.GetAnalyzeCmd())
 		rootCmd.AddCommand(benchmark.GetBenchmarkCmd())
+		rootCmd.AddCommand(config.GetConfigCmd())
 		rootCmd.AddCommand(download.GetDownloadCmd())
 		rootCmd.AddCommand(man.NewManCmd())
 		rootCmd.AddCommand(solve.GetSolveCmd())

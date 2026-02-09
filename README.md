@@ -12,7 +12,7 @@
 
 </div>
 
-`elf`` is a helper app for several programming practice sites that attempts to reduce the overhead needed to test and solve puzzles.
+`elf` is a helper app for several programming practice sites that attempts to reduce the overhead needed to test and solve puzzles.
 
 Currently supporting:
 
@@ -30,58 +30,132 @@ Currently supporting:
 - Write `visualization` for solutions to disk
 - `Benchmark` with graphs to compare implementations
 
-## Demo
-
-TBD
-
 ## Requirements
 
-See site-specific sections for details on unique requirements.
-
-- Toolchain must be maintained separately (compiler installation, etc.)
-- Site-specific authorization may need to be set in config file or ENV
+- Language toolchains must be installed separately (Go, Python, etc.)
+- Site-specific authorization tokens (see Configuration)
 
 ## Install
 
-Manually download and unpack the elf binary into your preferred location.
+### From GitHub Releases
+
+Download the latest release from [GitHub Releases](https://github.com/asphaltbuffet/elf/releases) and unpack the binary into your preferred location. Release packages include:
+
+- Pre-built binaries for Linux, MacOS, and Windows
+- Shell completions for bash, fish, and zsh
+- Man pages
+
+### Using Nix
+
+If you have [Nix](https://nixos.org/) with flakes enabled:
+
+```bash
+# Run directly without installing
+nix run github:asphaltbuffet/elf
+
+# Install to your profile
+nix profile install github:asphaltbuffet/elf
+```
+
+```nix
+# Add to your flake.nix as an input
+{
+  inputs.elf.url = "github:asphaltbuffet/elf";
+}
+```
 
 ## Configuration
 
-The default location for this data may vary based on OS and personal settings.
+Configuration can be set via config file or environment variables (with `ELF_` prefix).
 
-- Windows: `%AppData%/elf`
-- Unix: `$XDG_CONFIG_HOME/elf` (if non-empty), else `$HOME/.config/elf`
-- Darwin: `$HOME/Library/Application Support/elf`
+### Config File
 
-## Site-specific details
+```bash
+elf config init           # Create elf.toml in current directory
+elf config init --global  # Create in user config directory
+elf config check          # Display and validate current configuration
+elf config update-token   # Update Advent of Code session token
+```
+
+Files may also be managed directly. Create `elf.toml` in your working directory or the user config directory:
+
+- Windows: `%AppData%\elf\elf.toml`
+- Linux: `$XDG_CONFIG_HOME/elf/elf.toml` or `~/.config/elf/elf.toml`
+- MacOS: `~/Library/Application Support/elf/elf.toml`
+
+### Environment Variables
+
+Environment variables override config file settings:
+
+- `ELF_ADVENT_TOKEN` — Session token for Advent of Code (required to download inputs)
+- `ELF_LANGUAGE` — Default language for solutions (e.g., `go`, `py`)
+
+## Site-specific Details
 
 ### Advent of Code
 
+Requires a session token to download puzzle inputs. Get your token from the `session` cookie after logging in at [adventofcode.com](https://adventofcode.com) (browser dev tools → Application → Cookies).
+
+Set the token via:
+- `config` subcommand: `elf config update-token`
+- Config file: `advent.token = "your-session-token"`
+- Environment: `export ELF_ADVENT_TOKEN="your-session-token"`
+
+#### Exercise Directory Structure (Example)
+
 ```text
-.
-└─ exercises
-   └─ <year>
-     └─ <day>-<title>
-       ├─ go
-       │  └─ exercise.go
-       ├─ info.json
-       ├─ input.txt
-       ├─ README.md
-       └─ benchmark.json
+exercises/<year>/<day>-<title>/
+├── info.json        # Puzzle metadata (year, day, title, URL)
+├── input.txt        # Your puzzle input
+├── README.md        # Problem description
+├── <lang>/          # <lang> implementation files
+│   ├── <file1>
+│   ├── <...>
+│   └── <file_n>
+└── benchmark.json   # Benchmark results (generated)
 ```
 
 ## Caching
 
-Elf caches downloaded information from source sites to reduce load on their servers. The default location for this data may vary based on OS and personal settings.
+Elf caches downloaded data to reduce load on source sites. Cache locations vary by OS:
 
-- Windows: `%AppData%/elf`
-- *nix: `$XDG_CONFIG_HOME/elf` (if non-empty), else `$HOME/.config/elf`
-- Darwin: `$HOME/Library/Application Support/elf`
+- Windows: `%LocalAppData%\elf`
+- Linux: `$XDG_CACHE_HOME/elf` or `~/.cache/elf`
+- MacOS: `~/Library/Caches/elf`
 
-## Build
+## Development
 
-Build scripts use [Task](https://taskfile.dev). There is a [Makefile](./Makefile) and [justfile](./justfile) with similar arguments. These may be removed at some point though.
+This project uses [mise](https://mise.jdx.dev) for tool management and task running.
 
-Install the necessary dependencies with `task install`. This should only be necessary to do once.
+### Quick Start
 
-`task snapshot` will create a local build for your OS in `./dist/elf-<OS name>/`.
+```bash
+# Enter the development shell (if using Nix)
+nix develop
+
+# Or install mise and let it manage tools
+mise trust
+mise install
+```
+
+### Common Tasks
+
+```bash
+mise run dev         # Full dev pipeline: generate, mock, lint, test, snapshot
+mise run test        # Run tests with coverage
+mise run lint        # Lint with auto-fix
+mise run snapshot    # Build release snapshot for your OS (output in ./dist/)
+
+mise tasks           # List all available tasks
+```
+
+### Nix Flake Maintenance
+
+When Go dependencies change (e.g., after `go get` or modifying `go.mod`), the Nix flake's `vendorHash` must be updated:
+
+```bash
+mise run nix-hash    # Automatically update vendorHash in flake.nix
+nix build            # Verify the build succeeds
+```
+
+The `nix-hash` task attempts a build, captures the expected hash from the error output, and updates `flake.nix` automatically.
