@@ -78,3 +78,17 @@ Configuration uses Viper with:
 - `gomod2nix.toml` is the dependency lockfile — regenerate with `mise run nix-hash` or `gomod2nix generate`
 - Source filtering via `lib.fileset` — only `.go` files, `go.mod`, `go.sum`, `gomod2nix.toml`, and `go:embed` templates are included
 - `mod-tidy` automatically runs `nix-hash` as a post-dependency
+
+Flake outputs:
+- `packages.default` — the elf binary (per-system)
+- `devShells.default` — development shell with Go, mise, gomod2nix (per-system)
+- `overlays.default` — adds `pkgs.elf` to nixpkgs
+- `homeManagerModules.default` — home-manager module (`nix/home-manager.nix`) providing `programs.elf.*` options
+
+#### Home-Manager Module
+
+- Located at `nix/home-manager.nix`, options live under `programs.elf`
+- Option defaults mirror `pkg/krampus/defaults.go` — keep them in sync when defaults change
+- `config-dir` and `cache-dir` default to `null` (omitted from TOML) so elf's runtime XDG logic applies
+- Config file generated via `pkgs.formats.toml {}` and placed at `xdg.configFile."elf/elf.toml"`
+- Environment variables (`ELF_ADVENT_TOKEN`, `ELF_LANGUAGE`) mapped via `home.sessionVariables`

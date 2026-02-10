@@ -89,5 +89,7 @@
       overlays.default = final: prev: {
         elf = self.packages.${prev.system}.default;
       };
+
+      homeManagerModules.default = import ./nix/home-manager.nix;
     };
 }

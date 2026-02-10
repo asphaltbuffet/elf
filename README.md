@@ -53,16 +53,93 @@ If you have [Nix](https://nixos.org/) with flakes enabled:
 # Run directly without installing
 nix run github:asphaltbuffet/elf
 
+# Run a specific command
+nix run github:asphaltbuffet/elf -- solve 2024/01
+
 # Install to your profile
 nix profile install github:asphaltbuffet/elf
 ```
 
+#### Nix Flake
+
+Add elf to your `flake.nix` inputs and include it in your packages:
+
 ```nix
-# Add to your flake.nix as an input
 {
-  inputs.elf.url = "github:asphaltbuffet/elf";
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    elf.url = "github:asphaltbuffet/elf";
+  };
+
+  outputs = { nixpkgs, elf, ... }: {
+    # Use the overlay to make elf available as pkgs.elf
+    nixosConfigurations.myhost = nixpkgs.lib.nixosSystem {
+      modules = [{
+        nixpkgs.overlays = [ elf.overlays.default ];
+        environment.systemPackages = [ pkgs.elf ];
+      }];
+    };
+  };
 }
 ```
+
+#### Home-Manager Module
+
+For declarative configuration with [home-manager](https://github.com/nix-community/home-manager), elf provides a module that manages the package, config file, and environment variables together:
+
+```nix
+{
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    home-manager.url = "github:nix-community/home-manager";
+    elf.url = "github:asphaltbuffet/elf";
+  };
+
+  # In your home-manager configuration:
+  outputs = { nixpkgs, home-manager, elf, ... }: {
+    homeConfigurations."user" = home-manager.lib.homeManagerConfiguration {
+      # ...
+      modules = [
+        {
+          nixpkgs.overlays = [ elf.overlays.default ];
+        }
+        elf.homeManagerModules.default
+        {
+          programs.elf = {
+            enable = true;
+
+            settings = {
+              language = "go";
+              advent.dir = "exercises";
+            };
+
+            # Recommended: set token via env var (not written to Nix store)
+            ELF_ADVENT_TOKEN = "your-session-token";
+          };
+        }
+      ];
+    };
+  };
+}
+```
+
+Available `programs.elf` options:
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `enable` | bool | `false` | Whether to install elf and generate config |
+| `package` | package | `pkgs.elf` | The elf package to install |
+| `settings.language` | string | `"go"` | Default implementation language |
+| `settings.input-file` | string | `"input.txt"` | Default input file name |
+| `settings.config-dir` | string | `null` | Config directory (null = XDG default) |
+| `settings.cache-dir` | string | `null` | Cache directory (null = XDG default) |
+| `settings.advent.token` | string | `""` | AoC session token (written to TOML; prefer `ELF_ADVENT_TOKEN`) |
+| `settings.advent.dir` | string | `"exercises"` | Advent of Code exercise directory |
+| `settings.euler.dir` | string | `"problems"` | Project Euler problem directory |
+| `ELF_ADVENT_TOKEN` | string | `null` | Set `ELF_ADVENT_TOKEN` env var |
+| `ELF_LANGUAGE` | string | `null` | Set `ELF_LANGUAGE` env var |
+
+> **Note:** The AoC session token set via `settings.advent.token` is written to a TOML file in the Nix store, which is world-readable. For secret management, prefer using the `ELF_ADVENT_TOKEN` environment variable option, or populate it via [sops-nix](https://github.com/Mic92/sops-nix) or [agenix](https://github.com/ryantm/agenix).
 
 ## Configuration
 
