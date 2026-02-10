@@ -119,6 +119,12 @@ run = [
   "goreleaser build --clean --single-target --snapshot",
 ]
 
+[tasks.update-deps]
+description = "update direct dependencies to latest versions"
+alias = "up"
+run = "go get -u"
+depends_post = ["mod-tidy"]
+
 [tasks.test]
 description = "run test suite"
 depends = ["generate", "mock"]

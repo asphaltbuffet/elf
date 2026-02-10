@@ -19,6 +19,7 @@ mise run generate    # Run go generate (stringer)
 mise run mock        # Generate mocks with mockery
 mise run build       # Build to dist/
 mise run snapshot    # Build release snapshot with goreleaser
+mise run update-deps # Update direct dependencies to latest (then mod-tidy → nix-hash)
 mise run dev         # Full dev pipeline: generate, mock, lint, test, snapshot
 mise run ci          # CI pipeline: generate, mock, mod-tidy, test, cover, build, diff
 ```
