@@ -1,8 +1,12 @@
 package man
 
 import (
+	"fmt"
+	"os"
+
+	mango "github.com/muesli/mango-cobra"
+	"github.com/muesli/roff"
 	"github.com/spf13/cobra"
-	"github.com/spf13/cobra/doc"
 )
 
 func NewManCmd() *cobra.Command {
@@ -15,11 +19,14 @@ func NewManCmd() *cobra.Command {
 		Args:                  cobra.NoArgs,
 		ValidArgsFunction:     cobra.NoFileCompletions,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			if err := doc.GenManTree(cmd.Root(), nil, "manpages/"); err != nil {
+			mp, err := mango.NewManPage(1, cmd.Root())
+			if err != nil {
 				return err
 			}
 
-			return nil
+			_, err = fmt.Fprint(os.Stdout, mp.Build(roff.NewDocument()))
+
+			return err
 		},
 	}
 

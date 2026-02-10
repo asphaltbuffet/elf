@@ -25,8 +25,8 @@ elf benchmark /path/to/exercise`
 func GetBenchmarkCmd() *cobra.Command {
 	if benchmarkCmd == nil {
 		benchmarkCmd = &cobra.Command{
-			Use:     "benchmark [path/to/exercise]",
-			Aliases: []string{"bench", "b"},
+			Use:     "benchmark",
+			Aliases: []string{"b"},
 			Example: benchmarkExample,
 			Args:    cobra.ExactArgs(1),
 			Short:   "benchmark all implementations for the challenge",

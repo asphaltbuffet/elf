@@ -4,6 +4,7 @@
 "aqua:gotestyourself/gotestsum" = "latest"
 "aqua:rhysd/actionlint" = "latest"
 "aqua:vektra/mockery" = "2"
+"go:github.com/nix-community/gomod2nix" = "latest"
 "go:golang.org/x/tools/cmd/stringer" = "latest"
 
 [tasks.actionlint]
@@ -80,6 +81,16 @@ run = [
   "golangci-lint run --fix --output.html.path=bin/golangci-lint.html --output.text.path=stdout",
 ]
 
+[tasks.manpages]
+description = "generate man pages"
+sources = ["cmd/**/*.go"]
+outputs = ["manpages/*"]
+run = [
+  "rm -rf manpages",
+  "mkdir manpages",
+  "go run . man | gzip -c -9 >manpages/elf.1.gz",
+]
+
 [tasks.mock]
 description = "generate mocks"
 depends = ["generate"]
@@ -91,31 +102,13 @@ alias = "mod"
 sources = ["**/*.go", "**/go.mod", "**/go.sum"]
 outputs = ["**/go.mod", "**/go.sum"]
 run = "go mod tidy"
+depends_post = ["nix-hash"]
 
 [tasks.nix-hash]
-description = "Update flake.nix vendorHash"
-run = '''
-#!/usr/bin/env bash
-set -euo pipefail
-
-# Build and capture the expected hash from error output
-OUTPUT=$(nix build .#default 2>&1 || true)
-
-# Extract the "got:" hash from the error message
-NEW_HASH=$(echo "$OUTPUT" | grep -oP 'got:\s+\Ksha256-[A-Za-z0-9+/=]+' | head -1)
-
-if [ -z "$NEW_HASH" ]; then
-  echo "Build succeeded or no hash found - vendorHash is up to date"
-  exit 0
-fi
-
-echo "Updating vendorHash to: $NEW_HASH"
-
-# Update the flake.nix file
-sed -i "s|vendorHash = \"sha256-[^\"]*\"|vendorHash = \"$NEW_HASH\"|" flake.nix
-
-echo "Updated flake.nix - run 'nix build' to verify"
-'''
+description = "Update gomod2nix.toml dependency lockfile"
+sources = ["go.sum"]
+outputs = ["gomod2nix.toml"]
+run = "gomod2nix generate"
 
 [tasks.snapshot]
 description = "goreleaser build snapshot"

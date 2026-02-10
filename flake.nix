@@ -4,22 +4,42 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     flake-utils.url = "github:numtide/flake-utils";
+    gomod2nix = {
+      url = "github:nix-community/gomod2nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.flake-utils.follows = "flake-utils";
+    };
   };
 
-  outputs = { self, nixpkgs, flake-utils }:
+  outputs = { self, nixpkgs, flake-utils, gomod2nix }:
     flake-utils.lib.eachDefaultSystem (system:
       let
-        pkgs = import nixpkgs { inherit system; };
+        pkgs = import nixpkgs {
+          inherit system;
+          overlays = [ gomod2nix.overlays.default ];
+        };
+        lib = pkgs.lib;
         version = if (self ? shortRev) then self.shortRev else "dev";
       in {
-        packages.default = pkgs.buildGoModule {
+        packages.default = pkgs.buildGoApplication {
           pname = "elf";
           inherit version;
-          src = ./.;
 
-          vendorHash = "sha256-Y0AlaqsvTevLqppXnJKoQBqFG1TFDTwR6H2+gGwyvE8=";
+          src = lib.fileset.toSource {
+            root = ./.;
+            fileset = lib.fileset.unions [
+              ./go.mod
+              ./go.sum
+              ./gomod2nix.toml
+              (lib.fileset.fileFilter (file: lib.hasSuffix ".go" file.name) ./.)
+              ./pkg/advent/templates
+              ./pkg/runners/interface
+            ];
+          };
 
-          # Only build the main binary, not the tools/ submodule
+          modules = ./gomod2nix.toml;
+
+          # Only build the main binary
           subPackages = [ "." ];
 
           ldflags = [
@@ -45,7 +65,7 @@
 
           nativeBuildInputs = [ pkgs.installShellFiles ];
 
-          meta = with pkgs.lib; {
+          meta = with lib; {
             description = "A CLI helper for programming exercises";
             homepage = "https://github.com/asphaltbuffet/elf";
             license = licenses.mit;
@@ -56,7 +76,8 @@
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
             go
-            mise  # Handles all other dev tools (golangci-lint, gotestsum, mockery, etc.)
+            mise
+            gomod2nix.packages.${system}.default
           ];
 
           shellHook = ''
@@ -68,5 +89,7 @@
       overlays.default = final: prev: {
         elf = self.packages.${prev.system}.default;
       };
+
+      homeManagerModules.default = import ./nix/home-manager.nix;
     };
 }

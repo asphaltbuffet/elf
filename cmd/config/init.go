@@ -29,10 +29,9 @@ The configuration file includes settings for:
   - Default solution language
   - Exercise directories
   - Advent of Code authentication token`,
-			Example: `  elf config init           # Create elf.toml in current directory
-  elf config init --global  # Create in ~/.config/elf/
-  elf config init --force   # Overwrite existing file`,
-			RunE: runInitCmd,
+			Args:              cobra.NoArgs,
+			ValidArgsFunction: cobra.NoFileCompletions,
+			RunE:              runInitCmd,
 		}
 
 		initCmd.Flags().BoolP("global", "g", false, "create config in user config directory")
