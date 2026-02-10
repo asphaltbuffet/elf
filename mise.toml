@@ -101,6 +101,7 @@ alias = "mod"
 sources = ["**/*.go", "**/go.mod", "**/go.sum"]
 outputs = ["**/go.mod", "**/go.sum"]
 run = "go mod tidy"
+depends_post = ["nix-hash"]
 
 [tasks.nix-hash]
 description = "Update flake.nix vendorHash"
@@ -112,7 +113,7 @@ set -euo pipefail
 OUTPUT=$(nix build .#default 2>&1 || true)
 
 # Extract the "got:" hash from the error message
-NEW_HASH=$(echo "$OUTPUT" | grep -oP 'got:\s+\Ksha256-[A-Za-z0-9+/=]+' | head -1)
+NEW_HASH=$(echo "$OUTPUT" | grep -oP 'got:\s+\Ksha256-[A-Za-z0-9+/=]+' | head -1 || true)
 
 if [ -z "$NEW_HASH" ]; then
   echo "Build succeeded or no hash found - vendorHash is up to date"
