@@ -2,6 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Important
+
+- This project uses **jj** (Jujutsu) for version control, not git. Use `jj file track` instead of `git add`.
+- Nix flakes only see VCS-tracked files. New files must be tracked with `jj file track` before `nix build` can use them.
+- Use `mise exec --` to run mise-managed tools (e.g. `mise exec -- gomod2nix generate`) from non-activated shells.
+
 ## Build and Development Commands
 
 This project uses [mise](https://mise.jdx.dev) for tool management and task running.
@@ -65,3 +71,10 @@ Configuration uses Viper with:
 
 - **stringer**: Generates String() methods for enums (`//go:generate stringer`)
 - **mockery**: Generates test mocks (configured in `.mockery.yaml`)
+
+### Nix Flake
+
+- Uses `gomod2nix` with `buildGoApplication` (not `buildGoModule`)
+- `gomod2nix.toml` is the dependency lockfile — regenerate with `mise run nix-hash` or `gomod2nix generate`
+- Source filtering via `lib.fileset` — only `.go` files, `go.mod`, `go.sum`, `gomod2nix.toml`, and `go:embed` templates are included
+- `mod-tidy` automatically runs `nix-hash` as a post-dependency
