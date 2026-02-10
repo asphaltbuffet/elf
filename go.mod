@@ -5,7 +5,7 @@ go 1.25.4
 require (
 	github.com/charmbracelet/fang v0.4.4
 	github.com/dustin/go-humanize v1.0.1
-	github.com/go-resty/resty/v2 v2.17.0
+	github.com/go-resty/resty/v2 v2.17.1
 	github.com/muesli/mango-cobra v1.2.0
 	github.com/muesli/roff v0.1.0
 	github.com/spf13/afero v1.15.0
