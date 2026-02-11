@@ -2,10 +2,12 @@ package runners
 
 import (
 	"bytes"
+	"encoding/json"
 	"os/exec"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_customWriter_Write(t *testing.T) {
@@ -36,6 +38,71 @@ func Test_customWriter_Write(t *testing.T) {
 				n:       5,
 				entries: [][]byte{[]byte("fake")},
 				pending: nil,
+			},
+			assertion: assert.NoError,
+		},
+		{
+			name: "multiple lines",
+			c:    &customWriter{},
+			args: args{
+				b: []byte("line1\nline2\nline3\n"),
+			},
+			want: output{
+				n:       18,
+				entries: [][]byte{[]byte("line1"), []byte("line2"), []byte("line3")},
+				pending: nil,
+			},
+			assertion: assert.NoError,
+		},
+		{
+			name: "no newline leaves pending",
+			c:    &customWriter{},
+			args: args{
+				b: []byte("partial"),
+			},
+			want: output{
+				n:       7,
+				entries: nil,
+				pending: []byte("partial"),
+			},
+			assertion: assert.NoError,
+		},
+		{
+			name: "empty input",
+			c:    &customWriter{},
+			args: args{
+				b: []byte{},
+			},
+			want: output{
+				n:       0,
+				entries: nil,
+				pending: nil,
+			},
+			assertion: assert.NoError,
+		},
+		{
+			name: "appends to existing pending",
+			c:    &customWriter{pending: []byte("hello ")},
+			args: args{
+				b: []byte("world\n"),
+			},
+			want: output{
+				n:       6,
+				entries: [][]byte{[]byte("hello world")},
+				pending: nil,
+			},
+			assertion: assert.NoError,
+		},
+		{
+			name: "trailing content after last newline",
+			c:    &customWriter{},
+			args: args{
+				b: []byte("done\nleftover"),
+			},
+			want: output{
+				n:       13,
+				entries: [][]byte{[]byte("done")},
+				pending: []byte("leftover"),
 			},
 			assertion: assert.NoError,
 		},
@@ -118,4 +185,152 @@ func TestSetupBuffers(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_checkWait(t *testing.T) {
+	t.Run("returns entry when available", func(t *testing.T) {
+		cw := &customWriter{
+			entries: [][]byte{[]byte(`{"task_id":"1","ok":true}`)},
+		}
+		cmd := exec.Command("true")
+		cmd.Stdout = cw
+		cmd.Stderr = new(bytes.Buffer)
+
+		got, err := checkWait(cmd)
+
+		require.NoError(t, err)
+		assert.JSONEq(t, `{"task_id":"1","ok":true}`, string(got))
+	})
+
+	t.Run("returns error when process exits with no entries", func(t *testing.T) {
+		cmd := exec.Command("sh", "-c", "echo 'something went wrong' >&2; exit 42")
+		cw := &customWriter{}
+		cmd.Stdout = cw
+		cmd.Stderr = new(bytes.Buffer)
+
+		_ = cmd.Run() // sets ProcessState
+
+		got, err := checkWait(cmd)
+
+		require.Error(t, err)
+		assert.Nil(t, got)
+		assert.Contains(t, err.Error(), "exit code 42")
+		assert.Contains(t, err.Error(), "something went wrong")
+	})
+
+	t.Run("returns error with empty stderr on process exit", func(t *testing.T) {
+		cmd := exec.Command("sh", "-c", "exit 1")
+		cw := &customWriter{}
+		cmd.Stdout = cw
+		cmd.Stderr = new(bytes.Buffer)
+
+		_ = cmd.Run()
+
+		got, err := checkWait(cmd)
+
+		require.Error(t, err)
+		assert.Nil(t, got)
+		assert.Contains(t, err.Error(), "exit code 1")
+	})
+
+	t.Run("prefers entries over process state", func(t *testing.T) {
+		// Even if the process has exited, available entries are returned first.
+		cmd := exec.Command("true")
+		cw := &customWriter{
+			entries: [][]byte{[]byte("result data")},
+		}
+		cmd.Stdout = cw
+		cmd.Stderr = new(bytes.Buffer)
+
+		_ = cmd.Run() // ProcessState is set, but entries exist
+
+		got, err := checkWait(cmd)
+
+		require.NoError(t, err)
+		assert.Equal(t, []byte("result data"), got)
+	})
+}
+
+func Test_readJSONFromCommand(t *testing.T) {
+	t.Run("unmarshals valid JSON result", func(t *testing.T) {
+		cmd := exec.Command("true")
+		cw := &customWriter{
+			entries: [][]byte{
+				[]byte(`{"task_id":"abc","ok":true,"output":"42","duration":1.23}`),
+			},
+		}
+		cmd.Stdout = cw
+		cmd.Stderr = new(bytes.Buffer)
+
+		_ = cmd.Run()
+
+		var result Result
+		err := readJSONFromCommand(&result, cmd)
+
+		require.NoError(t, err)
+		assert.Equal(t, "abc", result.TaskID)
+		assert.True(t, result.Ok)
+		assert.Equal(t, "42", result.Output)
+		assert.InDelta(t, 1.23, result.Duration, 0.001)
+	})
+
+	t.Run("skips non-JSON debug lines before valid JSON", func(t *testing.T) {
+		cmd := exec.Command("true")
+		cw := &customWriter{
+			entries: [][]byte{
+				[]byte("debug: initializing solver"),
+				[]byte("debug: reading input"),
+				[]byte(`{"task_id":"t1","ok":true,"output":"answer","duration":0.5}`),
+			},
+		}
+		cmd.Stdout = cw
+		cmd.Stderr = new(bytes.Buffer)
+
+		_ = cmd.Run()
+
+		var result Result
+		err := readJSONFromCommand(&result, cmd)
+
+		require.NoError(t, err)
+		assert.Equal(t, "answer", result.Output)
+	})
+
+	t.Run("returns error when process exits without valid JSON", func(t *testing.T) {
+		cmd := exec.Command("sh", "-c", "exit 1")
+		cw := &customWriter{
+			entries: [][]byte{
+				[]byte("not json at all"),
+			},
+		}
+		cmd.Stdout = cw
+		cmd.Stderr = new(bytes.Buffer)
+
+		_ = cmd.Run()
+
+		var result Result
+		err := readJSONFromCommand(&result, cmd)
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "exit code 1")
+	})
+
+	t.Run("works with generic target type", func(t *testing.T) {
+		cmd := exec.Command("true")
+		cw := &customWriter{
+			entries: [][]byte{
+				[]byte(`{"name":"test","value":123}`),
+			},
+		}
+		cmd.Stdout = cw
+		cmd.Stderr = new(bytes.Buffer)
+
+		_ = cmd.Run()
+
+		var raw map[string]json.RawMessage
+		err := readJSONFromCommand(&raw, cmd)
+
+		require.NoError(t, err)
+		assert.Contains(t, raw, "name")
+		assert.Contains(t, raw, "value")
+	})
 }
