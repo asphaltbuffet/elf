@@ -34,9 +34,8 @@ type Analyzer struct {
 	Output    string
 	GraphType analysis.GraphType
 
-	yearly  bool
-	daily   bool
-	compare bool
+	yearly bool
+	daily  bool
 
 	appFs  afero.Fs
 	writer io.Writer
@@ -97,12 +96,6 @@ func WithOutput(name string) func(*Analyzer) {
 func WithDaily(daily bool) func(*Analyzer) {
 	return func(a *Analyzer) {
 		a.daily = daily
-	}
-}
-
-func WithCompare(compare bool) func(*Analyzer) {
-	return func(a *Analyzer) {
-		a.compare = compare
 	}
 }
 
