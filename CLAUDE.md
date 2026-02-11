@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## TODO
+
+- [ ] Consider using `version-file` in golangci-lint-action to read version from `.tool-versions` instead of hardcoding in workflow
+
 ## Important
 
 - This project uses **jj** (Jujutsu) for version control, not git. Use `jj file track` instead of `git add`.
