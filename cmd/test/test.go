@@ -15,6 +15,14 @@ import (
 var (
 	testCmd  *cobra.Command
 	language string
+
+	// Factory variables for testing.
+	makeConfig = func(cf string) (krampus.Config, error) {
+		return krampus.NewConfig(krampus.WithFile(cf))
+	}
+	makeChallengeTester = func(cfg krampus.ExerciseConfiguration, lang, dir string) (ChallengeTester, error) {
+		return advent.New(cfg, advent.WithLanguage(lang), advent.WithDir(dir))
+	}
 )
 
 type ChallengeTester interface {
@@ -45,14 +53,9 @@ func GetTestCmd() *cobra.Command {
 }
 
 func runTestCmd(cmd *cobra.Command, args []string) error {
-	var (
-		ch  ChallengeTester
-		err error
-	)
-
 	cf, _ := cmd.Flags().GetString("config-file")
 
-	cfg, err := krampus.NewConfig(krampus.WithFile(cf))
+	cfg, err := makeConfig(cf)
 	if err != nil {
 		return err
 	}
@@ -66,7 +69,7 @@ func runTestCmd(cmd *cobra.Command, args []string) error {
 		language = cfg.GetLanguage()
 	}
 
-	ch, err = advent.New(&cfg, advent.WithLanguage(language), advent.WithDir(dir))
+	ch, err := makeChallengeTester(&cfg, language, dir)
 	if err != nil {
 		return err
 	}
