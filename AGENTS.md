@@ -91,6 +91,30 @@ exercises/<year>/<day>-<title>/
 - Environment: `ELF_ADVENT_TOKEN`, `ELF_LANGUAGE`
 - Defaults: `pkg/krampus/defaults.go`
 
+## Testing
+
+### Cobra command testing pattern
+
+The `cmd/` packages use **factory variables** to make `RunE` handlers testable. Package-level `var` functions wrap constructors so tests can swap them with mock-returning functions without changing cobra signatures.
+
+```go
+// Production: factory variable wraps real constructor.
+var makeChallenge = func(cfg krampus.ExerciseConfiguration, lang, dir, inputFile string) (Challenge, error) {
+    return advent.New(cfg, ...)
+}
+
+// Test: swap factory to return mock.
+makeChallenge = func(...) (Challenge, error) { return mockCh, nil }
+```
+
+Mockery-generated mocks exist in `mocks/` for `Challenge`, `ChallengeTester`, `Benchmarker`, and `Downloader`.
+
+### Gotchas
+
+- **pflag resets variables on flag creation**: `StringVarP(&variable, ..., "", ...)` immediately sets the variable to the default. In tests, set flag-bound variables **after** calling `GetXxxCmd()`, not before.
+- **testifylint require-error**: Use `require.NoError` (not `assert.NoError`) when subsequent assertions depend on no error. The linter enforces this.
+- **Singleton commands**: `GetXxxCmd()` caches in a package-level `var`. Reset it (`solveCmd = nil`) in `t.Cleanup` between tests to avoid stale flag state.
+
 ## Code Generation
 
 - **stringer**: `//go:generate stringer` — generates `String()` for enums. Run `mise run generate`.

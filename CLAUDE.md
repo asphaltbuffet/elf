@@ -73,6 +73,21 @@ Configuration uses Viper with:
 - Environment: `ELF_ADVENT_TOKEN`, `ELF_LANGUAGE`
 - Cache: `~/.cache/elf/` (or platform equivalent)
 
+### Testing Cobra Commands
+
+The `cmd/` packages use a **factory variable pattern** for testability. Package-level `var` functions wrap constructors (`krampus.NewConfig`, `advent.New`, etc.) so tests can swap them with mock-returning functions. This avoids changing cobra `RunE` signatures while enabling mock injection.
+
+Example from `cmd/solve/`:
+```go
+var makeChallenge = func(cfg krampus.ExerciseConfiguration, lang, dir, inputFile string) (Challenge, error) {
+    return advent.New(cfg, advent.WithLanguage(lang), ...)
+}
+```
+
+**pflag gotcha**: `StringVarP(&variable, ...)` sets the variable to the default value immediately. In tests, always set package-level flag variables **after** `GetXxxCmd()`, not before.
+
+Mockery-generated mocks exist for `Challenge`, `ChallengeTester`, `Benchmarker`, and `Downloader` in `mocks/` — use them with the factory variable pattern.
+
 ### Code Generation
 
 - **stringer**: Generates String() methods for enums (`//go:generate stringer`)

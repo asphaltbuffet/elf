@@ -16,6 +16,17 @@ var (
 	language string
 	input    string
 	noTest   bool
+
+	// Factory variables for testing.
+	makeConfig = func(cf string) (krampus.Config, error) {
+		return krampus.NewConfig(krampus.WithFile(cf))
+	}
+	makeChallenge = func(cfg krampus.ExerciseConfiguration, lang, dir, inputFile string) (Challenge, error) {
+		return advent.New(cfg,
+			advent.WithLanguage(lang),
+			advent.WithDir(dir),
+			advent.WithInputFile(inputFile))
+	}
 )
 
 const exampleText = `
@@ -50,14 +61,9 @@ type Challenge interface {
 }
 
 func runSolveCmd(cmd *cobra.Command, args []string) error {
-	var (
-		ch  Challenge
-		err error
-	)
-
 	cf, _ := cmd.Flags().GetString("config-file")
 
-	cfg, err := krampus.NewConfig(krampus.WithFile(cf))
+	cfg, err := makeConfig(cf)
 	if err != nil {
 		return err
 	}
@@ -77,10 +83,7 @@ func runSolveCmd(cmd *cobra.Command, args []string) error {
 
 	cfg.GetLogger().Debug("solving exercise", slog.Group("exercise", "dir", dir, "language", language))
 
-	ch, err = advent.New(&cfg,
-		advent.WithLanguage(language),
-		advent.WithDir(dir),
-		advent.WithInputFile(filepath.Clean(input)))
+	ch, err := makeChallenge(&cfg, language, dir, filepath.Clean(input))
 	if err != nil {
 		return err
 	}
