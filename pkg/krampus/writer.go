@@ -93,9 +93,5 @@ token = ""
 
 # Directory for Advent of Code exercises
 dir = %q
-
-[euler]
-# Directory for Project Euler problems
-dir = %q
-`, defaults[LanguageKey], configDir, cacheDir, defaults[InputFileKey], defaults[AdventDirKey], defaults[EulerDirKey])
+`, defaults[LanguageKey], configDir, cacheDir, defaults[InputFileKey], defaults[AdventDirKey])
 }

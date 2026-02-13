@@ -56,7 +56,7 @@ goimports -w path/to/file.go
 
 ## Architecture
 
-**elf** is a CLI tool for managing programming challenge exercises (Advent of Code, Project Euler, Exercism). It downloads challenges, runs solutions in multiple languages, and benchmarks implementations.
+**elf** is a CLI tool for managing programming challenge exercises (Advent of Code, Exercism). It downloads challenges, runs solutions in multiple languages, and benchmarks implementations.
 
 ### Package map
 
@@ -64,7 +64,6 @@ goimports -w path/to/file.go
 |---------|---------|
 | `cmd/` | Cobra CLI commands (solve, test, benchmark, download, analyze) |
 | `pkg/advent/` | Advent of Code — downloading, solving, testing, benchmarking |
-| `pkg/euler/` | Project Euler support (WIP) |
 | `pkg/krampus/` | Configuration via Viper — config files, env vars (`ELF_*`), defaults |
 | `pkg/runners/` | Language runner abstraction — Go (`go/`) and Python (`py/`) |
 | `pkg/tasks/` | Task types (Solve, Test, Benchmark, Visualize) and result handling |

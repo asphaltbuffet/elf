@@ -48,8 +48,6 @@ func GetDownloadCmd() *cobra.Command {
 
 // // https://adventofcode.com/2022/day/1
 // reAdvent := `^https?://(www\.)?adventofcode\.com/(?P<year>\d{4})/day/(?P<day>\d{1,2})$`
-// // https://projecteuler.net/problem=1
-// reEuler := `^https?://(www\.)?projecteuler\.net/problem=(?P<num>\d{1,3})$`
 
 func runDownloadCmd(cmd *cobra.Command, args []string) error {
 	var err error

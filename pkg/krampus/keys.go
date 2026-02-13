@@ -16,11 +16,6 @@ const (
 	AdventTokenKey ConfigKey = "advent.token" // Configuration key for the Advent of Code auth token.
 	AdventUserKey  ConfigKey = "advent.user"  // Configuration key for the Advent of Code user name.
 	AdventDirKey   ConfigKey = "advent.dir"   // Configuration key for the Advent of Code exercise directory.
-
-	// Project Euler configuration keys.
-
-	EulerUserKey ConfigKey = "euler.user" // Configuration key for the Project Euler user name.
-	EulerDirKey  ConfigKey = "euler.dir"  // Configuration key for Project Euler problem directory.
 )
 
 func (k ConfigKey) String() string {

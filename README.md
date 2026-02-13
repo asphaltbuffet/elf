@@ -17,7 +17,6 @@
 Currently supporting:
 
 - [Advent of Code](https://adventofcode.com/)
-- *WIP* [Project Euler](https://projecteuler.net/)
 - *WIP* [Exercism](https://exercism.org/)
 
 
@@ -135,7 +134,6 @@ Available `programs.elf` options:
 | `settings.cache-dir` | string | `null` | Cache directory (null = XDG default) |
 | `settings.advent.token` | string | `""` | AoC session token (written to TOML; prefer `ELF_ADVENT_TOKEN`) |
 | `settings.advent.dir` | string | `"exercises"` | Advent of Code exercise directory |
-| `settings.euler.dir` | string | `"problems"` | Project Euler problem directory |
 | `ELF_ADVENT_TOKEN` | string | `null` | Set `ELF_ADVENT_TOKEN` env var |
 | `ELF_LANGUAGE` | string | `null` | Set `ELF_LANGUAGE` env var |
 

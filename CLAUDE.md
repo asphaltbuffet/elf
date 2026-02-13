@@ -36,13 +36,12 @@ go test -run TestFunctionName ./path/to/package
 
 ## Architecture
 
-**elf** is a CLI tool that helps manage programming challenge exercises (Advent of Code, Project Euler, Exercism). It downloads challenges, runs solutions in multiple languages, and benchmarks implementations.
+**elf** is a CLI tool that helps manage programming challenge exercises (Advent of Code, Exercism). It downloads challenges, runs solutions in multiple languages, and benchmarks implementations.
 
 ### Core Packages
 
 - **cmd/**: Cobra CLI commands (solve, test, benchmark, download, analyze)
 - **pkg/advent/**: Advent of Code implementation - downloading, solving, testing, benchmarking
-- **pkg/euler/**: Project Euler support (WIP)
 - **pkg/krampus/**: Configuration management via Viper - handles config files, environment variables (ELF_* prefix), and defaults
 - **pkg/runners/**: Language runner abstraction - executes solutions in Go (`go/`) or Python (`py/`) subdirectories
 - **pkg/tasks/**: Task types (Solve, Test, Benchmark, Visualize) and result handling
