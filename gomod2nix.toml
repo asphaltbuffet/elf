@@ -23,8 +23,8 @@ schema = 3
     version = "v2.0.1"
     hash = "sha256-6Bp0jBZ6npvsYcKZGHHIUSVSTAMEyieweAX2YAKDjjg="
   [mod."github.com/charmbracelet/colorprofile"]
-    version = "v0.4.1"
-    hash = "sha256-d/NjM/ybG+bGRRRMMcjbPCFGFS5noZRMaL05Ix5r/II="
+    version = "v0.4.2"
+    hash = "sha256-AMnmwWjpv/TMb2mbqVXB4RmMVWBsrTFlq1FL8A00olw="
   [mod."github.com/charmbracelet/fang"]
     version = "v0.4.4"
     hash = "sha256-KnwAd/LVJC5gxO/xT80NduudQqA8JNnoDRFE77k30qs="
@@ -32,8 +32,8 @@ schema = 3
     version = "v1.1.0"
     hash = "sha256-RHsRT2EZ1nDOElxAK+6/DC9XAaGVjDTgPvRh3pyCfY4="
   [mod."github.com/charmbracelet/ultraviolet"]
-    version = "v0.0.0-20260209111912-3cca7cf7b09b"
-    hash = "sha256-pcfJl8XnxMchrdZ8Bw4a/7OEoermeNvwNozQf8MqyyE="
+    version = "v0.0.0-20260213120247-99b01dfd139c"
+    hash = "sha256-htTLRXxRDgWFq7EGQWqQHK795yiHn9E4uu0czvvfRB8="
   [mod."github.com/charmbracelet/x/ansi"]
     version = "v0.11.6"
     hash = "sha256-UToZIkqXl9MEppcRgbeBqaaMeAzRkGa0w3lVUs6sxWI="

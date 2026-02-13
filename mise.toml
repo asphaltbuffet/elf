@@ -1,4 +1,5 @@
 [tools]
+"go" = "prefix:1.26"
 "aqua:fsaintjacques/semver-tool" = "latest"
 "aqua:golangci/golangci-lint" = "prefix:2.8"
 "aqua:gotestyourself/gotestsum" = "latest"
