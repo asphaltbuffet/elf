@@ -1,3 +1,4 @@
+// Package version is the version subcommand.
 package version
 
 import (

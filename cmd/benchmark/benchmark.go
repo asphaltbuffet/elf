@@ -1,3 +1,4 @@
+// Package benchmark is the benchmark subcommand.
 package benchmark
 
 import (

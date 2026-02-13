@@ -1,3 +1,4 @@
+// Package download is the download subcommand.
 package download
 
 import (

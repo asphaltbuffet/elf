@@ -1,3 +1,4 @@
+// Package test is the test subcommand.
 package test
 
 import (

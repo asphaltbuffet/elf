@@ -1,3 +1,4 @@
+// Package man is the man subcommand.
 package man
 
 import (

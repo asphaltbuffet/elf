@@ -1,3 +1,4 @@
+// Package analyze is the analyze subcommand.
 package analyze
 
 import (

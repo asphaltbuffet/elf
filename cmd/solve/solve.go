@@ -1,3 +1,4 @@
+// Package solve is the solve subcommand.
 package solve
 
 import (
