@@ -14,7 +14,6 @@ import (
 
 	mocks "github.com/asphaltbuffet/elf/mocks/krampus"
 	"github.com/asphaltbuffet/elf/pkg/advent"
-	"github.com/asphaltbuffet/elf/pkg/analysis"
 )
 
 // testLogger returns a logger that discards output.
@@ -80,10 +79,6 @@ func makeBenchmarkDataNilPartTwo(year int, days ...int) []*advent.BenchmarkData 
 	return data
 }
 
-// ───────────────────────────────────────────────
-// Test_NewAnalyzer (existing, converted to internal)
-// ───────────────────────────────────────────────
-
 func Test_NewAnalyzer(t *testing.T) {
 	type args struct {
 		opts []func(*Analyzer)
@@ -114,44 +109,9 @@ func Test_NewAnalyzer(t *testing.T) {
 				},
 			},
 			want: &Analyzer{
-				Data:      []*advent.BenchmarkData{},
-				Dir:       "foo/bar",
-				GraphType: 1,
-				Output:    "",
-			},
-			assertion: require.NoError,
-		},
-		{
-			name:  "with yearly",
-			setup: func(_ *mocks.MockExerciseConfiguration) {},
-			args: args{
-				opts: []func(*Analyzer){
-					WithDirectory("foo/bar"),
-					WithYearly(true),
-				},
-			},
-			want: &Analyzer{
-				Data:      []*advent.BenchmarkData{},
-				Dir:       "foo/bar",
-				GraphType: 1,
-				Output:    "",
-			},
-			assertion: require.NoError,
-		},
-		{
-			name:  "with daily",
-			setup: func(_ *mocks.MockExerciseConfiguration) {},
-			args: args{
-				opts: []func(*Analyzer){
-					WithDirectory("foo/bar"),
-					WithDaily(true),
-				},
-			},
-			want: &Analyzer{
-				Data:      []*advent.BenchmarkData{},
-				Dir:       "foo/bar",
-				GraphType: 1,
-				Output:    "",
+				Data:   []*advent.BenchmarkData{},
+				Dir:    "foo/bar",
+				Output: "",
 			},
 			assertion: require.NoError,
 		},
@@ -165,10 +125,9 @@ func Test_NewAnalyzer(t *testing.T) {
 				},
 			},
 			want: &Analyzer{
-				Data:      []*advent.BenchmarkData{},
-				Dir:       "foo/bar",
-				GraphType: 1,
-				Output:    "fakeOutput.png",
+				Data:   []*advent.BenchmarkData{},
+				Dir:    "foo/bar",
+				Output: "fakeOutput.png",
 			},
 			assertion: require.NoError,
 		},
@@ -189,10 +148,6 @@ func Test_NewAnalyzer(t *testing.T) {
 		})
 	}
 }
-
-// ───────────────────────────────────────────────
-// Step 1: Pure function tests
-// ───────────────────────────────────────────────
 
 func Test_dayTicker(t *testing.T) {
 	tests := []struct {
@@ -354,10 +309,6 @@ func Test_benchmarkToPlotterValues(t *testing.T) {
 	})
 }
 
-// ───────────────────────────────────────────────
-// Step 2: File I/O tests
-// ───────────────────────────────────────────────
-
 func Test_readBenchmarkFile(t *testing.T) {
 	t.Run("valid file", func(t *testing.T) {
 		got, err := readBenchmarkFile("testdata/valid_benchmark.json")
@@ -462,10 +413,6 @@ func Test_Load(t *testing.T) {
 	})
 }
 
-// ───────────────────────────────────────────────
-// Step 3: Graph generation tests
-// ───────────────────────────────────────────────
-
 func Test_NewBenchmarkPlots(t *testing.T) {
 	plots, err := NewBenchmarkPlots(2024)
 	require.NoError(t, err)
@@ -554,62 +501,15 @@ func Test_generateLineGraph(t *testing.T) {
 	})
 }
 
-func Test_generateBoxPlots(t *testing.T) {
-	t.Run("empty data", func(t *testing.T) {
-		err := generateBoxPlots([]*advent.BenchmarkData{}, "out.png")
-		require.Error(t, err)
-		assert.ErrorContains(t, err, "no benchmark data")
-	})
-
-	t.Run("valid data writes files", func(t *testing.T) {
-		// generateBoxPlots writes files relative to CWD, ignoring outfile param
-		t.Chdir(t.TempDir())
-
-		data := makeBenchmarkData(2024, 1, 2)
-
-		err := generateBoxPlots(data, "ignored.png")
-		require.NoError(t, err)
-
-		// Check that output files were created
-		_, err = os.Stat("golang-benchmarks.png")
-		require.NoError(t, err)
-
-		_, err = os.Stat("python-benchmarks.png")
-		require.NoError(t, err)
-	})
-}
-
 func Test_Graph(t *testing.T) {
 	tests := []struct {
 		name      string
-		graphType analysis.GraphType
 		data      []*advent.BenchmarkData
 		assertion require.ErrorAssertionFunc
 		errMsg    string
 	}{
 		{
-			name:      "invalid graph type",
-			graphType: analysis.Invalid,
-			data:      makeBenchmarkData(2024, 1),
-			assertion: require.Error,
-			errMsg:    "invalid graph type",
-		},
-		{
-			name:      "unknown graph type",
-			graphType: analysis.GraphType(99),
-			data:      makeBenchmarkData(2024, 1),
-			assertion: require.Error,
-			errMsg:    "invalid graph type",
-		},
-		{
 			name:      "line graph",
-			graphType: analysis.Line,
-			data:      makeBenchmarkData(2024, 1),
-			assertion: require.NoError,
-		},
-		{
-			name:      "box graph",
-			graphType: analysis.Box,
 			data:      makeBenchmarkData(2024, 1),
 			assertion: require.NoError,
 		},
@@ -617,7 +517,6 @@ func Test_Graph(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Both line and box write files; control CWD for box plots
 			dir := t.TempDir()
 			t.Chdir(dir)
 
@@ -627,7 +526,7 @@ func Test_Graph(t *testing.T) {
 				logger: testLogger(),
 			}
 
-			err := a.Graph(tt.graphType)
+			err := a.Graph()
 			tt.assertion(t, err)
 
 			if tt.errMsg != "" && err != nil {

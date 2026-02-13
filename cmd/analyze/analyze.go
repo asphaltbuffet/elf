@@ -14,8 +14,7 @@ import (
 var (
 	analyzeCmd *cobra.Command
 
-	outFile   string
-	graphType string
+	outFile string
 )
 
 func GetAnalyzeCmd() *cobra.Command {
@@ -30,7 +29,6 @@ func GetAnalyzeCmd() *cobra.Command {
 		}
 
 		analyzeCmd.Flags().StringVarP(&outFile, "graph", "g", "./run-times.png", "graph output file")
-		analyzeCmd.Flags().StringVarP(&graphType, "type", "t", "line", "type of output graph")
 	}
 
 	return analyzeCmd
@@ -61,5 +59,5 @@ func runAnalyzeCmd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("creating grapher: %w", err)
 	}
 
-	return aa.Graph(analysis.StringToGraphType(graphType))
+	return aa.Graph()
 }

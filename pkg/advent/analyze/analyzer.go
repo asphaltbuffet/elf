@@ -24,18 +24,13 @@ import (
 	"gonum.org/v1/plot/vg/vgimg"
 
 	"github.com/asphaltbuffet/elf/pkg/advent"
-	"github.com/asphaltbuffet/elf/pkg/analysis"
 	"github.com/asphaltbuffet/elf/pkg/krampus"
 )
 
 type Analyzer struct {
-	Data      []*advent.BenchmarkData
-	Dir       string
-	Output    string
-	GraphType analysis.GraphType
-
-	yearly bool
-	daily  bool
+	Data   []*advent.BenchmarkData
+	Dir    string
+	Output string
 
 	appFs  afero.Fs
 	writer io.Writer
@@ -63,10 +58,6 @@ func NewAnalyzer(config krampus.ExerciseConfiguration, opts ...func(*Analyzer)) 
 		return nil, errors.New("no directory specified")
 	}
 
-	if analyzer.GraphType == analysis.Invalid {
-		analyzer.GraphType = analysis.Line
-	}
-
 	err := analyzer.Load()
 	if err != nil {
 		return nil, fmt.Errorf("loading benchmark data: %w", err)
@@ -81,21 +72,9 @@ func WithDirectory(dir string) func(*Analyzer) {
 	}
 }
 
-func WithYearly(yearly bool) func(*Analyzer) {
-	return func(a *Analyzer) {
-		a.yearly = yearly
-	}
-}
-
 func WithOutput(name string) func(*Analyzer) {
 	return func(a *Analyzer) {
 		a.Output = name
-	}
-}
-
-func WithDaily(daily bool) func(*Analyzer) {
-	return func(a *Analyzer) {
-		a.daily = daily
 	}
 }
 
@@ -125,20 +104,8 @@ func (a *Analyzer) Load() error {
 	return nil
 }
 
-func (a *Analyzer) Graph(gt analysis.GraphType) error {
-	switch gt {
-	case analysis.Line:
-		return generateLineGraph(a.Data, a.Output)
-
-	case analysis.Box:
-		return generateBoxPlots(a.Data, a.Output)
-
-	case analysis.Invalid:
-		fallthrough
-
-	default:
-		return fmt.Errorf("invalid graph type: %s", gt)
-	}
+func (a *Analyzer) Graph() error {
+	return generateLineGraph(a.Data, a.Output)
 }
 
 func getBenchmarkFiles(dir string) ([]string, error) { //nolint:unparam // expected behavior when walking directories
@@ -445,31 +412,6 @@ func benchmarkToPlotterValues(benchmarks []*advent.BenchmarkData) map[string]map
 	}
 
 	return dataMap
-}
-
-func generateBoxPlots(benchData []*advent.BenchmarkData, _ string) error {
-	const plotWidthInches font.Length = 4 * vg.Inch
-	const plotHeightInches font.Length = 8 * vg.Inch
-
-	if len(benchData) == 0 {
-		return errors.New("no benchmark data to graph")
-	}
-
-	// pValues is a map of language -> day -> part -> values
-	pValues := benchmarkToPlotterValues(benchData)
-
-	plots, err := makePlotForEachImplementation(benchData[0].Year, pValues)
-	if err != nil {
-		return fmt.Errorf("creating plots: %w", err)
-	}
-
-	for out, p := range plots {
-		if err = p.Save(plotWidthInches, plotHeightInches, out); err != nil {
-			return fmt.Errorf("saving plot: %w", err)
-		}
-	}
-
-	return nil
 }
 
 func makePlotForEachImplementation(year int, implData ImplDataMap) (map[string]*plot.Plot, error) {
