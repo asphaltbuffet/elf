@@ -2,18 +2,14 @@ package advent
 
 import (
 	"bytes"
-	_ "embed"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
 	"log/slog"
-	"net/http"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
-	"text/template"
 
 	"golang.org/x/net/html"
 
@@ -279,43 +275,6 @@ func (d *Downloader) getExercisePath(year, day int) (string, bool) {
 	return exPath, exPath != ""
 }
 
-func extractTitle(page []byte) (string, error) {
-	doc, err := html.Parse(bytes.NewReader(page))
-	if err != nil {
-		return "", err
-	}
-
-	extract, err := getH2NodeFromHTML(doc)
-	if err != nil {
-		return "", fmt.Errorf("extracting title: %w", err)
-	}
-
-	rendNode := renderNode(extract)
-
-	re := regexp.MustCompile(`--- Day \d{1,2}: (.*) ---`)
-
-	matches := re.FindStringSubmatch(rendNode)
-	if len(matches) != 2 { //nolint:mnd // we expect 2 matches
-		return "", fmt.Errorf("%w: no match", ErrInvalidData)
-	}
-
-	return matches[1], nil
-}
-
-func (d *Downloader) getPage(year, day int) ([]byte, error) {
-	logger := d.logger.With(slog.Int("year", year), slog.Int("day", day), slog.String("fn", "getPage"))
-
-	pageData, ok := d.getCachedPage(year, day)
-	if ok {
-		logger.Debug("using cached puzzle page", slog.Int("size", len(pageData)))
-		return pageData, nil
-	}
-
-	logger.Info("no cached page")
-
-	return d.downloadPage(year, day)
-}
-
 func ParseURL(url string) (int, int, error) {
 	var year, day int
 
@@ -351,328 +310,27 @@ func findNamedMatches(re *regexp.Regexp, s string) map[string]string {
 	return result
 }
 
-func (d *Downloader) getCachedPage(year, day int) ([]byte, bool) {
-	fp := filepath.Join(d.cacheDir, "pages", makeExerciseID(year, day))
-	data, err := afero.ReadFile(d.appFs, fp)
-
-	return data, err == nil
-}
-
-func (d *Downloader) getCachedInput(year, day int) ([]byte, bool) {
-	fp := filepath.Join(d.cacheDir, "inputs", makeExerciseID(year, day))
-	data, err := afero.ReadFile(d.appFs, fp)
-
-	return data, err == nil
-}
-
-func (d *Downloader) downloadPage(year, day int) ([]byte, error) {
-	pageCacheDir := filepath.Join(d.cacheDir, "pages")
-	logger := d.logger.With(
-		slog.String("fn", "downloadPage"),
-		slog.Int("year", year),
-		slog.Int("day", day),
-		slog.String("dir", pageCacheDir),
-	)
-
-	// make sure we can write the cached file before we download it
-	if err := d.appFs.MkdirAll(pageCacheDir, dirPerm); err != nil {
-		return nil, fmt.Errorf("create %q: %w", pageCacheDir, err)
-	}
-
-	req := d.rClient.R().SetPathParams(map[string]string{
-		"year": strconv.Itoa(year),
-		"day":  strconv.Itoa(day),
-	})
-
-	resp, err := req.Get("/{year}/day/{day}")
+func extractTitle(page []byte) (string, error) {
+	doc, err := html.Parse(bytes.NewReader(page))
 	if err != nil {
-		return nil, errors.Join(ErrHTTPRequest, err)
+		return "", err
 	}
 
-	if resp.StatusCode() != http.StatusOK {
-		return nil, fmt.Errorf("%w: %s: %s", ErrHTTPResponse, resp.Request.Method, resp.Status())
+	extract, err := getH2NodeFromHTML(doc)
+	if err != nil {
+		return "", fmt.Errorf("extracting title: %w", err)
 	}
 
-	logger.Debug("download page response",
-		slog.String("url", resp.Request.URL),
-		slog.String("status", http.StatusText(resp.StatusCode())),
-		slog.Int("code", resp.StatusCode()))
+	rendNode := renderNode(extract)
 
-	// only keep relevant parts of the page
-	re := regexp.MustCompile(`(?s)<article.*?>(.*)</article>`)
-	matches := re.FindSubmatch(resp.Body())
+	re := regexp.MustCompile(`--- Day \d{1,2}: (.*) ---`)
 
+	matches := re.FindStringSubmatch(rendNode)
 	if len(matches) != 2 { //nolint:mnd // we expect 2 matches
-		logger.Debug("extracting page data", slog.String("url", resp.Request.URL), slog.Any("found", matches))
-
-		return nil, errors.New("extracting page data: no match")
+		return "", fmt.Errorf("%w: no match", ErrInvalidData)
 	}
 
-	pd := bytes.TrimSpace(matches[1])
-
-	// write response to disk
-	err = afero.WriteFile(d.appFs, filepath.Join(pageCacheDir, makeExerciseID(year, day)), pd, 0o600)
-	if err != nil {
-		logger.Debug("writing page to cache", slog.String("url", resp.Request.URL), tint.Err(err))
-
-		return nil, fmt.Errorf("writing cached puzzle page: %w", err)
-	}
-
-	return pd, nil
-}
-
-func (d *Downloader) downloadInput(year, day int) ([]byte, error) {
-	logger := d.logger.With(slog.Int("year", year), slog.Int("day", day), slog.String("fn", "downloadInput"))
-
-	err := d.appFs.MkdirAll(filepath.Join(d.cacheDir, "inputs"), dirPerm)
-	if err != nil {
-		return nil, fmt.Errorf("creating inputs directory: %w", err)
-	}
-
-	resp, err := d.rClient.R().
-		SetPathParams(map[string]string{
-			"year": strconv.Itoa(year),
-			"day":  strconv.Itoa(day),
-		}).
-		SetCookie(&http.Cookie{
-			Name:   "session",
-			Value:  d.token,
-			Domain: ".adventofcode.com",
-		}).
-		Get("/{year}/day/{day}/input")
-	if err != nil {
-		return nil, errors.Join(ErrHTTPRequest, err)
-	}
-
-	if resp.StatusCode() != http.StatusOK {
-		logger.Debug("getting input data",
-			slog.Group("request",
-				slog.String("method", resp.Request.Method),
-				slog.String("url", resp.Request.URL),
-				slog.Any("cookies", resp.Request.Cookies)),
-			slog.String("status", resp.Status()),
-			slog.Int("code", resp.StatusCode()))
-
-		return nil, fmt.Errorf("%w: %s", ErrHTTPResponse, resp.Status())
-	}
-
-	data := bytes.TrimSpace(resp.Body())
-
-	// write response to disk
-	err = afero.WriteFile(d.appFs, filepath.Join(d.cacheDir, "inputs", makeExerciseID(year, day)), data, 0o600)
-	if err != nil {
-		return nil, err
-	}
-
-	return data, nil
-}
-
-func (d *Downloader) getInput(year, day int) ([]byte, error) {
-	logger := d.logger.With(slog.Int("year", year), slog.Int("day", day), slog.String("fn", "getInput"))
-
-	data, ok := d.getCachedInput(year, day)
-	if ok {
-		return data, nil
-	}
-
-	logger.Info("no cached input")
-
-	return d.downloadInput(year, day)
-}
-
-//go:embed templates/readme.tmpl
-var readmeTemplate []byte
-
-//go:embed templates/go.tmpl
-var goTemplate []byte
-
-//go:embed templates/py.tmpl
-var pyTemplate []byte
-
-type tmplFile struct {
-	Name     string
-	Path     string
-	Data     []byte
-	FileName string
-	Replace  bool
-}
-
-func (t *tmplFile) LogValue() slog.Value {
-	return slog.GroupValue(
-		slog.String("file", t.FileName),
-		slog.String("name", t.Name),
-		slog.String("path", t.Path),
-		slog.Int("size", len(t.Data)),
-		slog.Bool("replace", t.Replace),
-	)
-}
-
-func (d *Downloader) addMissingFiles() error {
-	logger := d.logger.With(slog.String("fn", "addMissingFiles"))
-
-	var err error
-
-	implPath := filepath.Join(d.Path, d.Language)
-
-	if err = d.appFs.MkdirAll(implPath, dirPerm); err != nil {
-		logger.Error("add exercise implementation path", tint.Err(err))
-		return fmt.Errorf("creating %s implementation directory: %w", d.Language, err)
-	}
-
-	// TODO: give user option to overwrite existing files
-	if err = d.writeInputFile(); err != nil {
-		return fmt.Errorf("writing input file: %w", err)
-	}
-
-	// TODO: give user option to overwrite existing files
-	if err = d.writeInfoFile(false); err != nil {
-		return fmt.Errorf("writing info file: %w", err)
-	}
-
-	tmpls := []tmplFile{
-		{
-			Name:     "readme",
-			Path:     "",
-			Data:     readmeTemplate,
-			FileName: "README.md",
-			Replace:  false,
-		},
-	}
-
-	switch d.Language {
-	case "go":
-		tmpls = append(tmpls, tmplFile{
-			Name:     "go",
-			Path:     "go",
-			Data:     goTemplate,
-			FileName: "exercise.go",
-			Replace:  false,
-		})
-
-	case "py":
-		tmpls = append(tmpls, tmplFile{
-			Name:     "py",
-			Path:     "py",
-			Data:     pyTemplate,
-			FileName: "__init__.py",
-			Replace:  false,
-		})
-
-	default:
-		return fmt.Errorf("template %s files: %w", d.Language, ErrInvalidLanguage)
-	}
-
-	for _, t := range tmpls {
-		logger.Debug("add template file", slog.Any("template", t.LogValue()))
-
-		err = d.addTemplatedFile(t)
-		if err != nil {
-			return fmt.Errorf("adding %q template: %w", t.FileName, err)
-		}
-	}
-
-	return nil
-}
-
-func (d *Downloader) writeInputFile() error {
-	logger := d.logger.With(slog.String("fn", "writeInputFile"))
-
-	fp := filepath.Join(d.Path, d.inputFileName)
-
-	// check if the file exists already
-	exists, err := afero.Exists(d.appFs, fp)
-	if err != nil {
-		return err
-	}
-
-	if exists && !d.overwrites.Input {
-		logger.Info("found %s, overwrite by using '--force-input'", slog.String("file", fp))
-		return nil
-	}
-
-	inputFile, err := d.getInput(d.Year, d.Day)
-	if err != nil {
-		return fmt.Errorf("loading input: %w", err)
-	}
-
-	d.Exercise.Data = &Data{
-		InputData:     string(inputFile),
-		InputFileName: d.inputFileName,
-		TestCases: TestCase{
-			One: []*Test{{Input: "", Expected: ""}},
-			Two: []*Test{{Input: "", Expected: ""}},
-		},
-		Answers: Answer{
-			One: "",
-			Two: "",
-		},
-	}
-
-	if err = afero.WriteFile(d.appFs, fp, inputFile, 0o600); err != nil {
-		return fmt.Errorf("writing input file: %w", err)
-	}
-
-	logger.Debug("wrote input file", slog.String("path", fp))
-
-	return nil
-}
-
-func (d *Downloader) writeInfoFile(replace bool) error {
-	logger := d.logger.With(slog.String("fn", "writeInfoFile"))
-
-	fp := filepath.Join(d.Path, "info.json") // TODO: filename should be in config
-
-	// check if the file exists already
-	exists, err := afero.Exists(d.appFs, fp)
-	if err != nil {
-		return fmt.Errorf("checking for info file: %w", err)
-	}
-
-	if exists && !replace {
-		logger.Info("info file already exists, overwrite by using --force",
-			slog.String("file", fp))
-		return nil
-	}
-
-	// marshall exercise data
-	data, err := json.MarshalIndent(d.Exercise, "", "  ")
-	if err != nil {
-		return err
-	}
-
-	if err = afero.WriteFile(d.appFs, fp, data, 0o600); err != nil {
-		return fmt.Errorf("write info file: %w", err)
-	}
-
-	logger.Debug("wrote info file", slog.String("path", fp))
-
-	return nil
-}
-
-func (d *Downloader) addTemplatedFile(templateFile tmplFile) error {
-	fp := filepath.Join(d.Path, templateFile.Path, templateFile.FileName)
-	logger := d.logger.With(slog.String("fn", "addTemplatedFile"))
-
-	// only write if file doesn't exist or if we're replacing it
-	exists, err := afero.Exists(d.appFs, fp)
-	if err != nil {
-		return fmt.Errorf("checking for %q: %w", fp, err)
-	}
-
-	if exists && !templateFile.Replace {
-		logger.Debug("file exists, skipping", "template", templateFile.LogValue())
-
-		return nil
-	}
-
-	t := template.Must(template.New(templateFile.Name).Parse(string(templateFile.Data)))
-	b := new(bytes.Buffer)
-
-	if err = t.Execute(b, d); err != nil {
-		return fmt.Errorf("template %q: %w", templateFile.Name, err)
-	}
-
-	return afero.WriteFile(d.appFs, fp, b.Bytes(), 0o600)
+	return matches[1], nil
 }
 
 func makeExercisePath(baseDir string, year, day int, title string) string {

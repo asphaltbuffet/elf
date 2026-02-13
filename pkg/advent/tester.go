@@ -45,11 +45,6 @@ func (e *Exercise) Test() ([]tasks.Result, error) {
 	return results, nil
 }
 
-type testTask struct {
-	task     *runners.Task
-	expected string
-}
-
 func (e *Exercise) runTests() ([]tasks.Result, error) {
 	var testTasks []testTask
 
