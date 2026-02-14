@@ -1,38 +1,31 @@
-with-expecter: true
-outpkg: mocks
-dir: "mocks/{{.PackageName}}"
-log-level: "info"
-resolve-type-alias: false
-disable-version-string: true
-issue-845-fix: true
+dir: mocks/{{.SrcPackageName}}
+filename: "mock_{{.InterfaceName}}.go"
+log-level: warn
+pkgname: mocks
+template: testify
+template-data:
+  unroll-variadic: true
 packages:
-    github.com/asphaltbuffet/elf/pkg/runners:
-        config:
-        interfaces:
-            Runner:
-    github.com/asphaltbuffet/elf/pkg/krampus:
-        config:
-        interfaces:
-            DownloadConfiguration:
-            ExerciseConfiguration:
-            ConfigurationReader:
-    github.com/asphaltbuffet/elf/cmd/solve:
-        config:
-        interfaces:
-            Challenge:
-    github.com/asphaltbuffet/elf/cmd/test:
-        config:
-        interfaces:
-            ChallengeTester:
-    github.com/asphaltbuffet/elf/cmd/benchmark:
-        config:
-        interfaces:
-            Benchmarker:
-    github.com/asphaltbuffet/elf/cmd/download:
-        config:
-        interfaces:
-            Downloader:
-    github.com/asphaltbuffet/elf/pkg/analysis:
-        config:
-        interfaces:
-            Analyzer:
+  github.com/asphaltbuffet/elf/cmd/benchmark:
+    interfaces:
+      Benchmarker: {}
+  github.com/asphaltbuffet/elf/cmd/download:
+    interfaces:
+      Downloader: {}
+  github.com/asphaltbuffet/elf/cmd/solve:
+    interfaces:
+      Challenge: {}
+  github.com/asphaltbuffet/elf/cmd/test:
+    interfaces:
+      ChallengeTester: {}
+  github.com/asphaltbuffet/elf/cmd/analyze:
+    interfaces:
+      Analyzer: {}
+  github.com/asphaltbuffet/elf/pkg/config:
+    interfaces:
+      ConfigurationReader: {}
+      DownloadConfiguration: {}
+      ExerciseConfiguration: {}
+  github.com/asphaltbuffet/elf/pkg/runners:
+    interfaces:
+      Runner: {}

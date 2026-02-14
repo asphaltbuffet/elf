@@ -36,17 +36,36 @@ go test -run TestFunctionName ./path/to/package
 
 ## Architecture
 
-**elf** is a CLI tool that helps manage programming challenge exercises (Advent of Code, Project Euler, Exercism). It downloads challenges, runs solutions in multiple languages, and benchmarks implementations.
+**elf** is a CLI tool that helps manage programming challenge exercises (Advent of Code, Exercism). It downloads challenges, runs solutions in multiple languages, and benchmarks implementations.
 
 ### Core Packages
 
 - **cmd/**: Cobra CLI commands (solve, test, benchmark, download, analyze)
-- **pkg/advent/**: Advent of Code implementation - downloading, solving, testing, benchmarking
-- **pkg/euler/**: Project Euler support (WIP)
-- **pkg/krampus/**: Configuration management via Viper - handles config files, environment variables (ELF_* prefix), and defaults
+- **pkg/exercise/**: Exercise management - downloading, solving, testing, benchmarking
+- **pkg/config/**: Configuration management via Viper - handles config files, environment variables (ELF_* prefix), and defaults
 - **pkg/runners/**: Language runner abstraction - executes solutions in Go (`go/`) or Python (`py/`) subdirectories
 - **pkg/tasks/**: Task types (Solve, Test, Benchmark, Visualize) and result handling
-- **pkg/analysis/**: Benchmark analysis and graph generation
+- **pkg/analyze/**: Benchmark analysis and graph generation
+- **internal/utilities/**: Internal string helpers
+
+### `pkg/exercise/` File Organization
+
+The largest package splits files by responsibility:
+
+| File | Contents |
+|------|----------|
+| `advent.go` | `Exercise` struct, constructor, options, `loadInfo` |
+| `solver.go` | `Solve`, `runMainTasks`, `makeMainTasks` |
+| `tester.go` | `Test`, `runTests`, `makeTestTasks` |
+| `result.go` | `handleTaskResult` (shared by solver, tester, benchmarker), `testTask` type |
+| `benchmarker.go` | `Benchmarker` struct, `NewBenchmarker`, `Benchmark`, `runBenchmark`, `NormalizationFactor` |
+| `benchmarker_data.go` | `BenchmarkData`, `ImplementationData`, `PartData` types, `calculateMetrics` |
+| `downloader.go` | `Downloader` struct, constructor, options, `validate`, `Download`, URL parsing, path resolution |
+| `downloader_http.go` | `getPage`, `getCachedPage`, `downloadPage`, `getCachedInput`, `downloadInput`, `getInput` |
+| `downloader_files.go` | `go:embed` templates, `addMissingFiles`, `writeInputFile`, `writeInfoFile`, `addTemplatedFile` |
+| `helpers_test.go` | Shared test fixtures: `setupTestCase`, `setupSubTest`, `FileExists`, `goldenValue`, package-level vars (`testFs`, `mockDlr`) |
+
+Test files mirror source files (e.g., `downloader_http_test.go` tests HTTP/caching functions).
 
 ### Exercise Structure
 
@@ -73,6 +92,21 @@ Configuration uses Viper with:
 - Environment: `ELF_ADVENT_TOKEN`, `ELF_LANGUAGE`
 - Cache: `~/.cache/elf/` (or platform equivalent)
 
+### Testing Cobra Commands
+
+The `cmd/` packages use a **factory variable pattern** for testability. Package-level `var` functions wrap constructors (`config.NewConfig`, `exercise.New`, etc.) so tests can swap them with mock-returning functions. This avoids changing cobra `RunE` signatures while enabling mock injection.
+
+Example from `cmd/solve/`:
+```go
+var makeChallenge = func(cfg config.ExerciseConfiguration, lang, dir, inputFile string) (Challenge, error) {
+    return exercise.New(cfg, exercise.WithLanguage(lang), ...)
+}
+```
+
+**pflag gotcha**: `StringVarP(&variable, ...)` sets the variable to the default value immediately. In tests, always set package-level flag variables **after** `GetXxxCmd()`, not before.
+
+Mockery-generated mocks exist for `Challenge`, `ChallengeTester`, `Benchmarker`, and `Downloader` in `mocks/` — use them with the factory variable pattern.
+
 ### Code Generation
 
 - **stringer**: Generates String() methods for enums (`//go:generate stringer`)
@@ -82,7 +116,7 @@ Configuration uses Viper with:
 
 - Uses `gomod2nix` with `buildGoApplication` (not `buildGoModule`)
 - `gomod2nix.toml` is the dependency lockfile — regenerate with `mise run nix-hash` or `gomod2nix generate`
-- Source filtering via `lib.fileset` — only `.go` files, `go.mod`, `go.sum`, `gomod2nix.toml`, and `go:embed` templates are included
+- Source filtering via `lib.fileset` — only `.go` files, `go.mod`, `go.sum`, `gomod2nix.toml`, and `go:embed` templates (`pkg/exercise/templates/`, `pkg/runners/interface/`) are included
 - `mod-tidy` automatically runs `nix-hash` as a post-dependency
 
 Flake outputs:
@@ -94,7 +128,7 @@ Flake outputs:
 #### Home-Manager Module
 
 - Located at `nix/home-manager.nix`, options live under `programs.elf`
-- Option defaults mirror `pkg/krampus/defaults.go` — keep them in sync when defaults change
+- Option defaults mirror `pkg/config/defaults.go` — keep them in sync when defaults change
 - `config-dir` and `cache-dir` default to `null` (omitted from TOML) so elf's runtime XDG logic applies
 - Config file generated via `pkgs.formats.toml {}` and placed at `xdg.configFile."elf/elf.toml"`
 - Environment variables (`ELF_ADVENT_TOKEN`, `ELF_LANGUAGE`) mapped via `home.sessionVariables`

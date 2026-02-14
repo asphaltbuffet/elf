@@ -1,3 +1,4 @@
+// Package test is the test subcommand.
 package test
 
 import (
@@ -7,14 +8,22 @@ import (
 	"github.com/lmittmann/tint"
 	"github.com/spf13/cobra"
 
-	"github.com/asphaltbuffet/elf/pkg/advent"
-	"github.com/asphaltbuffet/elf/pkg/krampus"
+	"github.com/asphaltbuffet/elf/pkg/config"
+	"github.com/asphaltbuffet/elf/pkg/exercise"
 	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
 var (
 	testCmd  *cobra.Command
 	language string
+
+	// Factory variables for testing.
+	makeConfig = func(cf string) (config.Config, error) {
+		return config.NewConfig(config.WithFile(cf))
+	}
+	makeChallengeTester = func(cfg config.ExerciseConfiguration, lang, dir string) (ChallengeTester, error) {
+		return exercise.New(cfg, exercise.WithLanguage(lang), exercise.WithDir(dir))
+	}
 )
 
 type ChallengeTester interface {
@@ -45,14 +54,9 @@ func GetTestCmd() *cobra.Command {
 }
 
 func runTestCmd(cmd *cobra.Command, args []string) error {
-	var (
-		ch  ChallengeTester
-		err error
-	)
-
 	cf, _ := cmd.Flags().GetString("config-file")
 
-	cfg, err := krampus.NewConfig(krampus.WithFile(cf))
+	cfg, err := makeConfig(cf)
 	if err != nil {
 		return err
 	}
@@ -66,7 +70,7 @@ func runTestCmd(cmd *cobra.Command, args []string) error {
 		language = cfg.GetLanguage()
 	}
 
-	ch, err = advent.New(&cfg, advent.WithLanguage(language), advent.WithDir(dir))
+	ch, err := makeChallengeTester(&cfg, language, dir)
 	if err != nil {
 		return err
 	}

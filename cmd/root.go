@@ -14,7 +14,7 @@ import (
 	"github.com/asphaltbuffet/elf/cmd/man"
 	"github.com/asphaltbuffet/elf/cmd/solve"
 	"github.com/asphaltbuffet/elf/cmd/test"
-	"github.com/asphaltbuffet/elf/pkg/krampus"
+	elfconfig "github.com/asphaltbuffet/elf/pkg/config"
 )
 
 var rootCmd *cobra.Command
@@ -37,7 +37,7 @@ func GetRootCommand() *cobra.Command {
 			Use:   "elf [command]",
 			Short: "elf is a programming challenge helper application",
 			Run: func(cmd *cobra.Command, _ []string) {
-				cfg, err := krampus.NewConfig(krampus.WithFile(cfgFile))
+				cfg, err := elfconfig.NewConfig(elfconfig.WithFile(cfgFile))
 				if err != nil {
 					cmd.PrintErr(err)
 				}

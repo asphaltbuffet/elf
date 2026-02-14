@@ -1,3 +1,4 @@
+// Package benchmark is the benchmark subcommand.
 package benchmark
 
 import (
@@ -6,8 +7,8 @@ import (
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
-	"github.com/asphaltbuffet/elf/pkg/advent"
-	"github.com/asphaltbuffet/elf/pkg/krampus"
+	"github.com/asphaltbuffet/elf/pkg/config"
+	"github.com/asphaltbuffet/elf/pkg/exercise"
 	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
@@ -53,7 +54,7 @@ func runBenchmarkCmd(cmd *cobra.Command, args []string) error {
 
 	cf, _ := cmd.Flags().GetString("config-file")
 
-	cfg, err := krampus.NewConfig(krampus.WithFile(cf))
+	cfg, err := config.NewConfig(config.WithFile(cf))
 	if err != nil {
 		return err
 	}
@@ -63,7 +64,7 @@ func runBenchmarkCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	ex, err = advent.NewBenchmarker(&cfg, advent.WithExerciseDir(dir))
+	ex, err = exercise.NewBenchmarker(&cfg, exercise.WithExerciseDir(dir))
 	if err != nil {
 		return err
 	}

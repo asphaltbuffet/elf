@@ -3,7 +3,7 @@
 "aqua:golangci/golangci-lint" = "prefix:2.8"
 "aqua:gotestyourself/gotestsum" = "latest"
 "aqua:rhysd/actionlint" = "latest"
-"aqua:vektra/mockery" = "2"
+"aqua:vektra/mockery" = "3"
 "go:github.com/nix-community/gomod2nix" = "latest"
 "go:golang.org/x/tools/cmd/stringer" = "latest"
 
@@ -113,6 +113,7 @@ run = "gomod2nix generate"
 [tasks.snapshot]
 description = "goreleaser build snapshot"
 depends = ["generate", "mod-tidy"]
+wait_for = ["test", "lint"]
 alias = "ss"
 run = [
   "goreleaser check -q",

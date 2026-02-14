@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/asphaltbuffet/elf/pkg/krampus"
+	elfcfg "github.com/asphaltbuffet/elf/pkg/config"
 )
 
 var checkCmd *cobra.Command
@@ -44,7 +44,7 @@ elf config check -c /path/to/elf.toml`,
 func runCheckCmd(cmd *cobra.Command, _ []string) error {
 	cfgFile, _ := cmd.Flags().GetString("config-file")
 
-	cfg, err := krampus.NewConfig(krampus.WithFile(cfgFile))
+	cfg, err := elfcfg.NewConfig(elfcfg.WithFile(cfgFile))
 	if err != nil {
 		return fmt.Errorf("loading configuration: %w", err)
 	}
@@ -71,7 +71,7 @@ func runCheckCmd(cmd *cobra.Command, _ []string) error {
 	cmd.Printf("  Config dir:    %s\n", cfg.GetConfigDir())
 	cmd.Printf("  Cache dir:     %s\n", cfg.GetCacheDir())
 	cmd.Printf("  Input file:    %s\n", cfg.GetInputFilename())
-	cmd.Printf("  Advent token:  %s\n", krampus.MaskToken(cfg.GetToken()))
+	cmd.Printf("  Advent token:  %s\n", elfcfg.MaskToken(cfg.GetToken()))
 	cmd.Println()
 
 	// Validation

@@ -5,34 +5,29 @@
   lib,
   pkgs,
   ...
-}:
-let
+}: let
   cfg = config.programs.elf;
-  tomlFormat = pkgs.formats.toml { };
+  tomlFormat = pkgs.formats.toml {};
 
   # Build the settings attrset, omitting null/empty values so elf's
   # runtime defaults (XDG dirs, etc.) are not overridden.
   settingsToml =
-    { }
-    // lib.optionalAttrs (cfg.settings.language != null) { language = cfg.settings.language; }
-    // lib.optionalAttrs (cfg.settings.input-file != null) { input-file = cfg.settings.input-file; }
-    // lib.optionalAttrs (cfg.settings.config-dir != null) { config-dir = cfg.settings.config-dir; }
-    // lib.optionalAttrs (cfg.settings.cache-dir != null) { cache-dir = cfg.settings.cache-dir; }
+    {}
+    // lib.optionalAttrs (cfg.settings.language != null) {language = cfg.settings.language;}
+    // lib.optionalAttrs (cfg.settings.input-file != null) {input-file = cfg.settings.input-file;}
+    // lib.optionalAttrs (cfg.settings.config-dir != null) {config-dir = cfg.settings.config-dir;}
+    // lib.optionalAttrs (cfg.settings.cache-dir != null) {cache-dir = cfg.settings.cache-dir;}
     // lib.optionalAttrs (cfg.settings.advent.token != "" || cfg.settings.advent.dir != null) {
       advent =
-        { }
-        // lib.optionalAttrs (cfg.settings.advent.token != "") { token = cfg.settings.advent.token; }
-        // lib.optionalAttrs (cfg.settings.advent.dir != null) { dir = cfg.settings.advent.dir; };
-    }
-    // lib.optionalAttrs (cfg.settings.euler.dir != null) {
-      euler = { dir = cfg.settings.euler.dir; };
+        {}
+        // lib.optionalAttrs (cfg.settings.advent.token != "") {token = cfg.settings.advent.token;}
+        // lib.optionalAttrs (cfg.settings.advent.dir != null) {dir = cfg.settings.advent.dir;};
     };
-in
-{
+in {
   options.programs.elf = {
     enable = lib.mkEnableOption "elf, a CLI helper for programming exercises";
 
-    package = lib.mkPackageOption pkgs "elf" { };
+    package = lib.mkPackageOption pkgs "elf" {};
 
     settings = {
       language = lib.mkOption {
@@ -87,14 +82,6 @@ in
           description = "Directory for Advent of Code exercises.";
         };
       };
-
-      euler = {
-        dir = lib.mkOption {
-          type = lib.types.nullOr lib.types.str;
-          default = "problems";
-          description = "Directory for Project Euler problems.";
-        };
-      };
     };
 
     ELF_ADVENT_TOKEN = lib.mkOption {
@@ -120,14 +107,14 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    home.packages = [ cfg.package ];
+    home.packages = [cfg.package];
 
-    xdg.configFile."elf/elf.toml" = lib.mkIf (settingsToml != { }) {
+    xdg.configFile."elf/elf.toml" = lib.mkIf (settingsToml != {}) {
       source = tomlFormat.generate "elf.toml" settingsToml;
     };
 
     home.sessionVariables =
-      { }
+      {}
       // lib.optionalAttrs (cfg.ELF_ADVENT_TOKEN != null) {
         ELF_ADVENT_TOKEN = cfg.ELF_ADVENT_TOKEN;
       }

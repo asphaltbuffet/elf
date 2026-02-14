@@ -1,3 +1,4 @@
+// Package solve is the solve subcommand.
 package solve
 
 import (
@@ -6,8 +7,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/asphaltbuffet/elf/pkg/advent"
-	"github.com/asphaltbuffet/elf/pkg/krampus"
+	"github.com/asphaltbuffet/elf/pkg/config"
+	"github.com/asphaltbuffet/elf/pkg/exercise"
 	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
@@ -16,6 +17,17 @@ var (
 	language string
 	input    string
 	noTest   bool
+
+	// Factory variables for testing.
+	makeConfig = func(cf string) (config.Config, error) {
+		return config.NewConfig(config.WithFile(cf))
+	}
+	makeChallenge = func(cfg config.ExerciseConfiguration, lang, dir, inputFile string) (Challenge, error) {
+		return exercise.New(cfg,
+			exercise.WithLanguage(lang),
+			exercise.WithDir(dir),
+			exercise.WithInputFile(inputFile))
+	}
 )
 
 const exampleText = `
@@ -50,14 +62,9 @@ type Challenge interface {
 }
 
 func runSolveCmd(cmd *cobra.Command, args []string) error {
-	var (
-		ch  Challenge
-		err error
-	)
-
 	cf, _ := cmd.Flags().GetString("config-file")
 
-	cfg, err := krampus.NewConfig(krampus.WithFile(cf))
+	cfg, err := makeConfig(cf)
 	if err != nil {
 		return err
 	}
@@ -77,10 +84,7 @@ func runSolveCmd(cmd *cobra.Command, args []string) error {
 
 	cfg.GetLogger().Debug("solving exercise", slog.Group("exercise", "dir", dir, "language", language))
 
-	ch, err = advent.New(&cfg,
-		advent.WithLanguage(language),
-		advent.WithDir(dir),
-		advent.WithInputFile(filepath.Clean(input)))
+	ch, err := makeChallenge(&cfg, language, dir, filepath.Clean(input))
 	if err != nil {
 		return err
 	}

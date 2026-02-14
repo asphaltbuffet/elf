@@ -1,13 +1,13 @@
+// Package download is the download subcommand.
 package download
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/spf13/cobra"
 
-	"github.com/asphaltbuffet/elf/pkg/advent"
-	"github.com/asphaltbuffet/elf/pkg/krampus"
+	"github.com/asphaltbuffet/elf/pkg/config"
+	"github.com/asphaltbuffet/elf/pkg/exercise"
 )
 
 // Downloader is an interface for downloading challenges.
@@ -46,43 +46,28 @@ func GetDownloadCmd() *cobra.Command {
 	return downloadCmd
 }
 
-// // https://adventofcode.com/2022/day/1
-// reAdvent := `^https?://(www\.)?adventofcode\.com/(?P<year>\d{4})/day/(?P<day>\d{1,2})$`
-// // https://projecteuler.net/problem=1
-// reEuler := `^https?://(www\.)?projecteuler\.net/problem=(?P<num>\d{1,3})$`
-
 func runDownloadCmd(cmd *cobra.Command, args []string) error {
-	var err error
-	var chdl Downloader
-
 	cf, _ := cmd.Flags().GetString("config-file")
 
-	cfg, err := krampus.NewConfig(krampus.WithFile(cf))
+	cfg, err := config.NewConfig(config.WithFile(cf))
 	if err != nil {
 		return err
 	}
 
-	forced := &advent.Overwrites{
+	forced := &exercise.Overwrites{
 		Input: forceInput,
 	}
 
-	switch {
-	case strings.Contains(args[0], "adventofcode.com/"):
-		chdl, err = advent.NewDownloader(&cfg,
-			advent.WithURL(args[0]),
-			advent.WithDownloadLanguage(language),
-			advent.WithOverwrites(forced),
-		)
-		if err != nil {
-			return fmt.Errorf("downloading advent challenge: %w", err)
-		}
-
-	default:
-		return fmt.Errorf("unsupported URL: %s", args[0])
+	chdl, err := exercise.NewDownloader(&cfg,
+		exercise.WithURL(args[0]),
+		exercise.WithDownloadLanguage(language),
+		exercise.WithOverwrites(forced),
+	)
+	if err != nil {
+		return fmt.Errorf("creating downloader: %w", err)
 	}
 
-	err = chdl.Download()
-	if err != nil {
+	if err = chdl.Download(); err != nil {
 		return fmt.Errorf("downloading challenge: %w", err)
 	}
 

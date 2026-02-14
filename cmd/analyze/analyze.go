@@ -1,3 +1,4 @@
+// Package analyze is the analyze subcommand.
 package analyze
 
 import (
@@ -6,16 +7,19 @@ import (
 
 	"github.com/spf13/cobra"
 
-	advent "github.com/asphaltbuffet/elf/pkg/advent/analyze"
-	"github.com/asphaltbuffet/elf/pkg/analysis"
-	"github.com/asphaltbuffet/elf/pkg/krampus"
+	analyzer "github.com/asphaltbuffet/elf/pkg/analyze"
+	"github.com/asphaltbuffet/elf/pkg/config"
 )
+
+// Analyzer is the interface for benchmark analysis.
+type Analyzer interface {
+	Graph() error
+}
 
 var (
 	analyzeCmd *cobra.Command
 
-	outFile   string
-	graphType string
+	outFile string
 )
 
 func GetAnalyzeCmd() *cobra.Command {
@@ -30,18 +34,17 @@ func GetAnalyzeCmd() *cobra.Command {
 		}
 
 		analyzeCmd.Flags().StringVarP(&outFile, "graph", "g", "./run-times.png", "graph output file")
-		analyzeCmd.Flags().StringVarP(&graphType, "type", "t", "line", "type of output graph")
 	}
 
 	return analyzeCmd
 }
 
 func runAnalyzeCmd(cmd *cobra.Command, args []string) error {
-	var aa analysis.Analyzer
+	var aa Analyzer
 
 	cf, _ := cmd.Flags().GetString("config-file")
 
-	cfg, err := krampus.NewConfig(krampus.WithFile(cf))
+	cfg, err := config.NewConfig(config.WithFile(cf))
 	if err != nil {
 		return err
 	}
@@ -56,10 +59,10 @@ func runAnalyzeCmd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("output file: %w", err)
 	}
 
-	aa, err = advent.NewAnalyzer(cfg, advent.WithDirectory(dir), advent.WithOutput(out))
+	aa, err = analyzer.NewAnalyzer(cfg, analyzer.WithDirectory(dir), analyzer.WithOutput(out))
 	if err != nil {
 		return fmt.Errorf("creating grapher: %w", err)
 	}
 
-	return aa.Graph(analysis.StringToGraphType(graphType))
+	return aa.Graph()
 }
