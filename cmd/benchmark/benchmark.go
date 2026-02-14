@@ -15,6 +15,14 @@ import (
 var (
 	benchmarkCmd *cobra.Command
 	iterations   int
+
+	// Factory variables for testing.
+	makeConfig = func(cf string) (config.Config, error) {
+		return config.NewConfig(config.WithFile(cf))
+	}
+	makeBenchmarker = func(cfg config.ExerciseConfiguration, dir string) (Benchmarker, error) {
+		return exercise.NewBenchmarker(cfg, exercise.WithExerciseDir(dir))
+	}
 )
 
 const DefaultIterations = 10
@@ -47,14 +55,9 @@ type Benchmarker interface {
 }
 
 func runBenchmarkCmd(cmd *cobra.Command, args []string) error {
-	var (
-		ex  Benchmarker
-		err error
-	)
-
 	cf, _ := cmd.Flags().GetString("config-file")
 
-	cfg, err := config.NewConfig(config.WithFile(cf))
+	cfg, err := makeConfig(cf)
 	if err != nil {
 		return err
 	}
@@ -64,7 +67,7 @@ func runBenchmarkCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	ex, err = exercise.NewBenchmarker(&cfg, exercise.WithExerciseDir(dir))
+	ex, err := makeBenchmarker(&cfg, dir)
 	if err != nil {
 		return err
 	}
