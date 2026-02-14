@@ -2,6 +2,7 @@ package yearview
 
 import (
 	"fmt"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -19,6 +20,12 @@ type ActionMsg struct {
 	Action   string // "solve", "test", "benchmark"
 	Exercise discover.ExerciseInfo
 	Cfg      config.Config
+}
+
+// AnalyzeMsg is sent when the user triggers analysis for the year.
+type AnalyzeMsg struct {
+	YearDir string
+	Cfg     config.Config
 }
 
 // Model is the year view TUI model showing exercises for a single year.
@@ -90,6 +97,11 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, keys.bench):
 		if len(m.exercises) > 0 {
 			return m, m.actionCmd("benchmark")
+		}
+
+	case key.Matches(msg, keys.analyze):
+		if len(m.exercises) > 0 {
+			return m, m.analyzeCmd()
 		}
 
 	case key.Matches(msg, keys.enter, keys.right):
@@ -213,21 +225,34 @@ func (m Model) actionCmd(action string) tea.Cmd {
 	}
 }
 
+func (m Model) analyzeCmd() tea.Cmd {
+	// Use the parent directory of the first exercise as the year directory.
+	yearDir := filepath.Dir(m.exercises[0].Path)
+
+	return func() tea.Msg {
+		return AnalyzeMsg{
+			YearDir: yearDir,
+			Cfg:     m.cfg,
+		}
+	}
+}
+
 func popScreen() tea.Msg {
 	return nav.PopScreenMsg{}
 }
 
 var keys = struct {
 	up, down, quit, enter, right, back key.Binding
-	solve, test, bench                 key.Binding
+	solve, test, bench, analyze        key.Binding
 }{
-	up:    key.NewBinding(key.WithKeys("up", "k")),
-	down:  key.NewBinding(key.WithKeys("down", "j")),
-	quit:  key.NewBinding(key.WithKeys("q")),
-	enter: key.NewBinding(key.WithKeys("enter")),
-	right: key.NewBinding(key.WithKeys("right", "l")),
-	back:  key.NewBinding(key.WithKeys("esc", "h")),
-	solve: key.NewBinding(key.WithKeys("s")),
-	test:  key.NewBinding(key.WithKeys("t")),
-	bench: key.NewBinding(key.WithKeys("b")),
+	up:      key.NewBinding(key.WithKeys("up", "k")),
+	down:    key.NewBinding(key.WithKeys("down", "j")),
+	quit:    key.NewBinding(key.WithKeys("q")),
+	enter:   key.NewBinding(key.WithKeys("enter")),
+	right:   key.NewBinding(key.WithKeys("right", "l")),
+	back:    key.NewBinding(key.WithKeys("esc", "h")),
+	solve:   key.NewBinding(key.WithKeys("s")),
+	test:    key.NewBinding(key.WithKeys("t")),
+	bench:   key.NewBinding(key.WithKeys("b")),
+	analyze: key.NewBinding(key.WithKeys("a")),
 }

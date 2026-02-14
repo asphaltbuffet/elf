@@ -2,13 +2,19 @@ package tui
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 
+	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/asphaltbuffet/elf/internal/tui/components"
 	"github.com/asphaltbuffet/elf/internal/tui/dashboard"
 	"github.com/asphaltbuffet/elf/internal/tui/exerciseview"
+	"github.com/asphaltbuffet/elf/internal/tui/help"
 	"github.com/asphaltbuffet/elf/internal/tui/nav"
 	"github.com/asphaltbuffet/elf/internal/tui/yearview"
+	"github.com/asphaltbuffet/elf/pkg/analyze"
 	"github.com/asphaltbuffet/elf/pkg/config"
 )
 
@@ -88,9 +94,34 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		return a, ev.Init()
 
+	case yearview.AnalyzeMsg:
+		return a, runAnalyze(msg.Cfg, msg.YearDir)
+
+	case analyzeDoneMsg:
+		if msg.err != nil {
+			// TODO: show error in status bar
+			return a, nil
+		}
+
+		_ = components.OpenFile(msg.path)
+
+		return a, nil
+
+	case help.CloseModalMsg:
+		a.modal = nil
+
+		return a, nil
+
 	case tea.KeyMsg:
 		if msg.String() == "ctrl+c" {
 			return a, tea.Quit
+		}
+
+		if key.Matches(msg, Keys.Help) && a.modal == nil {
+			h := help.New()
+			a.modal = h
+
+			return a, nil
 		}
 	}
 
@@ -109,6 +140,31 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	return a, nil
+}
+
+type analyzeDoneMsg struct {
+	path string
+	err  error
+}
+
+func runAnalyze(cfg config.Config, yearDir string) tea.Cmd {
+	return func() tea.Msg {
+		outFile := filepath.Join(os.TempDir(), "elf-analysis.png")
+
+		aa, err := analyze.NewAnalyzer(&cfg,
+			analyze.WithDirectory(yearDir),
+			analyze.WithOutput(outFile),
+		)
+		if err != nil {
+			return analyzeDoneMsg{err: fmt.Errorf("creating analyzer: %w", err)}
+		}
+
+		if graphErr := aa.Graph(); graphErr != nil {
+			return analyzeDoneMsg{err: fmt.Errorf("generating graph: %w", graphErr)}
+		}
+
+		return analyzeDoneMsg{path: outFile}
+	}
 }
 
 func (a App) View() string {
