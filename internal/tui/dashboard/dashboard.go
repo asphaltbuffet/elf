@@ -10,6 +10,8 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/asphaltbuffet/elf/internal/tui/discover"
+	"github.com/asphaltbuffet/elf/internal/tui/nav"
+	"github.com/asphaltbuffet/elf/internal/tui/yearview"
 	"github.com/asphaltbuffet/elf/pkg/config"
 )
 
@@ -86,8 +88,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.enter, keys.right):
 			if len(m.years) > 0 {
 				year := m.years[m.cursor]
-				// TODO: push year view onto stack
-				_ = year
+				yv := yearview.New(m.cfg, year, m.exercises[year])
+
+				return m, func() tea.Msg {
+					return nav.PushScreenMsg{Screen: yv}
+				}
 			}
 		}
 	}

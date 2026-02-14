@@ -6,16 +6,11 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/asphaltbuffet/elf/internal/tui/dashboard"
+	"github.com/asphaltbuffet/elf/internal/tui/exerciseview"
+	"github.com/asphaltbuffet/elf/internal/tui/nav"
+	"github.com/asphaltbuffet/elf/internal/tui/yearview"
 	"github.com/asphaltbuffet/elf/pkg/config"
 )
-
-// PushScreenMsg requests the app to push a new screen onto the navigation stack.
-type PushScreenMsg struct {
-	Screen tea.Model
-}
-
-// PopScreenMsg requests the app to pop the current screen from the navigation stack.
-type PopScreenMsg struct{}
 
 // App is the root TUI model managing a navigation stack and optional modal overlay.
 type App struct {
@@ -58,7 +53,6 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.width = msg.Width
 		a.height = msg.Height
 
-		// propagate to active screen
 		if len(a.stack) > 0 {
 			var cmd tea.Cmd
 			a.stack[len(a.stack)-1], cmd = a.stack[len(a.stack)-1].Update(msg)
@@ -68,16 +62,15 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		return a, nil
 
-	case PushScreenMsg:
+	case nav.PushScreenMsg:
 		a.stack = append(a.stack, msg.Screen)
 
 		return a, msg.Screen.Init()
 
-	case PopScreenMsg:
+	case nav.PopScreenMsg:
 		if len(a.stack) > 1 {
 			a.stack = a.stack[:len(a.stack)-1]
 
-			// re-send size to newly active screen
 			var cmd tea.Cmd
 			a.stack[len(a.stack)-1], cmd = a.stack[len(a.stack)-1].Update(tea.WindowSizeMsg{
 				Width:  a.width,
@@ -89,14 +82,18 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		return a, tea.Quit
 
+	case yearview.ActionMsg:
+		ev := exerciseview.New(msg.Cfg, msg.Exercise, msg.Action)
+		a.stack = append(a.stack, ev)
+
+		return a, ev.Init()
+
 	case tea.KeyMsg:
-		// global quit shortcut
 		if msg.String() == "ctrl+c" {
 			return a, tea.Quit
 		}
 	}
 
-	// route to modal if active, otherwise to top of stack
 	if a.modal != nil {
 		var cmd tea.Cmd
 		a.modal, cmd = a.modal.Update(msg)
@@ -122,7 +119,6 @@ func (a App) View() string {
 	view := a.stack[len(a.stack)-1].View()
 
 	if a.modal != nil {
-		// TODO: overlay modal centered on top of view
 		view = a.modal.View()
 	}
 
