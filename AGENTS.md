@@ -114,25 +114,37 @@ exercises/<year>/<day>-<title>/
 
 ### Cobra command testing pattern
 
-The `cmd/` packages use **factory variables** to make `RunE` handlers testable. Package-level `var` functions wrap constructors so tests can swap them with mock-returning functions without changing cobra signatures.
+All `cmd/` packages use **factory variables** to make `RunE` handlers testable. Package-level `var` functions wrap constructors so tests can swap them with mock-returning functions without changing cobra signatures.
+
+Tests must be **internal** (`package download`, not `package download_test`) to access unexported `runXxxCmd` functions and factory variables.
+
+Each test file uses a `resetState` helper to restore package-level state:
 
 ```go
-// Production: factory variable wraps real constructor.
-var makeChallenge = func(cfg config.ExerciseConfiguration, lang, dir, inputFile string) (Challenge, error) {
-    return exercise.New(cfg, ...)
+func resetState(t *testing.T, origMakeConfig func(string) (config.Config, error), ...) {
+    t.Helper()
+    t.Cleanup(func() {
+        downloadCmd = nil    // reset singleton
+        language = ""        // reset flag vars
+        makeConfig = origMakeConfig  // restore factory
+    })
 }
-
-// Test: swap factory to return mock.
-makeChallenge = func(...) (Challenge, error) { return mockCh, nil }
 ```
 
-Mockery-generated mocks exist in `mocks/` for `Challenge`, `ChallengeTester`, `Benchmarker`, and `Downloader`.
+Standard test cases for each `cmd/` handler:
+1. Config creation error
+2. Domain object creation error (e.g., `NewDownloader` fails)
+3. Operation error (e.g., `Download()` fails)
+4. Happy path (verify output and return value)
+5. Flag propagation (verify each flag reaches the factory/mock)
+
+Mockery-generated mocks exist in `mocks/` for `Challenge`, `ChallengeTester`, `Benchmarker`, `Downloader`, `Analyzer`, `ConfigurationReader`, `DownloadConfiguration`, `ExerciseConfiguration`, and `Runner`.
 
 ### Gotchas
 
 - **pflag resets variables on flag creation**: `StringVarP(&variable, ..., "", ...)` immediately sets the variable to the default. In tests, set flag-bound variables **after** calling `GetXxxCmd()`, not before.
-- **testifylint require-error**: Use `require.NoError` (not `assert.NoError`) when subsequent assertions depend on no error. The linter enforces this.
-- **Singleton commands**: `GetXxxCmd()` caches in a package-level `var`. Reset it (`solveCmd = nil`) in `t.Cleanup` between tests to avoid stale flag state.
+- **testifylint require-error**: Use `require` variants (not `assert`) for the **first** error assertion in a chain — applies to `ErrorContains`, `Error`, and `NoError` alike. The linter enforces this to prevent nil-pointer panics in subsequent assertions.
+- **Singleton commands**: `GetXxxCmd()` caches in a package-level `var`. Reset it (`downloadCmd = nil`) in `t.Cleanup` between tests to avoid stale flag state.
 
 ## Code Generation
 

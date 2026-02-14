@@ -94,18 +94,26 @@ Configuration uses Viper with:
 
 ### Testing Cobra Commands
 
-The `cmd/` packages use a **factory variable pattern** for testability. Package-level `var` functions wrap constructors (`config.NewConfig`, `exercise.New`, etc.) so tests can swap them with mock-returning functions. This avoids changing cobra `RunE` signatures while enabling mock injection.
+All `cmd/` packages (`solve`, `test`, `benchmark`, `download`, `analyze`) use a **factory variable pattern** for testability. Package-level `var` functions wrap constructors so tests can swap them with mock-returning functions. This avoids changing cobra `RunE` signatures while enabling mock injection.
 
-Example from `cmd/solve/`:
+Each `cmd/` test file follows this structure:
+1. **Internal test** (`package solve`, not `package solve_test`) for access to unexported `runXxxCmd` and factory vars
+2. **`resetState` helper** that restores all package-level vars and factory functions via `t.Cleanup`
+3. **Factory variable swaps** to inject mocks or error-returning stubs
+
+Example factory variables from `cmd/download/`:
 ```go
-var makeChallenge = func(cfg config.ExerciseConfiguration, lang, dir, inputFile string) (Challenge, error) {
-    return exercise.New(cfg, exercise.WithLanguage(lang), ...)
+var makeConfig = func(cf string) (config.Config, error) {
+    return config.NewConfig(config.WithFile(cf))
+}
+var makeDownloader = func(cfg config.DownloadConfiguration, url, lang string, forced *exercise.Overwrites) (Downloader, error) {
+    return exercise.NewDownloader(cfg, ...)
 }
 ```
 
 **pflag gotcha**: `StringVarP(&variable, ...)` sets the variable to the default value immediately. In tests, always set package-level flag variables **after** `GetXxxCmd()`, not before.
 
-Mockery-generated mocks exist for `Challenge`, `ChallengeTester`, `Benchmarker`, and `Downloader` in `mocks/` — use them with the factory variable pattern.
+Mockery-generated mocks exist in `mocks/` for `Challenge`, `ChallengeTester`, `Benchmarker`, `Downloader`, `Analyzer`, `ConfigurationReader`, `DownloadConfiguration`, `ExerciseConfiguration`, and `Runner` — use them with the factory variable pattern.
 
 ### Code Generation
 

@@ -20,6 +20,14 @@ var (
 	analyzeCmd *cobra.Command
 
 	outFile string
+
+	// Factory variables for testing.
+	makeConfig = func(cf string) (config.Config, error) {
+		return config.NewConfig(config.WithFile(cf))
+	}
+	makeAnalyzer = func(cfg config.ExerciseConfiguration, dir, out string) (Analyzer, error) {
+		return analyzer.NewAnalyzer(cfg, analyzer.WithDirectory(dir), analyzer.WithOutput(out))
+	}
 )
 
 func GetAnalyzeCmd() *cobra.Command {
@@ -40,11 +48,9 @@ func GetAnalyzeCmd() *cobra.Command {
 }
 
 func runAnalyzeCmd(cmd *cobra.Command, args []string) error {
-	var aa Analyzer
-
 	cf, _ := cmd.Flags().GetString("config-file")
 
-	cfg, err := config.NewConfig(config.WithFile(cf))
+	cfg, err := makeConfig(cf)
 	if err != nil {
 		return err
 	}
@@ -59,7 +65,7 @@ func runAnalyzeCmd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("output file: %w", err)
 	}
 
-	aa, err = analyzer.NewAnalyzer(cfg, analyzer.WithDirectory(dir), analyzer.WithOutput(out))
+	aa, err := makeAnalyzer(&cfg, dir, out)
 	if err != nil {
 		return fmt.Errorf("creating grapher: %w", err)
 	}
