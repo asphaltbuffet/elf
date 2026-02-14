@@ -97,19 +97,20 @@ func renderOneResult(result tasks.Result) string {
 	}
 
 	timing := lipgloss.NewStyle().Faint(true).Foreground(colorGray).Render(dur.String())
+	output := strings.TrimSpace(result.Output)
 
 	line := fmt.Sprintf("  %s  %s  %s", label, badge, timing)
 
 	if result.Status == tasks.StatusError ||
 		result.Status == tasks.StatusFailed ||
 		result.Status == tasks.StatusUnverified {
-		extra := lipgloss.NewStyle().Italic(true).PaddingLeft(extraPadding).Render(result.Output)
+		extra := lipgloss.NewStyle().Italic(true).PaddingLeft(extraPadding).Render(output)
 		line += "\n" + extra
 	} else if result.Type == tasks.Solve && result.Status == tasks.StatusPassed {
 		extra := lipgloss.NewStyle().
 			Faint(true).
 			PaddingLeft(extraPadding).
-			Render("⤷ " + result.Output)
+			Render("⤷ " + output)
 
 		line += "\n" + extra
 	}

@@ -2,6 +2,7 @@ package exerciseview
 
 import (
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -55,15 +56,13 @@ func New(cfg config.Config, info discover.ExerciseInfo, action string) Model {
 		lang = info.Langs[0]
 	}
 
-	actionTitle := strings.ToUpper(action[:1]) + action[1:]
-
 	return Model{
 		cfg:      cfg,
 		info:     info,
 		action:   action,
 		lang:     lang,
 		results:  components.NewResultList(80, 20), //nolint:mnd // initial size, will be resized
-		progress: components.StartedProgress(fmt.Sprintf("%sing %s...", actionTitle, info.Title)),
+		progress: components.StartedProgress(fmt.Sprintf("%s %s...", actionGerunds[action], info.Title)),
 		resultCh: make(chan tasks.Result, resultBufSize),
 		running:  true,
 	}
@@ -187,6 +186,7 @@ func runSolve(cfg config.Config, info discover.ExerciseInfo, lang string, ch cha
 	ex, newErr := exercise.New(cfg,
 		exercise.WithDir(info.Path),
 		exercise.WithLanguage(lang),
+		exercise.WithWriter(io.Discard),
 		exercise.WithResultCallback(func(r tasks.Result) { ch <- r }),
 	)
 	if newErr != nil {
@@ -203,6 +203,7 @@ func runTest(cfg config.Config, info discover.ExerciseInfo, lang string, ch chan
 	ex, newErr := exercise.New(cfg,
 		exercise.WithDir(info.Path),
 		exercise.WithLanguage(lang),
+		exercise.WithWriter(io.Discard),
 		exercise.WithResultCallback(func(r tasks.Result) { ch <- r }),
 	)
 	if newErr != nil {
@@ -218,6 +219,7 @@ func runTest(cfg config.Config, info discover.ExerciseInfo, lang string, ch chan
 func runBenchmark(cfg config.Config, info discover.ExerciseInfo, ch chan<- tasks.Result) {
 	bmk, newErr := exercise.NewBenchmarker(cfg,
 		exercise.WithExerciseDir(info.Path),
+		exercise.WithBenchmarkWriter(io.Discard),
 		exercise.WithBenchmarkResultCallback(func(r tasks.Result) { ch <- r }),
 	)
 	if newErr != nil {
@@ -239,6 +241,13 @@ func waitForResult(ch <-chan tasks.Result) tea.Cmd {
 
 		return resultMsg{result: result}
 	}
+}
+
+var actionGerunds = map[string]string{
+	"solve":     "Solving",
+	"test":      "Testing",
+	"benchmark": "Benchmarking",
+	"analyze":   "Analyzing",
 }
 
 var keys = struct {

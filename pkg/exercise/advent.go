@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"path"
@@ -71,6 +72,12 @@ func WithLanguage(lang string) func(*Exercise) {
 func WithInputFile(file string) func(*Exercise) {
 	return func(e *Exercise) {
 		e.customInput = file
+	}
+}
+
+func WithWriter(w io.Writer) func(*Exercise) {
+	return func(e *Exercise) {
+		e.writer = w
 	}
 }
 

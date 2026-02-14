@@ -3,6 +3,7 @@ package exercise
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"math"
 	"os"
@@ -54,6 +55,12 @@ func NewBenchmarker(cfg config.ExerciseConfiguration, options ...func(*Benchmark
 func WithExerciseDir(dir string) func(*Benchmarker) {
 	return func(b *Benchmarker) {
 		b.Path = dir
+	}
+}
+
+func WithBenchmarkWriter(w io.Writer) func(*Benchmarker) {
+	return func(b *Benchmarker) {
+		b.writer = w
 	}
 }
 

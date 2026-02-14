@@ -2,6 +2,7 @@ package yearview
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -100,7 +101,12 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-const separatorWidth = 60
+const (
+	separatorWidth = 60
+	dayColWidth    = 5
+	titleColWidth  = 30
+	langColWidth   = 10
+)
 
 func (m Model) View() string {
 	var b strings.Builder
@@ -116,15 +122,20 @@ func (m Model) View() string {
 		b.WriteString("  No exercises found for this year.\n")
 	} else {
 		// header
-		header := lipgloss.NewStyle().Faint(true).Render(
+		dimStyle := lipgloss.NewStyle().Faint(true)
+		header := dimStyle.Render(
 			fmt.Sprintf("  %-5s %-30s %-10s %s", "Day", "Title", "Langs", "Status"),
 		)
 		b.WriteString(header + "\n")
 
-		sep := lipgloss.NewStyle().Faint(true).Render(
+		sep := dimStyle.Render(
 			"  " + strings.Repeat("─", separatorWidth),
 		)
 		b.WriteString(sep + "\n")
+
+		dayCol := lipgloss.NewStyle().Width(dayColWidth).Align(lipgloss.Right)
+		titleCol := lipgloss.NewStyle().Width(titleColWidth)
+		langCol := lipgloss.NewStyle().Width(langColWidth)
 
 		for i, ex := range m.exercises {
 			cursor := "  "
@@ -142,13 +153,11 @@ func (m Model) View() string {
 
 			status := statusIndicator(ex)
 
-			line := fmt.Sprintf("%s%-5s %-30s %-10s %s",
-				cursor,
-				style.Render(fmt.Sprintf("%2d", ex.Day)),
-				style.Render(truncateStr(ex.Title, maxTitleWidth)),
-				langStyle(langs),
-				status,
-			)
+			dayText := dayCol.Inherit(style).Render(strconv.Itoa(ex.Day))
+			titleText := titleCol.Inherit(style).Render(truncateStr(ex.Title, maxTitleWidth))
+			langText := langCol.Inherit(style).Render(langStyle(langs))
+
+			line := fmt.Sprintf("%s%s %s %s %s", cursor, dayText, titleText, langText, status)
 			b.WriteString(line + "\n")
 		}
 	}
