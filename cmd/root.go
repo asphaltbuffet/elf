@@ -14,6 +14,7 @@ import (
 	"github.com/asphaltbuffet/elf/cmd/man"
 	"github.com/asphaltbuffet/elf/cmd/solve"
 	"github.com/asphaltbuffet/elf/cmd/test"
+	"github.com/asphaltbuffet/elf/internal/tui"
 	elfconfig "github.com/asphaltbuffet/elf/pkg/config"
 )
 
@@ -36,15 +37,13 @@ func GetRootCommand() *cobra.Command {
 		rootCmd = &cobra.Command{
 			Use:   "elf [command]",
 			Short: "elf is a programming challenge helper application",
-			Run: func(cmd *cobra.Command, _ []string) {
+			RunE: func(_ *cobra.Command, _ []string) error {
 				cfg, err := elfconfig.NewConfig(elfconfig.WithFile(cfgFile))
 				if err != nil {
-					cmd.PrintErr(err)
+					return err
 				}
 
-				cmd.Println("config file:", cfg.GetConfigFileUsed())
-				cmd.Println("language:", cfg.GetLanguage())
-				cmd.Println("token:", cfg.GetToken())
+				return tui.Run(cfg)
 			},
 		}
 
