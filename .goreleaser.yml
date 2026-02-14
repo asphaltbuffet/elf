@@ -31,7 +31,7 @@ builds:
 
 upx:
   - goos: [linux]
-    enabled: true
+    enabled: "{{ .IsRelease }}"
     compress: best
 
 archives:
