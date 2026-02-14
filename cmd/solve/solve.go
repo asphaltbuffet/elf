@@ -7,8 +7,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/asphaltbuffet/elf/pkg/advent"
 	"github.com/asphaltbuffet/elf/pkg/config"
+	"github.com/asphaltbuffet/elf/pkg/exercise"
 	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
@@ -23,10 +23,10 @@ var (
 		return config.NewConfig(config.WithFile(cf))
 	}
 	makeChallenge = func(cfg config.ExerciseConfiguration, lang, dir, inputFile string) (Challenge, error) {
-		return advent.New(cfg,
-			advent.WithLanguage(lang),
-			advent.WithDir(dir),
-			advent.WithInputFile(inputFile))
+		return exercise.New(cfg,
+			exercise.WithLanguage(lang),
+			exercise.WithDir(dir),
+			exercise.WithInputFile(inputFile))
 	}
 )
 

@@ -7,8 +7,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/asphaltbuffet/elf/pkg/advent"
 	"github.com/asphaltbuffet/elf/pkg/config"
+	"github.com/asphaltbuffet/elf/pkg/exercise"
 )
 
 // Downloader is an interface for downloading challenges.
@@ -61,16 +61,16 @@ func runDownloadCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	forced := &advent.Overwrites{
+	forced := &exercise.Overwrites{
 		Input: forceInput,
 	}
 
 	switch {
 	case strings.Contains(args[0], "adventofcode.com/"):
-		chdl, err = advent.NewDownloader(&cfg,
-			advent.WithURL(args[0]),
-			advent.WithDownloadLanguage(language),
-			advent.WithOverwrites(forced),
+		chdl, err = exercise.NewDownloader(&cfg,
+			exercise.WithURL(args[0]),
+			exercise.WithDownloadLanguage(language),
+			exercise.WithOverwrites(forced),
 		)
 		if err != nil {
 			return fmt.Errorf("downloading advent challenge: %w", err)

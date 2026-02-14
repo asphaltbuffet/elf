@@ -32,7 +32,7 @@
               ./go.sum
               ./gomod2nix.toml
               (lib.fileset.fileFilter (file: lib.hasSuffix ".go" file.name) ./.)
-              ./pkg/advent/templates
+              ./pkg/exercise/templates
               ./pkg/runners/interface
             ];
           };

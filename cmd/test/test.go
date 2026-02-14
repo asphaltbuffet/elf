@@ -8,8 +8,8 @@ import (
 	"github.com/lmittmann/tint"
 	"github.com/spf13/cobra"
 
-	"github.com/asphaltbuffet/elf/pkg/advent"
 	"github.com/asphaltbuffet/elf/pkg/config"
+	"github.com/asphaltbuffet/elf/pkg/exercise"
 	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
@@ -22,7 +22,7 @@ var (
 		return config.NewConfig(config.WithFile(cf))
 	}
 	makeChallengeTester = func(cfg config.ExerciseConfiguration, lang, dir string) (ChallengeTester, error) {
-		return advent.New(cfg, advent.WithLanguage(lang), advent.WithDir(dir))
+		return exercise.New(cfg, exercise.WithLanguage(lang), exercise.WithDir(dir))
 	}
 )
 

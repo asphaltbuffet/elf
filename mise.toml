@@ -113,7 +113,7 @@ run = "gomod2nix generate"
 [tasks.snapshot]
 description = "goreleaser build snapshot"
 depends = ["generate", "mod-tidy"]
-wait_for = ["test"]
+wait_for = ["test", "lint"]
 alias = "ss"
 run = [
   "goreleaser check -q",

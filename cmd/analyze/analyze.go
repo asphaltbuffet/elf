@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	advent "github.com/asphaltbuffet/elf/pkg/advent/analyze"
+	analyzer "github.com/asphaltbuffet/elf/pkg/analyze"
 	"github.com/asphaltbuffet/elf/pkg/config"
 )
 
@@ -59,7 +59,7 @@ func runAnalyzeCmd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("output file: %w", err)
 	}
 
-	aa, err = advent.NewAnalyzer(cfg, advent.WithDirectory(dir), advent.WithOutput(out))
+	aa, err = analyzer.NewAnalyzer(cfg, analyzer.WithDirectory(dir), analyzer.WithOutput(out))
 	if err != nil {
 		return fmt.Errorf("creating grapher: %w", err)
 	}
