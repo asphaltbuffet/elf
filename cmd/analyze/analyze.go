@@ -8,9 +8,13 @@ import (
 	"github.com/spf13/cobra"
 
 	advent "github.com/asphaltbuffet/elf/pkg/advent/analyze"
-	"github.com/asphaltbuffet/elf/pkg/analysis"
 	"github.com/asphaltbuffet/elf/pkg/krampus"
 )
+
+// Analyzer is the interface for benchmark analysis.
+type Analyzer interface {
+	Graph() error
+}
 
 var (
 	analyzeCmd *cobra.Command
@@ -36,7 +40,7 @@ func GetAnalyzeCmd() *cobra.Command {
 }
 
 func runAnalyzeCmd(cmd *cobra.Command, args []string) error {
-	var aa analysis.Analyzer
+	var aa Analyzer
 
 	cf, _ := cmd.Flags().GetString("config-file")
 

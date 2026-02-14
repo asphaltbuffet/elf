@@ -47,6 +47,25 @@ go test -run TestFunctionName ./path/to/package
 - **pkg/tasks/**: Task types (Solve, Test, Benchmark, Visualize) and result handling
 - **pkg/analysis/**: Benchmark analysis and graph generation
 
+### `pkg/advent/` File Organization
+
+The largest package splits files by responsibility:
+
+| File | Contents |
+|------|----------|
+| `advent.go` | `Exercise` struct, constructor, options, `loadInfo` |
+| `solver.go` | `Solve`, `runMainTasks`, `makeMainTasks` |
+| `tester.go` | `Test`, `runTests`, `makeTestTasks` |
+| `result.go` | `handleTaskResult` (shared by solver, tester, benchmarker), `testTask` type |
+| `benchmarker.go` | `Benchmarker` struct, `NewBenchmarker`, `Benchmark`, `runBenchmark`, `NormalizationFactor` |
+| `benchmarker_data.go` | `BenchmarkData`, `ImplementationData`, `PartData` types, `calculateMetrics` |
+| `downloader.go` | `Downloader` struct, constructor, options, `validate`, `Download`, URL parsing, path resolution |
+| `downloader_http.go` | `getPage`, `getCachedPage`, `downloadPage`, `getCachedInput`, `downloadInput`, `getInput` |
+| `downloader_files.go` | `go:embed` templates, `addMissingFiles`, `writeInputFile`, `writeInfoFile`, `addTemplatedFile` |
+| `helpers_test.go` | Shared test fixtures: `setupTestCase`, `setupSubTest`, `FileExists`, `goldenValue`, package-level vars (`testFs`, `mockDlr`) |
+
+Test files mirror source files (e.g., `downloader_http_test.go` tests HTTP/caching functions).
+
 ### Exercise Structure
 
 Exercises follow this directory layout:

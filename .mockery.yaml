@@ -18,7 +18,7 @@ packages:
   github.com/asphaltbuffet/elf/cmd/test:
     interfaces:
       ChallengeTester: {}
-  github.com/asphaltbuffet/elf/pkg/analysis:
+  github.com/asphaltbuffet/elf/cmd/analyze:
     interfaces:
       Analyzer: {}
   github.com/asphaltbuffet/elf/pkg/krampus:

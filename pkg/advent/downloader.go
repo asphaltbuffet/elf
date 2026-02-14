@@ -18,7 +18,7 @@ import (
 	"github.com/spf13/afero"
 
 	"github.com/asphaltbuffet/elf/pkg/krampus"
-	"github.com/asphaltbuffet/elf/pkg/utilities"
+	"github.com/asphaltbuffet/elf/internal/utilities"
 )
 
 const (
