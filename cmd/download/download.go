@@ -20,6 +20,18 @@ var (
 	downloadCmd *cobra.Command
 	language    string
 	forceInput  bool
+
+	// Factory variables for testing.
+	makeConfig = func(cf string) (config.Config, error) {
+		return config.NewConfig(config.WithFile(cf))
+	}
+	makeDownloader = func(cfg config.DownloadConfiguration, url, lang string, forced *exercise.Overwrites) (Downloader, error) {
+		return exercise.NewDownloader(cfg,
+			exercise.WithURL(url),
+			exercise.WithDownloadLanguage(lang),
+			exercise.WithOverwrites(forced),
+		)
+	}
 )
 
 const exampleDownloadText = `elf download https://example.com --lang=go
@@ -49,7 +61,7 @@ func GetDownloadCmd() *cobra.Command {
 func runDownloadCmd(cmd *cobra.Command, args []string) error {
 	cf, _ := cmd.Flags().GetString("config-file")
 
-	cfg, err := config.NewConfig(config.WithFile(cf))
+	cfg, err := makeConfig(cf)
 	if err != nil {
 		return err
 	}
@@ -58,11 +70,7 @@ func runDownloadCmd(cmd *cobra.Command, args []string) error {
 		Input: forceInput,
 	}
 
-	chdl, err := exercise.NewDownloader(&cfg,
-		exercise.WithURL(args[0]),
-		exercise.WithDownloadLanguage(language),
-		exercise.WithOverwrites(forced),
-	)
+	chdl, err := makeDownloader(&cfg, args[0], language, forced)
 	if err != nil {
 		return fmt.Errorf("creating downloader: %w", err)
 	}
