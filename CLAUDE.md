@@ -29,6 +29,8 @@ mise run dev         # Full dev pipeline: generate, mock, lint, test, snapshot
 mise run ci          # CI pipeline: generate, mock, mod-tidy, test, cover, build, diff
 ```
 
+Always use `mise run dev` for full verification (generate, mock, lint, test, snapshot), not just `go test`/`go build`.
+
 Run a single test:
 ```bash
 go test -run TestFunctionName ./path/to/package
@@ -46,6 +48,7 @@ go test -run TestFunctionName ./path/to/package
 - **pkg/runners/**: Language runner abstraction - executes solutions in Go (`go/`) or Python (`py/`) subdirectories
 - **pkg/tasks/**: Task types (Solve, Test, Benchmark, Visualize) and result handling
 - **pkg/analyze/**: Benchmark analysis and graph generation
+- **internal/tui/**: Bubbletea TUI mode (launched when `elf` runs with no subcommand)
 - **internal/utilities/**: Internal string helpers
 
 ### `pkg/exercise/` File Organization
@@ -57,7 +60,7 @@ The largest package splits files by responsibility:
 | `advent.go` | `Exercise` struct, constructor, options, `loadInfo` |
 | `solver.go` | `Solve`, `runMainTasks`, `makeMainTasks` |
 | `tester.go` | `Test`, `runTests`, `makeTestTasks` |
-| `result.go` | `handleTaskResult` (shared by solver, tester, benchmarker), `testTask` type |
+| `result.go` | `buildResult` (pure data), `renderResult` (CLI styling), `handleTaskResult` wrapper, `testTask` type |
 | `benchmarker.go` | `Benchmarker` struct, `NewBenchmarker`, `Benchmark`, `runBenchmark`, `NormalizationFactor` |
 | `benchmarker_data.go` | `BenchmarkData`, `ImplementationData`, `PartData` types, `calculateMetrics` |
 | `downloader.go` | `Downloader` struct, constructor, options, `validate`, `Download`, URL parsing, path resolution |
@@ -84,6 +87,31 @@ exercises/<year>/<day>-<title>/
 ### Runner System
 
 The `runners.Runner` interface abstracts language execution. Each runner (Go, Python) implements Start/Stop/Run/Cleanup methods. Solutions communicate results back via a standardized protocol in `pkg/runners/comm.go`.
+
+### TUI Architecture
+
+The TUI uses [bubbletea](https://github.com/charmbracelet/bubbletea) with a navigation stack pattern:
+
+| Package | Purpose |
+|---------|---------|
+| `internal/tui/` | Root `App` model with nav stack (`[]tea.Model`), modal overlay, `Run()` entry point |
+| `internal/tui/dashboard/` | Year list with progress bars, config summary |
+| `internal/tui/yearview/` | Exercise table for a single year, action keybindings (s/t/b/a) |
+| `internal/tui/exerciseview/` | Runs solve/test/benchmark with result streaming via channel |
+| `internal/tui/components/` | Reusable: `ResultList` (viewport), `Progress` (spinner), `OpenFile` (xdg-open) |
+| `internal/tui/help/` | `?` key modal overlay with keybinding reference |
+| `internal/tui/discover/` | Filesystem scanner: reads `info.json` files, groups exercises by year |
+| `internal/tui/nav/` | Shared message types (`PushScreenMsg`, `PopScreenMsg`) to prevent import cycles |
+
+**Key patterns:**
+- **Result streaming**: `exercise.WithResultCallback` sends `tasks.Result` through a channel. `exerciseview` reads it via `waitForResult` tea.Cmd, dispatching `resultMsg` for each item.
+- **Suppressed CLI output**: TUI passes `exercise.WithWriter(io.Discard)` to suppress the CLI's direct stdout rendering. Results flow only through the callback.
+- **ANSI-aware columns**: Use `lipgloss.Style.Width()` (not `fmt.Sprintf` `%-Ns`) for fixed-width columns — `fmt` counts ANSI escape bytes, breaking alignment for styled text.
+
+**Gotchas:**
+- `fmt.Sprintf("%-Ns")` counts ANSI escape bytes, not visible chars — always use `lipgloss.Style.Width()` for fixed columns
+- Bubbletea `Init()` uses value receivers — cannot mutate model state; initialize channels/timers in constructors
+- `lipgloss.Style.Inherit(other)` copies color/bold but preserves layout (width, align, padding) — use for styled table cells
 
 ### Configuration
 
@@ -119,6 +147,13 @@ Mockery-generated mocks exist in `mocks/` for `Challenge`, `ChallengeTester`, `B
 
 - **stringer**: Generates String() methods for enums (`//go:generate stringer`)
 - **mockery**: Generates test mocks (configured in `.mockery.yaml`)
+
+### Linter Gotchas
+
+- `noctx`: Use `exec.CommandContext(ctx, ...)` not `exec.Command(...)` — even with `context.Background()`
+- Adding `func` fields to structs breaks `==` comparison — use field-level zero checks instead
+- `govet shadow`: inner `:=` shadowing outer `err` is caught — rename inner variable (e.g., `graphErr`)
+- `mnd`: Extract magic numbers to named constants, even for visual widths/padding
 
 ### Nix Flake
 
