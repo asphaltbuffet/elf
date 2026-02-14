@@ -3,7 +3,6 @@ package download
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -47,13 +46,7 @@ func GetDownloadCmd() *cobra.Command {
 	return downloadCmd
 }
 
-// // https://adventofcode.com/2022/day/1
-// reAdvent := `^https?://(www\.)?adventofcode\.com/(?P<year>\d{4})/day/(?P<day>\d{1,2})$`
-
 func runDownloadCmd(cmd *cobra.Command, args []string) error {
-	var err error
-	var chdl Downloader
-
 	cf, _ := cmd.Flags().GetString("config-file")
 
 	cfg, err := config.NewConfig(config.WithFile(cf))
@@ -65,23 +58,16 @@ func runDownloadCmd(cmd *cobra.Command, args []string) error {
 		Input: forceInput,
 	}
 
-	switch {
-	case strings.Contains(args[0], "adventofcode.com/"):
-		chdl, err = exercise.NewDownloader(&cfg,
-			exercise.WithURL(args[0]),
-			exercise.WithDownloadLanguage(language),
-			exercise.WithOverwrites(forced),
-		)
-		if err != nil {
-			return fmt.Errorf("downloading advent challenge: %w", err)
-		}
-
-	default:
-		return fmt.Errorf("unsupported URL: %s", args[0])
+	chdl, err := exercise.NewDownloader(&cfg,
+		exercise.WithURL(args[0]),
+		exercise.WithDownloadLanguage(language),
+		exercise.WithOverwrites(forced),
+	)
+	if err != nil {
+		return fmt.Errorf("creating downloader: %w", err)
 	}
 
-	err = chdl.Download()
-	if err != nil {
+	if err = chdl.Download(); err != nil {
 		return fmt.Errorf("downloading challenge: %w", err)
 	}
 
