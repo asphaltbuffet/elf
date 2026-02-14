@@ -1,4 +1,4 @@
-package utilities //nolint:revive // package name matches directory convention
+package utilities
 
 import (
 	"testing"

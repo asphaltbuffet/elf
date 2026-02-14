@@ -41,13 +41,14 @@ go test -run TestFunctionName ./path/to/package
 ### Core Packages
 
 - **cmd/**: Cobra CLI commands (solve, test, benchmark, download, analyze)
-- **pkg/advent/**: Advent of Code implementation - downloading, solving, testing, benchmarking
-- **pkg/krampus/**: Configuration management via Viper - handles config files, environment variables (ELF_* prefix), and defaults
+- **pkg/exercise/**: Exercise management - downloading, solving, testing, benchmarking
+- **pkg/config/**: Configuration management via Viper - handles config files, environment variables (ELF_* prefix), and defaults
 - **pkg/runners/**: Language runner abstraction - executes solutions in Go (`go/`) or Python (`py/`) subdirectories
 - **pkg/tasks/**: Task types (Solve, Test, Benchmark, Visualize) and result handling
-- **pkg/analysis/**: Benchmark analysis and graph generation
+- **pkg/analyze/**: Benchmark analysis and graph generation
+- **internal/utilities/**: Internal string helpers
 
-### `pkg/advent/` File Organization
+### `pkg/exercise/` File Organization
 
 The largest package splits files by responsibility:
 
@@ -93,12 +94,12 @@ Configuration uses Viper with:
 
 ### Testing Cobra Commands
 
-The `cmd/` packages use a **factory variable pattern** for testability. Package-level `var` functions wrap constructors (`krampus.NewConfig`, `advent.New`, etc.) so tests can swap them with mock-returning functions. This avoids changing cobra `RunE` signatures while enabling mock injection.
+The `cmd/` packages use a **factory variable pattern** for testability. Package-level `var` functions wrap constructors (`config.NewConfig`, `exercise.New`, etc.) so tests can swap them with mock-returning functions. This avoids changing cobra `RunE` signatures while enabling mock injection.
 
 Example from `cmd/solve/`:
 ```go
-var makeChallenge = func(cfg krampus.ExerciseConfiguration, lang, dir, inputFile string) (Challenge, error) {
-    return advent.New(cfg, advent.WithLanguage(lang), ...)
+var makeChallenge = func(cfg config.ExerciseConfiguration, lang, dir, inputFile string) (Challenge, error) {
+    return exercise.New(cfg, exercise.WithLanguage(lang), ...)
 }
 ```
 
@@ -115,7 +116,7 @@ Mockery-generated mocks exist for `Challenge`, `ChallengeTester`, `Benchmarker`,
 
 - Uses `gomod2nix` with `buildGoApplication` (not `buildGoModule`)
 - `gomod2nix.toml` is the dependency lockfile — regenerate with `mise run nix-hash` or `gomod2nix generate`
-- Source filtering via `lib.fileset` — only `.go` files, `go.mod`, `go.sum`, `gomod2nix.toml`, and `go:embed` templates are included
+- Source filtering via `lib.fileset` — only `.go` files, `go.mod`, `go.sum`, `gomod2nix.toml`, and `go:embed` templates (`pkg/exercise/templates/`, `pkg/runners/interface/`) are included
 - `mod-tidy` automatically runs `nix-hash` as a post-dependency
 
 Flake outputs:
@@ -127,7 +128,7 @@ Flake outputs:
 #### Home-Manager Module
 
 - Located at `nix/home-manager.nix`, options live under `programs.elf`
-- Option defaults mirror `pkg/krampus/defaults.go` — keep them in sync when defaults change
+- Option defaults mirror `pkg/config/defaults.go` — keep them in sync when defaults change
 - `config-dir` and `cache-dir` default to `null` (omitted from TOML) so elf's runtime XDG logic applies
 - Config file generated via `pkgs.formats.toml {}` and placed at `xdg.configFile."elf/elf.toml"`
 - Environment variables (`ELF_ADVENT_TOKEN`, `ELF_LANGUAGE`) mapped via `home.sessionVariables`

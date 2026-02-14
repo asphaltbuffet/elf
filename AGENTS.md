@@ -28,16 +28,16 @@ mise run dev         # Full pipeline: generate → mock → lint → test → sn
 
 ```bash
 # Lint a single package
-golangci-lint run ./pkg/advent/...
+golangci-lint run ./pkg/exercise/...
 
 # Type-check a single package
-go vet ./pkg/advent/...
+go vet ./pkg/exercise/...
 
 # Run a single test
 go test -run TestFunctionName ./path/to/package
 
 # Run all tests in one package
-go test -race ./pkg/runners/...
+go test -race ./pkg/exercise/...
 
 # Format (applied automatically by golangci-lint, but can be run directly)
 goimports -w path/to/file.go
@@ -63,13 +63,14 @@ goimports -w path/to/file.go
 | Package | Purpose |
 |---------|---------|
 | `cmd/` | Cobra CLI commands (solve, test, benchmark, download, analyze) |
-| `pkg/advent/` | Advent of Code — downloading, solving, testing, benchmarking |
-| `pkg/krampus/` | Configuration via Viper — config files, env vars (`ELF_*`), defaults |
+| `pkg/exercise/` | Exercise management — downloading, solving, testing, benchmarking |
+| `pkg/config/` | Configuration via Viper — config files, env vars (`ELF_*`), defaults |
 | `pkg/runners/` | Language runner abstraction — Go (`go/`) and Python (`py/`) |
 | `pkg/tasks/` | Task types (Solve, Test, Benchmark, Visualize) and result handling |
-| `pkg/analysis/` | Benchmark analysis and graph generation |
+| `pkg/analyze/` | Benchmark analysis and graph generation |
+| `internal/utilities/` | Internal string helpers |
 
-### `pkg/advent/` file organization
+### `pkg/exercise/` file organization
 
 The largest package splits files by responsibility:
 
@@ -107,7 +108,7 @@ exercises/<year>/<day>-<title>/
 
 - Config file: `elf.toml` in cwd or `~/.config/elf/`
 - Environment: `ELF_ADVENT_TOKEN`, `ELF_LANGUAGE`
-- Defaults: `pkg/krampus/defaults.go`
+- Defaults: `pkg/config/defaults.go`
 
 ## Testing
 
@@ -117,8 +118,8 @@ The `cmd/` packages use **factory variables** to make `RunE` handlers testable. 
 
 ```go
 // Production: factory variable wraps real constructor.
-var makeChallenge = func(cfg krampus.ExerciseConfiguration, lang, dir, inputFile string) (Challenge, error) {
-    return advent.New(cfg, ...)
+var makeChallenge = func(cfg config.ExerciseConfiguration, lang, dir, inputFile string) (Challenge, error) {
+    return exercise.New(cfg, ...)
 }
 
 // Test: swap factory to return mock.
@@ -146,4 +147,4 @@ Generated files should be committed. Re-run generation after changing interfaces
 - Dependency lockfile: `gomod2nix.toml` — regenerate with `mise run nix-hash` or `gomod2nix generate`
 - Source filtering via `lib.fileset` — includes `.go`, `go.mod`, `go.sum`, `gomod2nix.toml`, and `go:embed` templates
 - `mod-tidy` auto-runs `nix-hash` as post-dependency
-- Home-manager module at `nix/home-manager.nix` — option defaults must stay in sync with `pkg/krampus/defaults.go`
+- Home-manager module at `nix/home-manager.nix` — option defaults must stay in sync with `pkg/config/defaults.go`
