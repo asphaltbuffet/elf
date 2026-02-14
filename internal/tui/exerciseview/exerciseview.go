@@ -5,6 +5,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -39,6 +40,7 @@ type Model struct {
 	err      error
 	width    int
 	height   int
+	help     help.Model
 }
 
 const (
@@ -65,6 +67,7 @@ func New(cfg config.Config, info discover.ExerciseInfo, action string) Model {
 		progress: components.StartedProgress(fmt.Sprintf("%s %s...", actionGerunds[action], info.Title)),
 		resultCh: make(chan tasks.Result, resultBufSize),
 		running:  true,
+		help:     help.New(),
 	}
 }
 
@@ -107,6 +110,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+		m.help.Width = msg.Width
 		m.results.SetSize(msg.Width, msg.Height-headerHeight-footerHeight)
 
 		return m, nil
@@ -129,6 +133,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		switch {
+		case key.Matches(msg, keys.help):
+			m.help.ShowAll = !m.help.ShowAll
+
+			return m, nil
+
 		case key.Matches(msg, keys.back):
 			return m, func() tea.Msg { return nav.PopScreenMsg{} }
 
@@ -176,8 +185,7 @@ func (m Model) View() string {
 		}
 	}
 
-	help := lipgloss.NewStyle().Faint(true).Render("  esc back • q quit")
-	b.WriteString("\n" + help + "\n")
+	b.WriteString("\n  " + m.help.View(keys) + "\n")
 
 	return b.String()
 }
@@ -250,9 +258,32 @@ var actionGerunds = map[string]string{
 	"analyze":   "Analyzing",
 }
 
-var keys = struct {
-	back, quit key.Binding
-}{
-	back: key.NewBinding(key.WithKeys("esc", "h")),
-	quit: key.NewBinding(key.WithKeys("q")),
+// keyMap defines the exercise view key bindings and implements key.Map for bubbles/help.
+type keyMap struct {
+	back, quit, help key.Binding
+}
+
+func (k keyMap) ShortHelp() []key.Binding {
+	return []key.Binding{k.back, k.help, k.quit}
+}
+
+func (k keyMap) FullHelp() [][]key.Binding {
+	return [][]key.Binding{
+		{k.back, k.help, k.quit},
+	}
+}
+
+var keys = keyMap{
+	back: key.NewBinding(
+		key.WithKeys("esc", "h"),
+		key.WithHelp("esc/h", "back"),
+	),
+	help: key.NewBinding(
+		key.WithKeys("?"),
+		key.WithHelp("?", "help"),
+	),
+	quit: key.NewBinding(
+		key.WithKeys("q"),
+		key.WithHelp("q", "quit"),
+	),
 }

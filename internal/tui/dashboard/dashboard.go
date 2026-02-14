@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -32,6 +33,7 @@ type Model struct {
 	height    int
 	loading   bool
 	err       error
+	help      help.Model
 }
 
 // New creates a new dashboard model.
@@ -39,6 +41,7 @@ func New(cfg config.Config) Model {
 	return Model{
 		cfg:     cfg,
 		loading: true,
+		help:    help.New(),
 	}
 }
 
@@ -54,6 +57,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+		m.help.Width = msg.Width
 
 		return m, nil
 
@@ -81,6 +85,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.cursor < len(m.years)-1 {
 				m.cursor++
 			}
+
+		case key.Matches(msg, keys.help):
+			m.help.ShowAll = !m.help.ShowAll
 
 		case key.Matches(msg, keys.quit):
 			return m, tea.Quit
@@ -154,11 +161,7 @@ func (m Model) View() string {
 	}
 
 	b.WriteString("\n")
-
-	help := lipgloss.NewStyle().Faint(true).Render(
-		"  j/k navigate • enter open • q quit",
-	)
-	b.WriteString(help + "\n")
+	b.WriteString("  " + m.help.View(keys) + "\n")
 
 	return b.String()
 }
@@ -206,23 +209,45 @@ func sortedYears(m map[int][]discover.ExerciseInfo) []int {
 	return years
 }
 
-// local key bindings referencing the shared keys.
-var keys = struct {
-	up, down, quit, enter, right key.Binding
-}{
+// keyMap defines the dashboard key bindings and implements key.Map for bubbles/help.
+type keyMap struct {
+	up, down, quit, enter, right, help key.Binding
+}
+
+func (k keyMap) ShortHelp() []key.Binding {
+	return []key.Binding{k.up, k.down, k.enter, k.help, k.quit}
+}
+
+func (k keyMap) FullHelp() [][]key.Binding {
+	return [][]key.Binding{
+		{k.up, k.down, k.enter, k.right},
+		{k.help, k.quit},
+	}
+}
+
+var keys = keyMap{
 	up: key.NewBinding(
 		key.WithKeys("up", "k"),
+		key.WithHelp("↑/k", "up"),
 	),
 	down: key.NewBinding(
 		key.WithKeys("down", "j"),
-	),
-	quit: key.NewBinding(
-		key.WithKeys("q", "esc"),
+		key.WithHelp("↓/j", "down"),
 	),
 	enter: key.NewBinding(
 		key.WithKeys("enter"),
+		key.WithHelp("enter", "open"),
 	),
 	right: key.NewBinding(
 		key.WithKeys("right", "l"),
+		key.WithHelp("→/l", "open"),
+	),
+	help: key.NewBinding(
+		key.WithKeys("?"),
+		key.WithHelp("?", "help"),
+	),
+	quit: key.NewBinding(
+		key.WithKeys("q", "esc"),
+		key.WithHelp("q", "quit"),
 	),
 }

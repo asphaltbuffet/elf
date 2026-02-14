@@ -5,23 +5,20 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/asphaltbuffet/elf/internal/tui/components"
 	"github.com/asphaltbuffet/elf/internal/tui/dashboard"
 	"github.com/asphaltbuffet/elf/internal/tui/exerciseview"
-	"github.com/asphaltbuffet/elf/internal/tui/help"
 	"github.com/asphaltbuffet/elf/internal/tui/nav"
 	"github.com/asphaltbuffet/elf/internal/tui/yearview"
 	"github.com/asphaltbuffet/elf/pkg/analyze"
 	"github.com/asphaltbuffet/elf/pkg/config"
 )
 
-// App is the root TUI model managing a navigation stack and optional modal overlay.
+// App is the root TUI model managing a navigation stack.
 type App struct {
 	stack  []tea.Model
-	modal  tea.Model
 	cfg    config.Config
 	width  int
 	height int
@@ -107,29 +104,10 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		return a, nil
 
-	case help.CloseModalMsg:
-		a.modal = nil
-
-		return a, nil
-
 	case tea.KeyMsg:
 		if msg.String() == "ctrl+c" {
 			return a, tea.Quit
 		}
-
-		if key.Matches(msg, Keys.Help) && a.modal == nil {
-			h := help.New()
-			a.modal = h
-
-			return a, nil
-		}
-	}
-
-	if a.modal != nil {
-		var cmd tea.Cmd
-		a.modal, cmd = a.modal.Update(msg)
-
-		return a, cmd
 	}
 
 	if len(a.stack) > 0 {
@@ -172,11 +150,5 @@ func (a App) View() string {
 		return "Loading..."
 	}
 
-	view := a.stack[len(a.stack)-1].View()
-
-	if a.modal != nil {
-		view = a.modal.View()
-	}
-
-	return view
+	return a.stack[len(a.stack)-1].View()
 }

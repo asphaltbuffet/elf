@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -36,6 +37,7 @@ type Model struct {
 	cursor    int
 	width     int
 	height    int
+	help      help.Model
 }
 
 // New creates a new year view model.
@@ -44,6 +46,7 @@ func New(cfg config.Config, year int, exercises []discover.ExerciseInfo) Model {
 		cfg:       cfg,
 		year:      year,
 		exercises: exercises,
+		help:      help.New(),
 	}
 }
 
@@ -56,6 +59,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+		m.help.Width = msg.Width
 
 		return m, nil
 
@@ -77,6 +81,9 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.cursor < len(m.exercises)-1 {
 			m.cursor++
 		}
+
+	case key.Matches(msg, keys.help):
+		m.help.ShowAll = !m.help.ShowAll
 
 	case key.Matches(msg, keys.back):
 		return m, popScreen
@@ -175,11 +182,7 @@ func (m Model) View() string {
 	}
 
 	b.WriteString("\n")
-
-	help := lipgloss.NewStyle().Faint(true).Render(
-		"  j/k navigate • s solve • t test • b benchmark • esc back • q quit",
-	)
-	b.WriteString(help + "\n")
+	b.WriteString("  " + m.help.View(keys) + "\n")
 
 	return b.String()
 }
@@ -241,18 +244,67 @@ func popScreen() tea.Msg {
 	return nav.PopScreenMsg{}
 }
 
-var keys = struct {
-	up, down, quit, enter, right, back key.Binding
-	solve, test, bench, analyze        key.Binding
-}{
-	up:      key.NewBinding(key.WithKeys("up", "k")),
-	down:    key.NewBinding(key.WithKeys("down", "j")),
-	quit:    key.NewBinding(key.WithKeys("q")),
-	enter:   key.NewBinding(key.WithKeys("enter")),
-	right:   key.NewBinding(key.WithKeys("right", "l")),
-	back:    key.NewBinding(key.WithKeys("esc", "h")),
-	solve:   key.NewBinding(key.WithKeys("s")),
-	test:    key.NewBinding(key.WithKeys("t")),
-	bench:   key.NewBinding(key.WithKeys("b")),
-	analyze: key.NewBinding(key.WithKeys("a")),
+// keyMap defines the year view key bindings and implements key.Map for bubbles/help.
+type keyMap struct {
+	up, down, quit, enter, right, back, help key.Binding
+	solve, test, bench, analyze              key.Binding
+}
+
+func (k keyMap) ShortHelp() []key.Binding {
+	return []key.Binding{k.up, k.down, k.solve, k.test, k.help, k.quit}
+}
+
+func (k keyMap) FullHelp() [][]key.Binding {
+	return [][]key.Binding{
+		{k.up, k.down, k.enter, k.right},
+		{k.solve, k.test, k.bench, k.analyze},
+		{k.back, k.help, k.quit},
+	}
+}
+
+var keys = keyMap{
+	up: key.NewBinding(
+		key.WithKeys("up", "k"),
+		key.WithHelp("↑/k", "up"),
+	),
+	down: key.NewBinding(
+		key.WithKeys("down", "j"),
+		key.WithHelp("↓/j", "down"),
+	),
+	enter: key.NewBinding(
+		key.WithKeys("enter"),
+		key.WithHelp("enter", "select"),
+	),
+	right: key.NewBinding(
+		key.WithKeys("right", "l"),
+		key.WithHelp("→/l", "open"),
+	),
+	back: key.NewBinding(
+		key.WithKeys("esc", "h"),
+		key.WithHelp("esc/h", "back"),
+	),
+	solve: key.NewBinding(
+		key.WithKeys("s"),
+		key.WithHelp("s", "solve"),
+	),
+	test: key.NewBinding(
+		key.WithKeys("t"),
+		key.WithHelp("t", "test"),
+	),
+	bench: key.NewBinding(
+		key.WithKeys("b"),
+		key.WithHelp("b", "benchmark"),
+	),
+	analyze: key.NewBinding(
+		key.WithKeys("a"),
+		key.WithHelp("a", "analyze"),
+	),
+	help: key.NewBinding(
+		key.WithKeys("?"),
+		key.WithHelp("?", "help"),
+	),
+	quit: key.NewBinding(
+		key.WithKeys("q"),
+		key.WithHelp("q", "quit"),
+	),
 }

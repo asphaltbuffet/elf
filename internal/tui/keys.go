@@ -35,7 +35,7 @@ var Keys = struct {
 	),
 	Help: key.NewBinding(
 		key.WithKeys("?"),
-		key.WithHelp("?", "help"),
+		key.WithHelp("?", "toggle help"),
 	),
 	Solve: key.NewBinding(
 		key.WithKeys("s"),

@@ -94,12 +94,11 @@ The TUI uses [bubbletea](https://github.com/charmbracelet/bubbletea) with a navi
 
 | Package | Purpose |
 |---------|---------|
-| `internal/tui/` | Root `App` model with nav stack (`[]tea.Model`), modal overlay, `Run()` entry point |
+| `internal/tui/` | Root `App` model with nav stack (`[]tea.Model`), `Run()` entry point |
 | `internal/tui/dashboard/` | Year list with progress bars, config summary |
 | `internal/tui/yearview/` | Exercise table for a single year, action keybindings (s/t/b/a) |
 | `internal/tui/exerciseview/` | Runs solve/test/benchmark with result streaming via channel |
 | `internal/tui/components/` | Reusable: `ResultList` (viewport), `Progress` (spinner), `OpenFile` (xdg-open) |
-| `internal/tui/help/` | `?` key modal overlay with keybinding reference |
 | `internal/tui/discover/` | Filesystem scanner: reads `info.json` files, groups exercises by year |
 | `internal/tui/nav/` | Shared message types (`PushScreenMsg`, `PopScreenMsg`) to prevent import cycles |
 
