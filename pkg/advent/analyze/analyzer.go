@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 
 	"github.com/asphaltbuffet/elf/pkg/advent"
-	"github.com/asphaltbuffet/elf/pkg/krampus"
+	"github.com/asphaltbuffet/elf/pkg/config"
 )
 
 type Analyzer struct {
@@ -21,9 +21,9 @@ type Analyzer struct {
 	logger *slog.Logger
 }
 
-func NewAnalyzer(config krampus.ExerciseConfiguration, opts ...func(*Analyzer)) (*Analyzer, error) {
+func NewAnalyzer(cfg config.ExerciseConfiguration, opts ...func(*Analyzer)) (*Analyzer, error) {
 	analyzer := &Analyzer{
-		logger: config.GetLogger(),
+		logger: cfg.GetLogger(),
 	}
 
 	for _, opt := range opts {

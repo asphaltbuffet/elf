@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	mocks "github.com/asphaltbuffet/elf/mocks/krampus"
+	mocks "github.com/asphaltbuffet/elf/mocks/config"
 	"github.com/asphaltbuffet/elf/pkg/advent"
 )
 

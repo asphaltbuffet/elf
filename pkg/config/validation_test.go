@@ -1,4 +1,4 @@
-package krampus
+package config
 
 import (
 	"errors"

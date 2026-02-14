@@ -13,7 +13,7 @@ import (
 	"github.com/schollz/progressbar/v3"
 	"github.com/spf13/afero"
 
-	"github.com/asphaltbuffet/elf/pkg/krampus"
+	"github.com/asphaltbuffet/elf/pkg/config"
 	"github.com/asphaltbuffet/elf/pkg/runners"
 	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
@@ -24,12 +24,12 @@ type Benchmarker struct {
 	exerciseBaseDir string
 }
 
-func NewBenchmarker(config krampus.ExerciseConfiguration, options ...func(*Benchmarker)) (*Benchmarker, error) {
+func NewBenchmarker(cfg config.ExerciseConfiguration, options ...func(*Benchmarker)) (*Benchmarker, error) {
 	b := &Benchmarker{
 		Exercise: &Exercise{
-			appFs:    config.GetFs(),
+			appFs:    cfg.GetFs(),
 			Language: "go",
-			logger:   config.GetLogger().With(slog.String("fn", "benchmark")),
+			logger:   cfg.GetLogger().With(slog.String("fn", "benchmark")),
 			writer:   os.Stdout,
 		},
 	}

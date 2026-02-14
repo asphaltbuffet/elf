@@ -1,21 +1,21 @@
-package krampus_test
+package config_test
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/asphaltbuffet/elf/pkg/krampus"
+	"github.com/asphaltbuffet/elf/pkg/config"
 )
 
-func TestConfigKey_String(t *testing.T) {
+func TestKey_String(t *testing.T) {
 	tests := []struct {
 		name string
-		key  krampus.ConfigKey
+		key  config.Key
 		want string
 	}{
-		{"one word", krampus.LanguageKey, "language"},
-		{"nested", krampus.AdventDirKey, "advent.dir"},
+		{"one word", config.LanguageKey, "language"},
+		{"nested", config.AdventDirKey, "advent.dir"},
 		{"unknown", "fake", "fake"},
 	}
 	for _, tt := range tests {

@@ -13,7 +13,7 @@ import (
 	"github.com/lmittmann/tint"
 	"github.com/spf13/afero"
 
-	"github.com/asphaltbuffet/elf/pkg/krampus"
+	"github.com/asphaltbuffet/elf/pkg/config"
 	"github.com/asphaltbuffet/elf/pkg/runners"
 )
 
@@ -27,9 +27,9 @@ var (
 	ErrLoadInfo          = errors.New("load info")
 )
 
-func New(config krampus.ExerciseConfiguration, options ...func(*Exercise)) (*Exercise, error) {
+func New(cfg config.ExerciseConfiguration, options ...func(*Exercise)) (*Exercise, error) {
 	e := &Exercise{
-		logger: config.GetLogger().With(slog.String("fn", "exercise")),
+		logger: cfg.GetLogger().With(slog.String("fn", "exercise")),
 		writer: os.Stdout,
 	}
 
@@ -37,7 +37,7 @@ func New(config krampus.ExerciseConfiguration, options ...func(*Exercise)) (*Exe
 		option(e)
 	}
 
-	e.appFs = config.GetFs()
+	e.appFs = cfg.GetFs()
 
 	switch {
 	case e.Language == "":

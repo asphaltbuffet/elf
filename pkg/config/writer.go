@@ -1,4 +1,4 @@
-package krampus
+package config
 
 import (
 	"fmt"
@@ -46,7 +46,7 @@ func (c *Config) SetToken(token string) {
 }
 
 // SetValue sets a configuration value by key.
-func (c *Config) SetValue(key ConfigKey, value any) {
+func (c *Config) SetValue(key Key, value any) {
 	c.viper.Set(string(key), value)
 }
 

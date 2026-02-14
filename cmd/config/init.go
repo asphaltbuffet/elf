@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
-	"github.com/asphaltbuffet/elf/pkg/krampus"
+	elfcfg "github.com/asphaltbuffet/elf/pkg/config"
 )
 
 var initCmd *cobra.Command
@@ -54,9 +54,9 @@ func runInitCmd(cmd *cobra.Command, _ []string) error {
 			return fmt.Errorf("getting user config directory: %w", err)
 		}
 
-		configPath = filepath.Join(configDir, "elf", krampus.DefaultConfigFileBase+"."+krampus.DefaultConfigExt)
+		configPath = filepath.Join(configDir, "elf", elfcfg.DefaultConfigFileBase+"."+elfcfg.DefaultConfigExt)
 	} else {
-		configPath = krampus.DefaultConfigFileBase + "." + krampus.DefaultConfigExt
+		configPath = elfcfg.DefaultConfigFileBase + "." + elfcfg.DefaultConfigExt
 	}
 
 	// Check if file exists
@@ -77,7 +77,7 @@ func runInitCmd(cmd *cobra.Command, _ []string) error {
 	}
 
 	// Generate and write config
-	content := krampus.GenerateDefaultConfig()
+	content := elfcfg.GenerateDefaultConfig()
 
 	// Check if we're in interactive mode
 	if isInteractive() {

@@ -1,4 +1,4 @@
-package krampus
+package config
 
 import (
 	"log/slog"
@@ -57,7 +57,7 @@ type ConfigurationWriter interface {
 	SetToken(token string)
 
 	// SetValue sets a configuration value by key.
-	SetValue(key ConfigKey, value any)
+	SetValue(key Key, value any)
 
 	// GetAllSettings returns all configuration settings as a map.
 	GetAllSettings() map[string]any

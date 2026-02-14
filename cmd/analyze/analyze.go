@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	advent "github.com/asphaltbuffet/elf/pkg/advent/analyze"
-	"github.com/asphaltbuffet/elf/pkg/krampus"
+	"github.com/asphaltbuffet/elf/pkg/config"
 )
 
 // Analyzer is the interface for benchmark analysis.
@@ -44,7 +44,7 @@ func runAnalyzeCmd(cmd *cobra.Command, args []string) error {
 
 	cf, _ := cmd.Flags().GetString("config-file")
 
-	cfg, err := krampus.NewConfig(krampus.WithFile(cf))
+	cfg, err := config.NewConfig(config.WithFile(cf))
 	if err != nil {
 		return err
 	}

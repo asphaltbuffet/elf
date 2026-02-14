@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	krampusMocks "github.com/asphaltbuffet/elf/mocks/krampus"
+	configMocks "github.com/asphaltbuffet/elf/mocks/config"
 	mocks "github.com/asphaltbuffet/elf/mocks/runners"
 	"github.com/asphaltbuffet/elf/pkg/runners"
 	"github.com/asphaltbuffet/elf/pkg/tasks"
@@ -216,7 +216,7 @@ func TestNewBenchmarker(t *testing.T) {
 			teardownSubTest := setupSubTest(t)
 			defer teardownSubTest(t)
 
-			mockConfig := krampusMocks.NewMockExerciseConfiguration(t)
+			mockConfig := configMocks.NewMockExerciseConfiguration(t)
 
 			mockConfig.EXPECT().GetFs().Return(testFs)
 			mockConfig.EXPECT().GetLogger().Return(slog.New(slog.NewTextHandler(io.Discard, nil)))

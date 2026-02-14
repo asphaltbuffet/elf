@@ -9,7 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/asphaltbuffet/elf/pkg/krampus"
+	elfcfg "github.com/asphaltbuffet/elf/pkg/config"
 )
 
 var updateTokenCmd *cobra.Command
@@ -49,7 +49,7 @@ func runUpdateTokenCmd(cmd *cobra.Command, _ []string) error {
 	tokenFlag, _ := cmd.Flags().GetString("token")
 	cfgFile, _ := cmd.Flags().GetString("config-file")
 
-	cfg, err := krampus.NewConfig(krampus.WithFile(cfgFile))
+	cfg, err := elfcfg.NewConfig(elfcfg.WithFile(cfgFile))
 	if err != nil {
 		return fmt.Errorf("loading configuration: %w", err)
 	}
@@ -98,8 +98,8 @@ func promptForToken(cmd *cobra.Command, currentToken string) (string, error) {
 	cmd.Println("  4. Copy the value of the 'session' cookie")
 	cmd.Println()
 
-	if currentToken != "" && currentToken != krampus.MaskToken("") {
-		cmd.Printf("Current token: %s\n", krampus.MaskToken(currentToken))
+	if currentToken != "" && currentToken != elfcfg.MaskToken("") {
+		cmd.Printf("Current token: %s\n", elfcfg.MaskToken(currentToken))
 	}
 
 	cmd.Print("Enter new token: ")

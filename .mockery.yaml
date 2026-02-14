@@ -21,7 +21,7 @@ packages:
   github.com/asphaltbuffet/elf/cmd/analyze:
     interfaces:
       Analyzer: {}
-  github.com/asphaltbuffet/elf/pkg/krampus:
+  github.com/asphaltbuffet/elf/pkg/config:
     interfaces:
       ConfigurationReader: {}
       DownloadConfiguration: {}

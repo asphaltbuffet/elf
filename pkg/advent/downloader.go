@@ -17,8 +17,8 @@ import (
 	"github.com/lmittmann/tint"
 	"github.com/spf13/afero"
 
-	"github.com/asphaltbuffet/elf/pkg/krampus"
 	"github.com/asphaltbuffet/elf/internal/utilities"
+	"github.com/asphaltbuffet/elf/pkg/config"
 )
 
 const (
@@ -52,8 +52,8 @@ type Overwrites struct {
 	Input bool
 }
 
-func NewDownloader(config krampus.DownloadConfiguration, options ...func(*Downloader)) (*Downloader, error) {
-	if config == nil {
+func NewDownloader(cfg config.DownloadConfiguration, options ...func(*Downloader)) (*Downloader, error) {
+	if cfg == nil {
 		return nil, ErrNilConfiguration
 	}
 
@@ -61,22 +61,22 @@ func NewDownloader(config krampus.DownloadConfiguration, options ...func(*Downlo
 		Exercise: &Exercise{
 			ID:       "",
 			Title:    "",
-			Language: config.GetLanguage(),
+			Language: cfg.GetLanguage(),
 			Year:     0,
 			Day:      0,
 			URL:      "",
 			Data:     nil,
 			Path:     "",
 			runner:   nil, // not used when downloading
-			appFs:    config.GetFs(),
-			logger:   config.GetLogger(),
+			appFs:    cfg.GetFs(),
+			logger:   cfg.GetLogger(),
 		},
-		cacheDir:        config.GetCacheDir(),
-		cfgDir:          config.GetConfigDir(),
-		exerciseBaseDir: config.GetBaseDir(),
+		cacheDir:        cfg.GetCacheDir(),
+		cfgDir:          cfg.GetConfigDir(),
+		exerciseBaseDir: cfg.GetBaseDir(),
 		rClient:         resty.New().SetBaseURL("https://adventofcode.com"),
-		token:           config.GetToken(),
-		inputFileName:   config.GetInputFilename(),
+		token:           cfg.GetToken(),
+		inputFileName:   cfg.GetInputFilename(),
 	}
 
 	for _, option := range options {

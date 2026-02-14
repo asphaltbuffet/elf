@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/asphaltbuffet/elf/pkg/advent"
-	"github.com/asphaltbuffet/elf/pkg/krampus"
+	"github.com/asphaltbuffet/elf/pkg/config"
 	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
@@ -19,10 +19,10 @@ var (
 	noTest   bool
 
 	// Factory variables for testing.
-	makeConfig = func(cf string) (krampus.Config, error) {
-		return krampus.NewConfig(krampus.WithFile(cf))
+	makeConfig = func(cf string) (config.Config, error) {
+		return config.NewConfig(config.WithFile(cf))
 	}
-	makeChallenge = func(cfg krampus.ExerciseConfiguration, lang, dir, inputFile string) (Challenge, error) {
+	makeChallenge = func(cfg config.ExerciseConfiguration, lang, dir, inputFile string) (Challenge, error) {
 		return advent.New(cfg,
 			advent.WithLanguage(lang),
 			advent.WithDir(dir),

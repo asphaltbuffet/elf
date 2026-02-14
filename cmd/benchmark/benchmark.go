@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/asphaltbuffet/elf/pkg/advent"
-	"github.com/asphaltbuffet/elf/pkg/krampus"
+	"github.com/asphaltbuffet/elf/pkg/config"
 	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
@@ -54,7 +54,7 @@ func runBenchmarkCmd(cmd *cobra.Command, args []string) error {
 
 	cf, _ := cmd.Flags().GetString("config-file")
 
-	cfg, err := krampus.NewConfig(krampus.WithFile(cf))
+	cfg, err := config.NewConfig(config.WithFile(cf))
 	if err != nil {
 		return err
 	}

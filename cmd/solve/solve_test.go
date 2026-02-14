@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	mocks "github.com/asphaltbuffet/elf/mocks/solve"
-	"github.com/asphaltbuffet/elf/pkg/krampus"
+	"github.com/asphaltbuffet/elf/pkg/config"
 )
 
 func TestGetSolveCmd(t *testing.T) {
@@ -28,8 +28,8 @@ func TestGetSolveCmd(t *testing.T) {
 // resetState restores package-level variables and factory functions to defaults.
 func resetState(
 	t *testing.T,
-	origMakeConfig func(string) (krampus.Config, error),
-	origMakeChallenge func(krampus.ExerciseConfiguration, string, string, string) (Challenge, error),
+	origMakeConfig func(string) (config.Config, error),
+	origMakeChallenge func(config.ExerciseConfiguration, string, string, string) (Challenge, error),
 ) {
 	t.Helper()
 
@@ -50,8 +50,8 @@ func Test_runSolveCmd(t *testing.T) {
 	t.Run("config error", func(t *testing.T) {
 		resetState(t, origMakeConfig, origMakeChallenge)
 
-		makeConfig = func(_ string) (krampus.Config, error) {
-			return krampus.Config{}, errors.New("bad config")
+		makeConfig = func(_ string) (config.Config, error) {
+			return config.Config{}, errors.New("bad config")
 		}
 
 		cmd := GetSolveCmd()
@@ -65,10 +65,10 @@ func Test_runSolveCmd(t *testing.T) {
 	t.Run("challenge creation error", func(t *testing.T) {
 		resetState(t, origMakeConfig, origMakeChallenge)
 
-		makeConfig = func(_ string) (krampus.Config, error) {
-			return krampus.NewConfig()
+		makeConfig = func(_ string) (config.Config, error) {
+			return config.NewConfig()
 		}
-		makeChallenge = func(_ krampus.ExerciseConfiguration, _, _, _ string) (Challenge, error) {
+		makeChallenge = func(_ config.ExerciseConfiguration, _, _, _ string) (Challenge, error) {
 			return nil, errors.New("exercise not found")
 		}
 
@@ -83,14 +83,14 @@ func Test_runSolveCmd(t *testing.T) {
 	t.Run("solve error prints to stderr", func(t *testing.T) {
 		resetState(t, origMakeConfig, origMakeChallenge)
 
-		makeConfig = func(_ string) (krampus.Config, error) {
-			return krampus.NewConfig()
+		makeConfig = func(_ string) (config.Config, error) {
+			return config.NewConfig()
 		}
 
 		mockCh := mocks.NewMockChallenge(t)
 		mockCh.EXPECT().Solve(false).Return(nil, errors.New("solve failed"))
 
-		makeChallenge = func(_ krampus.ExerciseConfiguration, _, _, _ string) (Challenge, error) {
+		makeChallenge = func(_ config.ExerciseConfiguration, _, _, _ string) (Challenge, error) {
 			return mockCh, nil
 		}
 
@@ -108,14 +108,14 @@ func Test_runSolveCmd(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
 		resetState(t, origMakeConfig, origMakeChallenge)
 
-		makeConfig = func(_ string) (krampus.Config, error) {
-			return krampus.NewConfig()
+		makeConfig = func(_ string) (config.Config, error) {
+			return config.NewConfig()
 		}
 
 		mockCh := mocks.NewMockChallenge(t)
 		mockCh.EXPECT().Solve(false).Return(nil, nil)
 
-		makeChallenge = func(_ krampus.ExerciseConfiguration, _, _, _ string) (Challenge, error) {
+		makeChallenge = func(_ config.ExerciseConfiguration, _, _, _ string) (Challenge, error) {
 			return mockCh, nil
 		}
 
@@ -130,15 +130,15 @@ func Test_runSolveCmd(t *testing.T) {
 	t.Run("language flag used over config default", func(t *testing.T) {
 		resetState(t, origMakeConfig, origMakeChallenge)
 
-		makeConfig = func(_ string) (krampus.Config, error) {
-			return krampus.NewConfig()
+		makeConfig = func(_ string) (config.Config, error) {
+			return config.NewConfig()
 		}
 
 		var gotLang string
 		mockCh := mocks.NewMockChallenge(t)
 		mockCh.EXPECT().Solve(false).Return(nil, nil)
 
-		makeChallenge = func(_ krampus.ExerciseConfiguration, lang, _, _ string) (Challenge, error) {
+		makeChallenge = func(_ config.ExerciseConfiguration, lang, _, _ string) (Challenge, error) {
 			gotLang = lang
 			return mockCh, nil
 		}
@@ -158,14 +158,14 @@ func Test_runSolveCmd(t *testing.T) {
 	t.Run("no-test flag passes true to Solve", func(t *testing.T) {
 		resetState(t, origMakeConfig, origMakeChallenge)
 
-		makeConfig = func(_ string) (krampus.Config, error) {
-			return krampus.NewConfig()
+		makeConfig = func(_ string) (config.Config, error) {
+			return config.NewConfig()
 		}
 
 		mockCh := mocks.NewMockChallenge(t)
 		mockCh.EXPECT().Solve(true).Return(nil, nil)
 
-		makeChallenge = func(_ krampus.ExerciseConfiguration, _, _, _ string) (Challenge, error) {
+		makeChallenge = func(_ config.ExerciseConfiguration, _, _, _ string) (Challenge, error) {
 			return mockCh, nil
 		}
 
@@ -183,15 +183,15 @@ func Test_runSolveCmd(t *testing.T) {
 	t.Run("input flag used when set", func(t *testing.T) {
 		resetState(t, origMakeConfig, origMakeChallenge)
 
-		makeConfig = func(_ string) (krampus.Config, error) {
-			return krampus.NewConfig()
+		makeConfig = func(_ string) (config.Config, error) {
+			return config.NewConfig()
 		}
 
 		var gotInput string
 		mockCh := mocks.NewMockChallenge(t)
 		mockCh.EXPECT().Solve(false).Return(nil, nil)
 
-		makeChallenge = func(_ krampus.ExerciseConfiguration, _, _, inputFile string) (Challenge, error) {
+		makeChallenge = func(_ config.ExerciseConfiguration, _, _, inputFile string) (Challenge, error) {
 			gotInput = inputFile
 			return mockCh, nil
 		}
