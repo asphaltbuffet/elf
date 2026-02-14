@@ -15,6 +15,7 @@ import (
 
 	"github.com/asphaltbuffet/elf/pkg/config"
 	"github.com/asphaltbuffet/elf/pkg/runners"
+	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
 var (
@@ -70,6 +71,12 @@ func WithLanguage(lang string) func(*Exercise) {
 func WithInputFile(file string) func(*Exercise) {
 	return func(e *Exercise) {
 		e.customInput = file
+	}
+}
+
+func WithResultCallback(fn func(tasks.Result)) func(*Exercise) {
+	return func(e *Exercise) {
+		e.onResult = fn
 	}
 }
 

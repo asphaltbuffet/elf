@@ -57,6 +57,12 @@ func WithExerciseDir(dir string) func(*Benchmarker) {
 	}
 }
 
+func WithBenchmarkResultCallback(fn func(tasks.Result)) func(*Benchmarker) {
+	return func(b *Benchmarker) {
+		b.onResult = fn
+	}
+}
+
 func (b *Benchmarker) Benchmark(afs afero.Fs, iterations int) ([]tasks.Result, error) {
 	logger := b.logger
 	normFactor := NormalizationFactor()
@@ -200,7 +206,10 @@ func (b *Benchmarker) runBenchmark(iterations int) ([]tasks.Result, *Implementat
 		}
 
 		if benchResult.Ok && benchResult.Output != "" {
-			r := handleTaskResult(os.Stdout, benchResult, "")
+			r := handleTaskResult(b.writer, benchResult, "")
+			if b.onResult != nil {
+				b.onResult(r)
+			}
 			results = append(results, r)
 
 			metricsResults[r.Part] = append(metricsResults[r.Part], benchResult.Duration)
