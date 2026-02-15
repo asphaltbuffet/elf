@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -100,9 +99,9 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return a, nil
 		}
 
-		_ = components.OpenFile(msg.path)
-
-		return a, nil
+		return a, tea.Exec(components.NewImageDisplay(msg.path), func(err error) tea.Msg {
+			return imageDisplayDoneMsg{err: err}
+		})
 
 	case tea.KeyMsg:
 		if msg.String() == "ctrl+c" {
@@ -125,9 +124,13 @@ type analyzeDoneMsg struct {
 	err  error
 }
 
+type imageDisplayDoneMsg struct {
+	err error
+}
+
 func runAnalyze(cfg config.Config, yearDir string) tea.Cmd {
 	return func() tea.Msg {
-		outFile := filepath.Join(os.TempDir(), "elf-analysis.png")
+		outFile := filepath.Join(yearDir, "run-times.png")
 
 		aa, err := analyze.NewAnalyzer(&cfg,
 			analyze.WithDirectory(yearDir),

@@ -3,6 +3,7 @@ package exerciseview
 import (
 	"testing"
 
+	"github.com/charmbracelet/bubbles/help"
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/asphaltbuffet/elf/internal/tui/components"
@@ -182,6 +183,14 @@ func TestWindowSizeMsg(t *testing.T) {
 	if cmd != nil {
 		t.Errorf("expected nil cmd for WindowSizeMsg")
 	}
+}
+
+func helpModel() help.Model {
+	return help.New()
+}
+
+func windowSizeMsg(w, h int) tea.WindowSizeMsg {
+	return tea.WindowSizeMsg{Width: w, Height: h}
 }
 
 func TestProgressStopsAfterDone(t *testing.T) {

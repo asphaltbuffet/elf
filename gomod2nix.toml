@@ -16,6 +16,9 @@ schema = 3
   [mod."git.sr.ht/~sbinet/gg"]
     version = "v0.7.0"
     hash = "sha256-3iLPzAmcjbuvjdOWaYvpynQJR6lq3ymqnWzvJceYHlk="
+  [mod."github.com/BourgeoisBear/rasterm"]
+    version = "v1.1.2"
+    hash = "sha256-fYV85hVcIAT01xriEpWn0f/YyGgsc7W+0SW6iz9K/+A="
   [mod."github.com/ajstarks/svgo"]
     version = "v0.0.0-20211024235047-1546f124cd8b"
     hash = "sha256-sPwt5sImKFk949TzUeYEF2UiJDqHxXFJKRL2Y7JWJ6Y="

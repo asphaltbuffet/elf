@@ -3,6 +3,7 @@ module github.com/asphaltbuffet/elf
 go 1.25.4
 
 require (
+	github.com/BourgeoisBear/rasterm v1.1.2
 	github.com/charmbracelet/bubbles v1.0.0
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/fang v0.4.4
