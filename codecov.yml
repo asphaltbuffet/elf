@@ -1,0 +1,42 @@
+coverage:
+  status:
+    project:
+      default:
+        target: 80%
+        threshold: 5%
+
+component_management:
+  default_rules:
+    statuses:
+      - type: project
+        target: auto
+        branches:
+          - "!main"
+  individual_components:
+    - component_id: module_tui
+      name: tui
+      paths:
+        - internal/tui/**
+    - component_id: module_cli
+      name: cli
+      paths:
+        - cmd/**
+    - component_id: module_benchmark
+      name: benchmarker
+      paths:
+        - cmd/benchmark/**
+        - pkg/exercise/benchmarker*.go
+    - component_id: module_download
+      name: downloader
+      paths:
+        - cmd/download/**
+        - pkg/exercise/downloader*.go
+        - pkg/exercise/html*.go
+    - component_id: module_solve
+      name: solver
+      paths:
+        - cmd/solve/**
+        - cmd/test/**
+        - pkg/exercise/solver*.go
+        - pkg/exercise/result*.go
+
