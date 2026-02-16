@@ -12,7 +12,7 @@ import (
 )
 
 func (e *Exercise) Test() ([]tasks.Result, error) {
-	if *e == (Exercise{}) {
+	if e.Year == 0 && e.Day == 0 && e.Title == "" {
 		return nil, errors.New("exercise is empty")
 	}
 
@@ -61,6 +61,9 @@ func (e *Exercise) runTests() ([]tasks.Result, error) {
 		}
 
 		r := handleTaskResult(e.writer, result, t.expected)
+		if e.onResult != nil {
+			e.onResult(r)
+		}
 		results = append(results, r)
 	}
 

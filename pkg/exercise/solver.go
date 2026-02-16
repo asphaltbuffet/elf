@@ -81,6 +81,9 @@ func (e *Exercise) runMainTasks() ([]tasks.Result, error) {
 		}
 
 		r := handleTaskResult(e.writer, result, t.expected)
+		if e.onResult != nil {
+			e.onResult(r)
+		}
 		results = append(results, r)
 	}
 

@@ -3,6 +3,7 @@ package exercise
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"math"
 	"os"
@@ -54,6 +55,18 @@ func NewBenchmarker(cfg config.ExerciseConfiguration, options ...func(*Benchmark
 func WithExerciseDir(dir string) func(*Benchmarker) {
 	return func(b *Benchmarker) {
 		b.Path = dir
+	}
+}
+
+func WithBenchmarkWriter(w io.Writer) func(*Benchmarker) {
+	return func(b *Benchmarker) {
+		b.writer = w
+	}
+}
+
+func WithBenchmarkResultCallback(fn func(tasks.Result)) func(*Benchmarker) {
+	return func(b *Benchmarker) {
+		b.onResult = fn
 	}
 }
 
@@ -200,7 +213,10 @@ func (b *Benchmarker) runBenchmark(iterations int) ([]tasks.Result, *Implementat
 		}
 
 		if benchResult.Ok && benchResult.Output != "" {
-			r := handleTaskResult(os.Stdout, benchResult, "")
+			r := handleTaskResult(b.writer, benchResult, "")
+			if b.onResult != nil {
+				b.onResult(r)
+			}
 			results = append(results, r)
 
 			metricsResults[r.Part] = append(metricsResults[r.Part], benchResult.Duration)

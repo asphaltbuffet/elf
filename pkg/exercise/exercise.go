@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/afero"
 
 	"github.com/asphaltbuffet/elf/pkg/runners"
+	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
 type Exercise struct {
@@ -20,10 +21,11 @@ type Exercise struct {
 	Data     *Data  `json:"data"`
 	Path     string `json:"-"`
 
-	runner runners.Runner `json:"-"`
-	appFs  afero.Fs       `json:"-"`
-	logger *slog.Logger   `json:"-"`
-	writer io.Writer      `json:"-"`
+	runner   runners.Runner     `json:"-"`
+	appFs    afero.Fs           `json:"-"`
+	logger   *slog.Logger       `json:"-"`
+	writer   io.Writer          `json:"-"`
+	onResult func(tasks.Result) `json:"-"`
 
 	customInput string `json:"-"`
 }
@@ -63,7 +65,7 @@ func (e *Exercise) LogValue() slog.Value {
 }
 
 func (e *Exercise) String() string {
-	if *e == *(&Exercise{}) { //nolint:staticcheck // this is needed for the comparison
+	if e.Year == 0 && e.Day == 0 && e.Title == "" {
 		return "INVALID EXERCISE"
 	}
 
