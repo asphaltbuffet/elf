@@ -6,7 +6,7 @@ require (
 	github.com/BourgeoisBear/rasterm v1.1.2
 	github.com/charmbracelet/bubbles v1.0.0
 	github.com/charmbracelet/bubbletea v1.3.10
-	github.com/charmbracelet/fang v0.4.4
+	github.com/charmbracelet/fang v1.0.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/go-resty/resty/v2 v2.17.1
 	github.com/muesli/mango-cobra v1.3.0
