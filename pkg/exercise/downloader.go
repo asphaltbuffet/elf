@@ -27,12 +27,11 @@ const (
 
 // Sentinel errors for downloader construction and HTTP operations.
 var (
-	ErrNotConfigured    = errors.New("not configured")
-	ErrNilConfiguration = errors.New("nil configuration")
-	ErrHTTPRequest      = errors.New("http request")
-	ErrHTTPResponse     = errors.New("http response")
-	ErrInvalidURL       = errors.New("invalid URL")
-	ErrInvalidLanguage  = errors.New("invalid language")
+	ErrNotConfigured   = errors.New("not configured")
+	ErrHTTPRequest     = errors.New("http request")
+	ErrHTTPResponse    = errors.New("http response")
+	ErrInvalidURL      = errors.New("invalid URL")
+	ErrInvalidLanguage = errors.New("invalid language")
 )
 
 // Downloader fetches challenge metadata, input, and implementation templates from the AoC website.
@@ -57,11 +56,7 @@ type Overwrites struct {
 }
 
 // NewDownloader creates a Downloader, applies options, and validates the configuration.
-func NewDownloader(cfg config.DownloadConfiguration, options ...func(*Downloader)) (*Downloader, error) {
-	if cfg == nil {
-		return nil, ErrNilConfiguration
-	}
-
+func NewDownloader(cfg config.Config, options ...func(*Downloader)) (*Downloader, error) {
 	d := &Downloader{
 		Exercise: &Exercise{
 			Language: cfg.GetLanguage(),

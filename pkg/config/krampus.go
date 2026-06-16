@@ -227,3 +227,9 @@ func (c Config) GetBaseDir() string {
 func (c Config) GetInputFilename() string {
 	return c.viper.GetString(string(InputFileKey))
 }
+
+// Viper returns the underlying viper instance for direct key manipulation.
+// Intended for use in tests only.
+func (c Config) Viper() *viper.Viper {
+	return c.viper
+}

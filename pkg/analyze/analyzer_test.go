@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	mocks "github.com/asphaltbuffet/elf/mocks/config"
 	"github.com/asphaltbuffet/elf/pkg/exercise"
 )
 
@@ -19,14 +18,12 @@ func Test_NewAnalyzer(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		setup     func(*mocks.MockExerciseConfiguration)
 		args      args
 		want      *Analyzer
 		assertion require.ErrorAssertionFunc
 	}{
 		{
-			name:  "no dir",
-			setup: func(_ *mocks.MockExerciseConfiguration) {},
+			name: "no dir",
 			args: args{
 				opts: []func(*Analyzer){},
 			},
@@ -34,8 +31,7 @@ func Test_NewAnalyzer(t *testing.T) {
 			assertion: require.Error,
 		},
 		{
-			name:  "with directory",
-			setup: func(_ *mocks.MockExerciseConfiguration) {},
+			name: "with directory",
 			args: args{
 				opts: []func(*Analyzer){
 					WithDirectory("foo/bar"),
@@ -49,8 +45,7 @@ func Test_NewAnalyzer(t *testing.T) {
 			assertion: require.NoError,
 		},
 		{
-			name:  "with output",
-			setup: func(_ *mocks.MockExerciseConfiguration) {},
+			name: "with output",
 			args: args{
 				opts: []func(*Analyzer){
 					WithDirectory("foo/bar"),
@@ -68,11 +63,7 @@ func Test_NewAnalyzer(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockConfig := mocks.NewMockExerciseConfiguration(t)
-			mockConfig.EXPECT().GetLogger().Return(testLogger())
-			tt.setup(mockConfig)
-
-			got, err := NewAnalyzer(mockConfig, tt.args.opts...)
+			got, err := NewAnalyzer(testLogger(), tt.args.opts...)
 
 			tt.assertion(t, err)
 			if err == nil {

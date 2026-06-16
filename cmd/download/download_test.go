@@ -30,7 +30,7 @@ func TestGetDownloadCmd(t *testing.T) {
 func resetState(
 	t *testing.T,
 	origMakeConfig func(string) (config.Config, error),
-	origMakeDownloader func(config.DownloadConfiguration, string, string, *exercise.Overwrites) (Downloader, error),
+	origMakeDownloader func(config.Config, string, string, *exercise.Overwrites) (Downloader, error),
 ) {
 	t.Helper()
 
@@ -68,7 +68,7 @@ func Test_runDownloadCmd(t *testing.T) {
 		makeConfig = func(_ string) (config.Config, error) {
 			return config.NewConfig()
 		}
-		makeDownloader = func(_ config.DownloadConfiguration, _, _ string, _ *exercise.Overwrites) (Downloader, error) {
+		makeDownloader = func(_ config.Config, _, _ string, _ *exercise.Overwrites) (Downloader, error) {
 			return nil, errors.New("invalid URL")
 		}
 
@@ -91,7 +91,7 @@ func Test_runDownloadCmd(t *testing.T) {
 		mockDl := mocks.NewMockDownloader(t)
 		mockDl.EXPECT().Download().Return(errors.New("network timeout"))
 
-		makeDownloader = func(_ config.DownloadConfiguration, _, _ string, _ *exercise.Overwrites) (Downloader, error) {
+		makeDownloader = func(_ config.Config, _, _ string, _ *exercise.Overwrites) (Downloader, error) {
 			return mockDl, nil
 		}
 
@@ -115,7 +115,7 @@ func Test_runDownloadCmd(t *testing.T) {
 		mockDl.EXPECT().Download().Return(nil)
 		mockDl.EXPECT().FilePath().Return("/exercises/2023/01-trebuchet")
 
-		makeDownloader = func(_ config.DownloadConfiguration, _, _ string, _ *exercise.Overwrites) (Downloader, error) {
+		makeDownloader = func(_ config.Config, _, _ string, _ *exercise.Overwrites) (Downloader, error) {
 			return mockDl, nil
 		}
 
@@ -142,7 +142,7 @@ func Test_runDownloadCmd(t *testing.T) {
 		mockDl.EXPECT().Download().Return(nil)
 		mockDl.EXPECT().FilePath().Return("/some/path")
 
-		makeDownloader = func(_ config.DownloadConfiguration, _, lang string, _ *exercise.Overwrites) (Downloader, error) {
+		makeDownloader = func(_ config.Config, _, lang string, _ *exercise.Overwrites) (Downloader, error) {
 			gotLang = lang
 			return mockDl, nil
 		}
@@ -172,7 +172,7 @@ func Test_runDownloadCmd(t *testing.T) {
 		mockDl.EXPECT().Download().Return(nil)
 		mockDl.EXPECT().FilePath().Return("/some/path")
 
-		makeDownloader = func(_ config.DownloadConfiguration, _, _ string, forced *exercise.Overwrites) (Downloader, error) {
+		makeDownloader = func(_ config.Config, _, _ string, forced *exercise.Overwrites) (Downloader, error) {
 			gotForced = forced
 			return mockDl, nil
 		}

@@ -135,7 +135,7 @@ func runAnalyze(cfg config.Config, yearDir string) tea.Cmd {
 	return func() tea.Msg {
 		outFile := filepath.Join(yearDir, "run-times.png")
 
-		aa, err := analyze.NewAnalyzer(&cfg,
+		aa, err := analyze.NewAnalyzer(cfg.GetLogger(),
 			analyze.WithDirectory(yearDir),
 			analyze.WithOutput(outFile),
 		)

@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	mocks "github.com/asphaltbuffet/elf/mocks/config"
+	"github.com/asphaltbuffet/elf/pkg/config"
 )
 
 var NotFoundResponder = httpmock.NewStringResponder(http.StatusNotFound, "404 Not Found")
@@ -349,20 +349,12 @@ func TestNewDownloader(t *testing.T) {
 			},
 			want: &Downloader{
 				Exercise: &Exercise{
-					ID:       "",
-					Title:    "",
 					Language: "go",
-					Year:     0,
-					Day:      0,
-					URL:      "",
-					Data:     nil,
-					Path:     "",
 				},
 				exerciseBaseDir: "TEST_exercises",
-				cacheDir:        "testCacheDir",
-				cfgDir:          "testCfgDir",
+				cacheDir:        "TEST_cache",
+				cfgDir:          "TEST_cfgdir",
 				inputFileName:   "input.txt",
-				rClient:         nil,
 				token:           "TEST_token",
 				overwrites:      &Overwrites{},
 				skipImpl:        false,
@@ -382,25 +374,16 @@ func TestNewDownloader(t *testing.T) {
 			},
 			want: &Downloader{
 				Exercise: &Exercise{
-					ID:       "",
-					Title:    "",
 					Language: "py",
-					Year:     0,
-					Day:      0,
 					URL:      "https://fake.url",
 					Data: &Data{
-						InputData:     "",
 						InputFileName: "fakeInput.fake",
-						TestCases:     TestCase{},
-						Answers:       Answer{},
 					},
-					Path: "",
 				},
 				exerciseBaseDir: "TEST_exercises",
-				cacheDir:        "testCacheDir",
-				cfgDir:          "testCfgDir",
+				cacheDir:        "TEST_cache",
+				cfgDir:          "TEST_cfgdir",
 				inputFileName:   "fakeInput.fake",
-				rClient:         nil,
 				token:           "TEST_token",
 				overwrites:      &Overwrites{},
 				skipImpl:        true,
@@ -417,31 +400,30 @@ func TestNewDownloader(t *testing.T) {
 			teardownSubTest := setupSubTest(t)
 			defer teardownSubTest(t)
 
-			// set up mocks
-			mockConfig := mocks.NewMockDownloadConfiguration(t)
-			mockConfig.EXPECT().GetLogger().Return(slog.New(slog.NewTextHandler(io.Discard, nil)))
-			mockConfig.EXPECT().GetFs().Return(testFs)
-			mockConfig.EXPECT().GetInputFilename().Return(tt.args.inFile)
-			mockConfig.EXPECT().GetCacheDir().Return("testCacheDir")
-			mockConfig.EXPECT().GetConfigDir().Return("testCfgDir")
-			mockConfig.EXPECT().GetToken().Return("TEST_token")
-			mockConfig.EXPECT().GetBaseDir().Return("TEST_exercises")
-			mockConfig.EXPECT().GetLanguage().Return("go")
+			t.Setenv("ELF_ADVENT_TOKEN", "TEST_token")
+			t.Setenv("ELF_LANGUAGE", "go")
+
+			cfg, cfgErr := config.NewConfig(
+				config.WithFs(testFs),
+			)
+			require.NoError(t, cfgErr)
+			cfg.Viper().Set(string(config.AdventDirKey), "TEST_exercises")
+			cfg.Viper().Set(string(config.CacheDirKey), "TEST_cache")
+			cfg.Viper().Set(string(config.ConfigDirKey), "TEST_cfgdir")
+			cfg.Viper().Set(string(config.InputFileKey), tt.args.inFile)
 
 			require.NoError(t, testFs.MkdirAll("TEST_exercises", 0o755))
 
-			got, err := NewDownloader(mockConfig, tt.args.options...)
+			got, err := NewDownloader(cfg, tt.args.options...)
 
 			tt.assertion(t, err)
 			assert.Equal(t, tt.want.cacheDir, got.cacheDir)
 			assert.Equal(t, tt.want.Language, got.Language)
 			assert.Equal(t, tt.want.inputFileName, got.inputFileName)
-			// assert.Equal(t, tt.want.inputFileName, got.Data.InputFileName)
 			assert.Equal(t, tt.want.token, got.token)
 			assert.Equal(t, tt.want.exerciseBaseDir, got.exerciseBaseDir)
 			assert.Equal(t, tt.want.cfgDir, got.cfgDir)
 			assert.Equal(t, tt.want.skipImpl, got.skipImpl)
-
 			assert.NotNil(t, got.logger)
 		})
 	}

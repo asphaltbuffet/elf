@@ -21,11 +21,6 @@ packages:
   github.com/asphaltbuffet/elf/cmd/analyze:
     interfaces:
       Analyzer: {}
-  github.com/asphaltbuffet/elf/pkg/config:
-    interfaces:
-      ConfigurationReader: {}
-      DownloadConfiguration: {}
-      ExerciseConfiguration: {}
   github.com/asphaltbuffet/elf/pkg/runners:
     interfaces:
       Runner: {}

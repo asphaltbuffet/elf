@@ -3,6 +3,7 @@ package analyze
 import (
 	"bytes"
 	"errors"
+	"log/slog"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -29,7 +30,7 @@ func TestGetAnalyzeCmd(t *testing.T) {
 func resetState(
 	t *testing.T,
 	origMakeConfig func(string) (config.Config, error),
-	origMakeAnalyzer func(config.ExerciseConfiguration, string, string) (Analyzer, error),
+	origMakeAnalyzer func(*slog.Logger, string, string) (Analyzer, error),
 ) {
 	t.Helper()
 
@@ -66,7 +67,7 @@ func Test_runAnalyzeCmd(t *testing.T) {
 		makeConfig = func(_ string) (config.Config, error) {
 			return config.NewConfig()
 		}
-		makeAnalyzer = func(_ config.ExerciseConfiguration, _, _ string) (Analyzer, error) {
+		makeAnalyzer = func(_ *slog.Logger, _, _ string) (Analyzer, error) {
 			return nil, errors.New("bad analyzer config")
 		}
 
@@ -89,7 +90,7 @@ func Test_runAnalyzeCmd(t *testing.T) {
 		mockAn := mocks.NewMockAnalyzer(t)
 		mockAn.EXPECT().Graph().Return(errors.New("render failed"))
 
-		makeAnalyzer = func(_ config.ExerciseConfiguration, _, _ string) (Analyzer, error) {
+		makeAnalyzer = func(_ *slog.Logger, _, _ string) (Analyzer, error) {
 			return mockAn, nil
 		}
 
@@ -111,7 +112,7 @@ func Test_runAnalyzeCmd(t *testing.T) {
 		mockAn := mocks.NewMockAnalyzer(t)
 		mockAn.EXPECT().Graph().Return(nil)
 
-		makeAnalyzer = func(_ config.ExerciseConfiguration, _, _ string) (Analyzer, error) {
+		makeAnalyzer = func(_ *slog.Logger, _, _ string) (Analyzer, error) {
 			return mockAn, nil
 		}
 
@@ -135,7 +136,7 @@ func Test_runAnalyzeCmd(t *testing.T) {
 		mockAn := mocks.NewMockAnalyzer(t)
 		mockAn.EXPECT().Graph().Return(nil)
 
-		makeAnalyzer = func(_ config.ExerciseConfiguration, _, out string) (Analyzer, error) {
+		makeAnalyzer = func(_ *slog.Logger, _, out string) (Analyzer, error) {
 			gotOut = out
 			return mockAn, nil
 		}
