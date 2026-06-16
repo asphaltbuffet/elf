@@ -6,18 +6,9 @@ template: testify
 template-data:
   unroll-variadic: true
 packages:
-  github.com/asphaltbuffet/elf/cmd/benchmark:
-    interfaces:
-      Benchmarker: {}
   github.com/asphaltbuffet/elf/cmd/download:
     interfaces:
       Downloader: {}
-  github.com/asphaltbuffet/elf/cmd/solve:
-    interfaces:
-      Challenge: {}
-  github.com/asphaltbuffet/elf/cmd/test:
-    interfaces:
-      ChallengeTester: {}
   github.com/asphaltbuffet/elf/cmd/analyze:
     interfaces:
       Analyzer: {}

@@ -2,34 +2,20 @@
 package benchmark
 
 import (
-	"context"
-	"io"
-	"log/slog"
 	"path/filepath"
 
-	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
+	appPkg "github.com/asphaltbuffet/elf/pkg/app"
 	"github.com/asphaltbuffet/elf/pkg/config"
-	"github.com/asphaltbuffet/elf/pkg/exercise"
-	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
 var (
 	benchmarkCmd *cobra.Command
 	iterations   int
 
-	// Factory variables for testing.
 	makeConfig = func(cf string) (config.Config, error) {
 		return config.NewConfig(config.WithFile(cf))
-	}
-	makeBenchmarker = func(lang, dir string, fs afero.Fs, logger *slog.Logger) (Benchmarker, error) {
-		ex, err := exercise.Load(dir, lang, "", fs, logger)
-		if err != nil {
-			return nil, err
-		}
-
-		return exercise.NewBenchmarker(ex), nil
 	}
 )
 
@@ -59,19 +45,6 @@ func GetBenchmarkCmd() *cobra.Command {
 	return benchmarkCmd
 }
 
-// Benchmarker is the interface for running benchmark tasks on an exercise.
-type Benchmarker interface {
-	Benchmark(
-		ctx context.Context,
-		fs afero.Fs,
-		logger *slog.Logger,
-		w io.Writer,
-		cb func(tasks.Result),
-		iterations int,
-	) ([]tasks.Result, error)
-	String() string
-}
-
 func runBenchmarkCmd(cmd *cobra.Command, args []string) error {
 	cf, _ := cmd.Flags().GetString("config-file")
 
@@ -85,16 +58,11 @@ func runBenchmarkCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	lang := cfg.GetLanguage()
+	a := appPkg.New(cfg)
 
-	ex, err := makeBenchmarker(lang, dir, cfg.GetFs(), cfg.GetLogger())
-	if err != nil {
-		return err
-	}
-
-	_, err = ex.Benchmark(cmd.Context(), cfg.GetFs(), cfg.GetLogger(), cmd.OutOrStdout(), nil, iterations)
-	if err != nil {
-		cmd.PrintErrln("benchmark failed:", err)
+	_, benchErr := a.Benchmark(cmd.Context(), dir, cfg.GetLanguage(), cmd.OutOrStdout(), nil, iterations)
+	if benchErr != nil {
+		cmd.PrintErrln("benchmark failed:", benchErr)
 	}
 
 	// return nil regardless of failure; this wasn't necessarily user error and

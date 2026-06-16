@@ -9,6 +9,7 @@ import (
 
 	"github.com/spf13/afero"
 
+	"github.com/asphaltbuffet/elf/pkg/config"
 	"github.com/asphaltbuffet/elf/pkg/exercise"
 	"github.com/asphaltbuffet/elf/pkg/runners"
 	"github.com/asphaltbuffet/elf/pkg/tasks"
@@ -18,6 +19,14 @@ import (
 type App struct {
 	FS     afero.Fs
 	Logger *slog.Logger
+}
+
+// New constructs an App from a config.Config, extracting FS and Logger.
+func New(cfg config.Config) *App {
+	return &App{
+		FS:     cfg.GetFs(),
+		Logger: cfg.GetLogger(),
+	}
 }
 
 // Solve loads the exercise at path, constructs a runner for language, and
