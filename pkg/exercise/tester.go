@@ -11,6 +11,7 @@ import (
 	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
+// Test runs the exercise test cases and returns pass/fail results for each.
 func (e *Exercise) Test() ([]tasks.Result, error) {
 	if e.Year == 0 && e.Day == 0 && e.Title == "" {
 		return nil, errors.New("exercise is empty")

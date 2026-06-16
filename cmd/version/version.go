@@ -8,6 +8,7 @@ import (
 
 var version = "dev"
 
+// NewVersionCmd returns the cobra command for printing the version number.
 func NewVersionCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "version",

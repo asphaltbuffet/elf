@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// NewManCmd returns the cobra command for generating man pages.
 func NewManCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:                   "man",

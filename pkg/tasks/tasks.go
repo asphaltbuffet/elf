@@ -11,6 +11,8 @@ import (
 // TaskType represents the type of task to be executed.
 type TaskType int
 
+// Task type constants identifying the kind of operation to perform.
+//
 //go:generate stringer -type=TaskType --linecomment
 const (
 	Invalid   TaskType = iota // invalid
@@ -48,6 +50,7 @@ func MakeTaskID(name TaskType, part runners.Part, subparts ...int) string {
 	}
 }
 
+// ParseTaskID parses a task ID string into its component TaskType, Part, and sub-part index.
 func ParseTaskID(id string) (TaskType, runners.Part, int) {
 	tokens := strings.Split(id, ".")
 
@@ -88,6 +91,7 @@ func ParseTaskID(id string) (TaskType, runners.Part, int) {
 	return Invalid, runners.Part(0), 0
 }
 
+// StringToTaskType converts a lowercase task name string to its TaskType constant.
 func StringToTaskType(s string) TaskType {
 	switch s {
 	case "solve":

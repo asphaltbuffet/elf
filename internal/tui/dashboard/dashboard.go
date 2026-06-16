@@ -1,3 +1,4 @@
+// Package dashboard is the TUI screen showing the year list with exercise progress.
 package dashboard
 
 import (
@@ -45,6 +46,7 @@ func New(cfg config.Config) Model {
 	}
 }
 
+// Init triggers an async filesystem scan for exercises.
 func (m Model) Init() tea.Cmd {
 	return func() tea.Msg {
 		result, err := discover.Scan(m.cfg.GetFs(), m.cfg.GetBaseDir())
@@ -52,6 +54,7 @@ func (m Model) Init() tea.Cmd {
 	}
 }
 
+// Update handles the scan result, window resize, and key events.
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -107,6 +110,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// View renders the year list with progress bars and config summary.
 func (m Model) View() string {
 	if m.loading {
 		return "  Scanning exercises..."

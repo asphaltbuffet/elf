@@ -1,3 +1,4 @@
+// Package discover scans the exercise directory tree and groups exercises by year.
 package discover
 
 import (

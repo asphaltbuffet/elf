@@ -3,6 +3,7 @@ package config
 // Key is a type for configuration keys.
 type Key string
 
+// Configuration key constants for use with Viper lookups.
 const (
 	// General configuration keys.
 

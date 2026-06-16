@@ -25,6 +25,7 @@ const (
 	dirPerm = 0o750
 )
 
+// Sentinel errors for downloader construction and HTTP operations.
 var (
 	ErrNotConfigured    = errors.New("not configured")
 	ErrNilConfiguration = errors.New("nil configuration")
@@ -34,6 +35,7 @@ var (
 	ErrInvalidLanguage  = errors.New("invalid language")
 )
 
+// Downloader fetches challenge metadata, input, and implementation templates from the AoC website.
 type Downloader struct {
 	*Exercise
 
@@ -47,10 +49,12 @@ type Downloader struct {
 	skipImpl        bool
 }
 
+// Overwrites controls which existing exercise files are overwritten during download.
 type Overwrites struct {
 	Input bool
 }
 
+// NewDownloader creates a Downloader, applies options, and validates the configuration.
 func NewDownloader(cfg config.DownloadConfiguration, options ...func(*Downloader)) (*Downloader, error) {
 	if cfg == nil {
 		return nil, ErrNilConfiguration
@@ -164,6 +168,7 @@ func (d *Downloader) validate() error {
 	return errors.Join(err...)
 }
 
+// Download fetches challenge metadata, puzzle input, and implementation templates from the AoC website.
 func (d *Downloader) Download() error {
 	year, day, err := ParseURL(d.URL)
 	if err != nil {
@@ -274,6 +279,7 @@ func (d *Downloader) getExercisePath(year, day int) (string, bool) {
 	return exPath, exPath != ""
 }
 
+// ParseURL extracts the year and day from an Advent of Code puzzle URL.
 func ParseURL(url string) (int, int, error) {
 	var year, day int
 
@@ -340,6 +346,7 @@ func makeExercisePath(baseDir string, year, day int, title string) string {
 	)
 }
 
+// FilePath returns the local filesystem path where the downloaded exercise will be stored.
 func (d *Downloader) FilePath() string {
 	return d.Path
 }

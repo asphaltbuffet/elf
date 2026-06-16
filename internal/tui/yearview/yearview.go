@@ -50,10 +50,12 @@ func New(cfg config.Config, year int, exercises []discover.ExerciseInfo) Model {
 	}
 }
 
+// Init implements tea.Model.
 func (m Model) Init() tea.Cmd {
 	return nil
 }
 
+// Update handles window resize and key events, dispatching actions to the app via messages.
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -127,6 +129,7 @@ const (
 	langColWidth   = 10
 )
 
+// View renders the exercise table for the selected year.
 func (m Model) View() string {
 	var b strings.Builder
 

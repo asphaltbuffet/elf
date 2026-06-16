@@ -26,6 +26,7 @@ var (
 	}
 )
 
+// ChallengeTester is the interface for running tests against an exercise challenge.
 type ChallengeTester interface {
 	Test() ([]tasks.Result, error)
 	String() string
@@ -35,6 +36,7 @@ const exampleTestText = `
 elf test /path/to/exercise --lang=go
 elf test /path/to/exercise`
 
+// GetTestCmd returns the cobra command for testing an exercise.
 func GetTestCmd() *cobra.Command {
 	if testCmd == nil {
 		testCmd = &cobra.Command{

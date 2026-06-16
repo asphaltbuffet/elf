@@ -3,6 +3,7 @@ package runners
 // Part represents a section or segment of a task or process.
 type Part uint8
 
+// Exercise part constants identifying which section of a challenge to run.
 const (
 	PartOne   Part = iota + 1 // PartOne is the first part of the exercise.
 	PartTwo                   // PartTwo is the second part of the exercise.

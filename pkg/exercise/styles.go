@@ -6,6 +6,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+// Column width and padding constants for CLI result rendering.
 const (
 	StatusWidth  int = 4
 	TaskWidth    int = 6

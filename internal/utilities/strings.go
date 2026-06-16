@@ -28,6 +28,7 @@ func CamelToTitle(x string) string {
 	return out.String()
 }
 
+// ToCamel converts a string to lowerCamelCase, stripping non-alphanumeric characters.
 func ToCamel(s string) string {
 	// Remove all characters that are not alphanumeric or spaces or underscores
 	s = regexp.MustCompile("[^a-zA-Z0-9'-_ ]+").ReplaceAllString(s, "")

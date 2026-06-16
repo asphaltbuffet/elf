@@ -14,12 +14,15 @@ import (
 	"github.com/spf13/viper"
 )
 
+// Configuration constants for Viper setup and config file defaults.
 const (
 	ElfEnvPrefix          string = "ELF"
 	DefaultConfigFileBase string = "elf"
 	DefaultConfigExt      string = "toml"
 )
 
+// Config holds the application configuration backed by a Viper instance.
+//
 //nolint:recvcheck // intentional: getters use value receivers to prevent modification
 type Config struct {
 	viper       *viper.Viper
@@ -29,6 +32,7 @@ type Config struct {
 	fs          afero.Fs
 }
 
+// NewConfig creates a Config with Viper, applies functional options, and loads the config file.
 func NewConfig(options ...func(*Config)) (Config, error) {
 	cfg := Config{
 		viper: viper.New(),
@@ -194,26 +198,32 @@ func (c Config) GetLanguage() string {
 	return c.viper.GetString(string(LanguageKey))
 }
 
+// GetConfigDir returns the path to the application configuration directory.
 func (c Config) GetConfigDir() string {
 	return c.viper.GetString(string(ConfigDirKey))
 }
 
+// GetCacheDir returns the path to the application cache directory.
 func (c Config) GetCacheDir() string {
 	return c.viper.GetString(string(CacheDirKey))
 }
 
+// GetLogger returns the structured logger.
 func (c Config) GetLogger() *slog.Logger {
 	return c.logger
 }
 
+// GetFs returns the filesystem abstraction used by the application.
 func (c Config) GetFs() afero.Fs {
 	return c.fs
 }
 
+// GetBaseDir returns the root directory where exercises are stored.
 func (c Config) GetBaseDir() string {
 	return c.viper.GetString(string(AdventDirKey))
 }
 
+// GetInputFilename returns the configured default puzzle input file name.
 func (c Config) GetInputFilename() string {
 	return c.viper.GetString(string(InputFileKey))
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
+// Exercise represents a single programming challenge with its metadata, runner, and I/O configuration.
 type Exercise struct {
 	ID       string `json:"id"`
 	Title    string `json:"title"`
@@ -56,6 +57,7 @@ type Test struct {
 	Expected string `json:"expected"`
 }
 
+// LogValue implements [slog.LogValuer], emitting id, dir, and language as a group.
 func (e *Exercise) LogValue() slog.Value {
 	return slog.GroupValue(
 		slog.String("id", e.ID),

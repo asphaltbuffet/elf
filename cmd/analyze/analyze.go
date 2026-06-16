@@ -30,6 +30,7 @@ var (
 	}
 )
 
+// GetAnalyzeCmd returns the cobra command for benchmark analysis.
 func GetAnalyzeCmd() *cobra.Command {
 	if analyzeCmd == nil {
 		analyzeCmd = &cobra.Command{

@@ -1,3 +1,4 @@
+// Package tui is the root bubbletea application managing the navigation stack.
 package tui
 
 import (
@@ -41,6 +42,7 @@ func Run(cfg config.Config) error {
 	return nil
 }
 
+// Init delegates to the bottom-most screen on the navigation stack.
 func (a App) Init() tea.Cmd {
 	if len(a.stack) > 0 {
 		return a.stack[0].Init()
@@ -49,6 +51,7 @@ func (a App) Init() tea.Cmd {
 	return nil
 }
 
+// Update handles navigation stack messages (push, pop, analyze) and forwards all others to the top screen.
 func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -148,6 +151,7 @@ func runAnalyze(cfg config.Config, yearDir string) tea.Cmd {
 	}
 }
 
+// View renders the top screen on the navigation stack.
 func (a App) View() string {
 	if len(a.stack) == 0 {
 		return "Loading..."
