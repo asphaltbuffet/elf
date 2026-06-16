@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(golangci-lint run:*)",
+      "Bash(mise run lint:*)",
+      "Bash(mise run test:*)",
+      "Skill(claude-md-management:revise-claude-md)",
+      "Bash(go test:*)",
+      "Bash(grep:*)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "Bash(find:*)",
+      "Bash(go build:*)",
+      "Bash(jj diff:*)",
+      "Bash(jj log:*)",
+      "Bash(jj file track:*)",
+      "Skill(changelog)",
+      "WebFetch(domain:raw.githubusercontent.com)"
+    ]
+  },
+  "outputStyle": "Explanatory"
+}

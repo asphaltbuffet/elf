@@ -1,0 +1,8 @@
+{
+  "enabledPlugins": {
+    "github@claude-plugins-official": true
+  },
+  "outputStyle": "Explanatory",
+  "spinnerTipsEnabled": false,
+  "prefersReducedMotion": true
+}
