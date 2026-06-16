@@ -11,11 +11,10 @@ import (
 	"strconv"
 	"strings"
 
-	"golang.org/x/net/html"
-
 	"github.com/go-resty/resty/v2"
 	"github.com/lmittmann/tint"
 	"github.com/spf13/afero"
+	"golang.org/x/net/html"
 
 	"github.com/asphaltbuffet/elf/internal/utilities"
 	"github.com/asphaltbuffet/elf/pkg/config"

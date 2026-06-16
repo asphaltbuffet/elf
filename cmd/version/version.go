@@ -1,5 +1,4 @@
-// Package version is the version subcommand.
-package version
+package versioncmd
 
 import (
 	"fmt"
