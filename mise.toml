@@ -1,11 +1,12 @@
 [tools]
 "aqua:fsaintjacques/semver-tool" = "latest"
-"aqua:golangci/golangci-lint" = "prefix:2.8"
 "aqua:gotestyourself/gotestsum" = "latest"
 "aqua:rhysd/actionlint" = "latest"
 "aqua:vektra/mockery" = "3"
 "go:github.com/nix-community/gomod2nix" = "latest"
 "go:golang.org/x/tools/cmd/stringer" = "latest"
+changie = "latest"
+golangci-lint = "2.9"
 
 [tasks.actionlint]
 description = "lint GitHub Actions workflows"
@@ -52,15 +53,13 @@ description = "dev build pipeline"
 depends = ["generate", "mock", "lint", "test", "snapshot"]
 
 [tasks.diff]
-description = "git diff"
+description = "jj diff check"
 run = '''
 #!/usr/bin/env bash
 
-git diff --exit-code
-
-RES=$(git status --porcelain)
-if [ -n "$RES" ]; then
-  echo "$RES" && exit 1
+if [ -n "$(jj diff -s 2>/dev/null)" ]; then
+  jj diff -s
+  exit 1
 fi
 '''
 hide = true
@@ -73,13 +72,29 @@ run = "go generate ./..."
 
 [tasks.lint]
 description = "lint project files"
-depends = ["generate", "mock"]
+depends = ["generate", "mock", "lint-verify"]
+wait_for = ["test"]
 sources = ["**/*.go", ".golangci.yml"]
 outputs = ["bin/golangci-lint.html"]
 run = [
   "mkdir -p bin",
+  "golangci-lint run --output.html.path=bin/golangci-lint.html --output.text.path=stdout",
+]
+
+[tasks.lint-fix]
+description = "fix linting issues in project files"
+depends = ["generate", "mock", "lint-verify"]
+wait_for = ["test"]
+run = [
+  "mkdir -p bin",
   "golangci-lint run --fix --output.html.path=bin/golangci-lint.html --output.text.path=stdout",
 ]
+
+[tasks.lint-verify]
+description = "verify linting config"
+sources = [".golangci.yml"]
+run = ["golangci-lint config verify"]
+hide = true
 
 [tasks.manpages]
 description = "generate man pages"
@@ -102,6 +117,7 @@ alias = "mod"
 sources = ["**/*.go", "**/go.mod", "**/go.sum"]
 outputs = ["**/go.mod", "**/go.sum"]
 run = "go mod tidy"
+depends = ["mock"]
 depends_post = ["nix-hash"]
 
 [tasks.nix-hash]
