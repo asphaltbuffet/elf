@@ -193,3 +193,17 @@ Flake outputs:
 - `config-dir` and `cache-dir` default to `null` (omitted from TOML) so elf's runtime XDG logic applies
 - Config file generated via `pkgs.formats.toml {}` and placed at `xdg.configFile."elf/elf.toml"`
 - Environment variables (`ELF_ADVENT_TOKEN`, `ELF_LANGUAGE`) mapped via `home.sessionVariables`
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues at `github.com/asphaltbuffet/elf`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default label vocabulary (needs-triage, needs-info, ready-for-agent, ready-for-human, wontfix). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context layout — one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
