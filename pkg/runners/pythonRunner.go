@@ -13,6 +13,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/asphaltbuffet/elf/pkg/protocol"
 )
 
 const (
@@ -119,7 +121,7 @@ func (p *pythonRunner) Cleanup() error {
 	return err
 }
 
-func (p *pythonRunner) Run(task *Task) (*Result, error) {
+func (p *pythonRunner) Run(task *protocol.Task) (*protocol.Result, error) {
 	taskJSON, err := json.Marshal(task)
 	if err != nil {
 		return nil, fmt.Errorf("marshalling task to json: %w", err)
@@ -130,7 +132,7 @@ func (p *pythonRunner) Run(task *Task) (*Result, error) {
 		return nil, fmt.Errorf("writing task to stdin: %w", err)
 	}
 
-	r := new(Result)
+	r := new(protocol.Result)
 	if jsonErr := readJSONFromCommand(r, p.cmd); jsonErr != nil {
 		return nil, jsonErr
 	}

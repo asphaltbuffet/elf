@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/asphaltbuffet/elf/pkg/runners"
+	"github.com/asphaltbuffet/elf/pkg/protocol"
 )
 
 func TestBenchmarkDataString(t *testing.T) {
@@ -59,48 +59,48 @@ func TestBenchmarkDataString(t *testing.T) {
 
 func Test_calculateMetrics(t *testing.T) {
 	type args struct {
-		results map[runners.Part][]float64
+		results map[protocol.Part][]float64
 	}
 
 	tests := []struct {
 		name      string
 		args      args
-		want      map[runners.Part]*PartData
+		want      map[protocol.Part]*PartData
 		assertion require.ErrorAssertionFunc
 	}{
 		{
 			name: "empty results",
 			args: args{
-				results: map[runners.Part][]float64{},
+				results: map[protocol.Part][]float64{},
 			},
-			want:      map[runners.Part]*PartData{},
+			want:      map[protocol.Part]*PartData{},
 			assertion: require.NoError,
 		},
 		{
 			name: "one result",
 			args: args{
-				results: map[runners.Part][]float64{ //nolint:exhaustive // not testing visualize
-					runners.PartOne: {1.0},
-					runners.PartTwo: {2.0},
+				results: map[protocol.Part][]float64{ //nolint:exhaustive // not testing visualize
+					protocol.PartOne: {1.0},
+					protocol.PartTwo: {2.0},
 				},
 			},
-			want: map[runners.Part]*PartData{ //nolint:exhaustive // not testing visualize
-				runners.PartOne: {Mean: 1.0, Min: 1.0, Max: 1.0, Data: []float64{1.0}},
-				runners.PartTwo: {Mean: 2.0, Min: 2.0, Max: 2.0, Data: []float64{2.0}},
+			want: map[protocol.Part]*PartData{ //nolint:exhaustive // not testing visualize
+				protocol.PartOne: {Mean: 1.0, Min: 1.0, Max: 1.0, Data: []float64{1.0}},
+				protocol.PartTwo: {Mean: 2.0, Min: 2.0, Max: 2.0, Data: []float64{2.0}},
 			},
 			assertion: require.NoError,
 		},
 		{
 			name: "multiple results",
 			args: args{
-				results: map[runners.Part][]float64{ //nolint:exhaustive // not testing visualize
-					runners.PartOne: {1.0, 2.0, 3.0},
-					runners.PartTwo: {2.0, 3.0, 4.0},
+				results: map[protocol.Part][]float64{ //nolint:exhaustive // not testing visualize
+					protocol.PartOne: {1.0, 2.0, 3.0},
+					protocol.PartTwo: {2.0, 3.0, 4.0},
 				},
 			},
-			want: map[runners.Part]*PartData{ //nolint:exhaustive // not testing visualize
-				runners.PartOne: {Mean: 2.0, Min: 1.0, Max: 3.0, Data: []float64{1.0, 2.0, 3.0}},
-				runners.PartTwo: {Mean: 3.0, Min: 2.0, Max: 4.0, Data: []float64{2.0, 3.0, 4.0}},
+			want: map[protocol.Part]*PartData{ //nolint:exhaustive // not testing visualize
+				protocol.PartOne: {Mean: 2.0, Min: 1.0, Max: 3.0, Data: []float64{1.0, 2.0, 3.0}},
+				protocol.PartTwo: {Mean: 3.0, Min: 2.0, Max: 4.0, Data: []float64{2.0, 3.0, 4.0}},
 			},
 			assertion: require.NoError,
 		},

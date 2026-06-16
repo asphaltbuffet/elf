@@ -1,6 +1,6 @@
 package tasks
 
-import "github.com/asphaltbuffet/elf/pkg/runners"
+import "github.com/asphaltbuffet/elf/pkg/protocol"
 
 // TaskStatus represents the outcome of a single task execution.
 //
@@ -20,7 +20,7 @@ const (
 type Result struct {
 	ID       string
 	Type     TaskType
-	Part     runners.Part
+	Part     protocol.Part
 	SubPart  int
 	Status   TaskStatus
 	Output   string

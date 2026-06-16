@@ -5,7 +5,7 @@
 package mocks
 
 import (
-	"github.com/asphaltbuffet/elf/pkg/runners"
+	"github.com/asphaltbuffet/elf/pkg/protocol"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -81,26 +81,26 @@ func (_c *MockRunner_Cleanup_Call) RunAndReturn(run func() error) *MockRunner_Cl
 }
 
 // Run provides a mock function for the type MockRunner
-func (_mock *MockRunner) Run(task *runners.Task) (*runners.Result, error) {
+func (_mock *MockRunner) Run(task *protocol.Task) (*protocol.Result, error) {
 	ret := _mock.Called(task)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Run")
 	}
 
-	var r0 *runners.Result
+	var r0 *protocol.Result
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(*runners.Task) (*runners.Result, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(*protocol.Task) (*protocol.Result, error)); ok {
 		return returnFunc(task)
 	}
-	if returnFunc, ok := ret.Get(0).(func(*runners.Task) *runners.Result); ok {
+	if returnFunc, ok := ret.Get(0).(func(*protocol.Task) *protocol.Result); ok {
 		r0 = returnFunc(task)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*runners.Result)
+			r0 = ret.Get(0).(*protocol.Result)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(*runners.Task) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(*protocol.Task) error); ok {
 		r1 = returnFunc(task)
 	} else {
 		r1 = ret.Error(1)
@@ -114,16 +114,16 @@ type MockRunner_Run_Call struct {
 }
 
 // Run is a helper method to define mock.On call
-//   - task *runners.Task
+//   - task *protocol.Task
 func (_e *MockRunner_Expecter) Run(task interface{}) *MockRunner_Run_Call {
 	return &MockRunner_Run_Call{Call: _e.mock.On("Run", task)}
 }
 
-func (_c *MockRunner_Run_Call) Run(run func(task *runners.Task)) *MockRunner_Run_Call {
+func (_c *MockRunner_Run_Call) Run(run func(task *protocol.Task)) *MockRunner_Run_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 *runners.Task
+		var arg0 *protocol.Task
 		if args[0] != nil {
-			arg0 = args[0].(*runners.Task)
+			arg0 = args[0].(*protocol.Task)
 		}
 		run(
 			arg0,
@@ -132,12 +132,12 @@ func (_c *MockRunner_Run_Call) Run(run func(task *runners.Task)) *MockRunner_Run
 	return _c
 }
 
-func (_c *MockRunner_Run_Call) Return(result *runners.Result, err error) *MockRunner_Run_Call {
+func (_c *MockRunner_Run_Call) Return(result *protocol.Result, err error) *MockRunner_Run_Call {
 	_c.Call.Return(result, err)
 	return _c
 }
 
-func (_c *MockRunner_Run_Call) RunAndReturn(run func(task *runners.Task) (*runners.Result, error)) *MockRunner_Run_Call {
+func (_c *MockRunner_Run_Call) RunAndReturn(run func(task *protocol.Task) (*protocol.Result, error)) *MockRunner_Run_Call {
 	_c.Call.Return(run)
 	return _c
 }

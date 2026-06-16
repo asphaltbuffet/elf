@@ -8,7 +8,7 @@ import (
 	"github.com/lmittmann/tint"
 	"github.com/spf13/afero"
 
-	"github.com/asphaltbuffet/elf/pkg/runners"
+	"github.com/asphaltbuffet/elf/pkg/protocol"
 	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
@@ -70,8 +70,8 @@ func (e *Exercise) Solve(skipTests bool) ([]tasks.Result, error) {
 func (e *Exercise) runMainTasks() ([]tasks.Result, error) {
 	var solveTasks []testTask
 
-	solveTasks = append(solveTasks, makeMainTasks(runners.PartOne, e.Data)...)
-	solveTasks = append(solveTasks, makeMainTasks(runners.PartTwo, e.Data)...)
+	solveTasks = append(solveTasks, makeMainTasks(protocol.PartOne, e.Data)...)
+	solveTasks = append(solveTasks, makeMainTasks(protocol.PartTwo, e.Data)...)
 
 	results := make([]tasks.Result, 0, len(solveTasks))
 
@@ -91,18 +91,18 @@ func (e *Exercise) runMainTasks() ([]tasks.Result, error) {
 	return results, nil
 }
 
-func makeMainTasks(part runners.Part, data *Data) []testTask {
+func makeMainTasks(part protocol.Part, data *Data) []testTask {
 	var solveTasks []testTask
 	var expected string
 
-	if part == runners.PartOne {
+	if part == protocol.PartOne {
 		expected = data.Answers.One
 	} else {
 		expected = data.Answers.Two
 	}
 
 	solveTasks = append(solveTasks, testTask{
-		task: &runners.Task{
+		task: &protocol.Task{
 			TaskID:    tasks.MakeTaskID(tasks.Solve, part),
 			Part:      part,
 			Input:     data.InputData,

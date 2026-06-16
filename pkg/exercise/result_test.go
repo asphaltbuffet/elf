@@ -6,13 +6,13 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/asphaltbuffet/elf/pkg/runners"
+	"github.com/asphaltbuffet/elf/pkg/protocol"
 	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
 func Test_handleMainResult(t *testing.T) {
 	type args struct {
-		r *runners.Result
+		r *protocol.Result
 	}
 
 	tests := []struct {
@@ -23,7 +23,7 @@ func Test_handleMainResult(t *testing.T) {
 		{
 			name: "sucessful run",
 			args: args{
-				r: &runners.Result{
+				r: &protocol.Result{
 					TaskID:   "solve.1",
 					Ok:       true,
 					Output:   "good output",
@@ -44,7 +44,7 @@ func Test_handleMainResult(t *testing.T) {
 		{
 			name: "not ok",
 			args: args{
-				r: &runners.Result{
+				r: &protocol.Result{
 					TaskID:   "solve.2",
 					Ok:       false,
 					Output:   "error text",

@@ -11,13 +11,13 @@ import (
 	"github.com/stretchr/testify/require"
 
 	mocks "github.com/asphaltbuffet/elf/mocks/runners"
-	"github.com/asphaltbuffet/elf/pkg/runners"
+	"github.com/asphaltbuffet/elf/pkg/protocol"
 	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
 func Test_runMainTasks(t *testing.T) {
 	mockRunner := mocks.NewMockRunner(t)
-	mockCall := mockRunner.EXPECT().Run(mock.Anything).Return(&runners.Result{
+	mockCall := mockRunner.EXPECT().Run(mock.Anything).Return(&protocol.Result{
 		TaskID:   "solve.1",
 		Ok:       true,
 		Output:   "FAKE OUTPUT",
@@ -37,7 +37,7 @@ func Test_runMainTasks(t *testing.T) {
 
 	mockCall.Unset()
 
-	mockRunner.EXPECT().Run(mock.Anything).Return(&runners.Result{
+	mockRunner.EXPECT().Run(mock.Anything).Return(&protocol.Result{
 		TaskID:   "fake.1",
 		Ok:       false,
 		Output:   "fakey fake",

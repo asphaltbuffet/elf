@@ -7,7 +7,7 @@ import (
 
 	"github.com/lmittmann/tint"
 
-	"github.com/asphaltbuffet/elf/pkg/runners"
+	"github.com/asphaltbuffet/elf/pkg/protocol"
 	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
@@ -49,8 +49,8 @@ func (e *Exercise) Test() ([]tasks.Result, error) {
 func (e *Exercise) runTests() ([]tasks.Result, error) {
 	var testTasks []testTask
 
-	testTasks = append(testTasks, makeTestTasks(runners.PartOne, e.Data.TestCases.One)...)
-	testTasks = append(testTasks, makeTestTasks(runners.PartTwo, e.Data.TestCases.Two)...)
+	testTasks = append(testTasks, makeTestTasks(protocol.PartOne, e.Data.TestCases.One)...)
+	testTasks = append(testTasks, makeTestTasks(protocol.PartTwo, e.Data.TestCases.Two)...)
 
 	results := make([]tasks.Result, 0, len(testTasks))
 
@@ -71,12 +71,12 @@ func (e *Exercise) runTests() ([]tasks.Result, error) {
 	return results, nil
 }
 
-func makeTestTasks(p runners.Part, tests []*Test) []testTask {
+func makeTestTasks(p protocol.Part, tests []*Test) []testTask {
 	var testTasks []testTask
 
 	for i, t := range tests {
 		testTasks = append(testTasks, testTask{
-			task: &runners.Task{
+			task: &protocol.Task{
 				TaskID:    tasks.MakeTaskID(tasks.Test, p, i),
 				Part:      p,
 				Input:     t.Input,

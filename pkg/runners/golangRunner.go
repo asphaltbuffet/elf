@@ -17,6 +17,8 @@ import (
 	"syscall"
 	"text/template"
 	"time"
+
+	"github.com/asphaltbuffet/elf/pkg/protocol"
 )
 
 var project string
@@ -195,7 +197,7 @@ func (g *golangRunner) Cleanup() error {
 	return errors.Join(wrapperErr, execErr)
 }
 
-func (g *golangRunner) Run(task *Task) (*Result, error) {
+func (g *golangRunner) Run(task *protocol.Task) (*protocol.Result, error) {
 	taskJSON, err := json.Marshal(task)
 	if err != nil {
 		return nil, fmt.Errorf("marshalling task to json: %w", err)
@@ -206,7 +208,7 @@ func (g *golangRunner) Run(task *Task) (*Result, error) {
 		return nil, fmt.Errorf("writing task to stdin: %w", err)
 	}
 
-	r := new(Result)
+	r := new(protocol.Result)
 
 	if jsonErr := readJSONFromCommand(r, g.cmd); jsonErr != nil {
 		return nil, jsonErr

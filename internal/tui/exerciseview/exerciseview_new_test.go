@@ -11,7 +11,7 @@ import (
 
 	"github.com/asphaltbuffet/elf/internal/tui/discover"
 	"github.com/asphaltbuffet/elf/pkg/config"
-	"github.com/asphaltbuffet/elf/pkg/runners"
+	"github.com/asphaltbuffet/elf/pkg/protocol"
 	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
@@ -78,7 +78,7 @@ func TestView_DoneWithResults(t *testing.T) {
 	m.running = false
 	m.done = true
 	m.progress.Stop()
-	m.results.AddResult(tasks.Result{Status: tasks.StatusPassed, Part: runners.PartOne, SubPart: -1})
+	m.results.AddResult(tasks.Result{Status: tasks.StatusPassed, Part: protocol.PartOne, SubPart: -1})
 	view := m.View()
 	assert.Contains(t, view, "1 results")
 }

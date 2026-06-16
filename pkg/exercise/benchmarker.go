@@ -15,6 +15,7 @@ import (
 	"github.com/spf13/afero"
 
 	"github.com/asphaltbuffet/elf/pkg/config"
+	"github.com/asphaltbuffet/elf/pkg/protocol"
 	"github.com/asphaltbuffet/elf/pkg/runners"
 	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
@@ -172,8 +173,8 @@ func (b *Benchmarker) runBenchmark(iterations int) ([]tasks.Result, *Implementat
 	const numParts int = 2
 
 	var (
-		benchmarkTasks []*runners.Task
-		metricsResults = make(map[runners.Part][]float64, numParts*iterations)
+		benchmarkTasks []*protocol.Task
+		metricsResults = make(map[protocol.Part][]float64, numParts*iterations)
 		results        = make([]tasks.Result, 0, numParts*iterations)
 	)
 
@@ -181,14 +182,14 @@ func (b *Benchmarker) runBenchmark(iterations int) ([]tasks.Result, *Implementat
 	for i := range iterations {
 		benchmarkTasks = append(
 			benchmarkTasks,
-			&runners.Task{
-				TaskID: tasks.MakeTaskID(tasks.Benchmark, runners.PartOne, i),
-				Part:   runners.PartOne,
+			&protocol.Task{
+				TaskID: tasks.MakeTaskID(tasks.Benchmark, protocol.PartOne, i),
+				Part:   protocol.PartOne,
 				Input:  b.Data.InputData,
 			},
-			&runners.Task{
-				TaskID: tasks.MakeTaskID(tasks.Benchmark, runners.PartTwo, i),
-				Part:   runners.PartTwo,
+			&protocol.Task{
+				TaskID: tasks.MakeTaskID(tasks.Benchmark, protocol.PartTwo, i),
+				Part:   protocol.PartTwo,
 				Input:  b.Data.InputData,
 			})
 	}
@@ -244,7 +245,7 @@ func (b *Benchmarker) runBenchmark(iterations int) ([]tasks.Result, *Implementat
 	return results,
 		&ImplementationData{
 			Name:    b.runner.String(),
-			PartOne: stats[runners.PartOne],
-			PartTwo: stats[runners.PartTwo],
+			PartOne: stats[protocol.PartOne],
+			PartTwo: stats[protocol.PartTwo],
 		}, nil
 }

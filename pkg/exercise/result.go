@@ -7,18 +7,18 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/asphaltbuffet/elf/pkg/runners"
+	"github.com/asphaltbuffet/elf/pkg/protocol"
 	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
 type testTask struct {
-	task     *runners.Task
+	task     *protocol.Task
 	expected string
 }
 
 // buildResult constructs a tasks.Result from a runner result and expected value.
 // This is pure data logic with no rendering side effects.
-func buildResult(r *runners.Result, expected string) tasks.Result {
+func buildResult(r *protocol.Result, expected string) tasks.Result {
 	taskType, part, subpart := tasks.ParseTaskID(r.TaskID)
 
 	result := tasks.Result{
@@ -121,7 +121,7 @@ func renderResult(w io.Writer, result tasks.Result) {
 	}
 }
 
-func handleTaskResult(w io.Writer, r *runners.Result, expected string) tasks.Result {
+func handleTaskResult(w io.Writer, r *protocol.Result, expected string) tasks.Result {
 	result := buildResult(r, expected)
 	renderResult(w, result)
 

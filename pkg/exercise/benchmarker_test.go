@@ -13,7 +13,7 @@ import (
 
 	configMocks "github.com/asphaltbuffet/elf/mocks/config"
 	mocks "github.com/asphaltbuffet/elf/mocks/runners"
-	"github.com/asphaltbuffet/elf/pkg/runners"
+	"github.com/asphaltbuffet/elf/pkg/protocol"
 	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
@@ -312,7 +312,7 @@ func TestRunBenchmark(t *testing.T) {
 			name: "all tasks fail",
 			setup: func(_m *mocks.MockRunner) {
 				_m.EXPECT().Start().Return(nil)
-				_m.EXPECT().Run(mock.Anything).Return(&runners.Result{
+				_m.EXPECT().Run(mock.Anything).Return(&protocol.Result{
 					TaskID:   "benchmark.1.1",
 					Ok:       false,
 					Output:   "fake output",
