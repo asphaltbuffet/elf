@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/spf13/afero"
 
 	"github.com/asphaltbuffet/elf/internal/tui/discover"
 	"github.com/asphaltbuffet/elf/internal/tui/nav"
@@ -31,6 +32,7 @@ func populatedModel() Model {
 	}
 
 	return Model{
+		app:       &fakeDashboardInfo{fs: afero.NewMemMapFs(), lang: "go", baseDir: "exercises"},
 		years:     []int{2023, 2015}, // descending order
 		exercises: exercises,
 		loading:   false,

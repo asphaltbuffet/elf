@@ -17,17 +17,33 @@ import (
 
 // App holds shared infrastructure used across CLI commands and TUI screens.
 type App struct {
-	FS     afero.Fs
-	Logger *slog.Logger
+	FS       afero.Fs
+	Logger   *slog.Logger
+	language string
+	baseDir  string
 }
 
-// New constructs an App from a config.Config, extracting FS and Logger.
+// New constructs an App from a config.Config, extracting FS, Logger, and display values.
 func New(cfg config.Config) *App {
 	return &App{
-		FS:     cfg.GetFs(),
-		Logger: cfg.GetLogger(),
+		FS:       cfg.GetFs(),
+		Logger:   cfg.GetLogger(),
+		language: cfg.GetLanguage(),
+		baseDir:  cfg.GetBaseDir(),
 	}
 }
+
+// Language returns the configured default language.
+func (a *App) Language() string { return a.language }
+
+// BaseDir returns the configured exercise base directory.
+func (a *App) BaseDir() string { return a.baseDir }
+
+// GetFs returns the filesystem used by the App.
+func (a *App) GetFs() afero.Fs { return a.FS }
+
+// GetLogger returns the logger used by the App.
+func (a *App) GetLogger() *slog.Logger { return a.Logger }
 
 // Solve loads the exercise at path, constructs a runner for language, and
 // executes a solve run. customInput overrides input.txt when non-empty.

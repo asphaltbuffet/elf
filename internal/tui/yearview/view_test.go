@@ -11,7 +11,7 @@ import (
 
 func TestView_Empty(t *testing.T) {
 	t.Parallel()
-	m := New(zeroCfg, 2015, nil)
+	m := New(nil, "", nil, 2015, nil)
 	view := m.View()
 	assert.Contains(t, view, "No exercises found")
 	assert.Contains(t, view, "2015")
@@ -19,7 +19,7 @@ func TestView_Empty(t *testing.T) {
 
 func TestView_Populated(t *testing.T) {
 	t.Parallel()
-	m := New(zeroCfg, 2015, testExercises())
+	m := New(nil, "", nil, 2015, testExercises())
 	view := m.View()
 	assert.Contains(t, view, "Not Called It")
 	assert.Contains(t, view, "Inverse")
@@ -30,7 +30,7 @@ func TestView_Populated(t *testing.T) {
 
 func TestView_CursorHighlights(t *testing.T) {
 	t.Parallel()
-	m := New(zeroCfg, 2015, testExercises())
+	m := New(nil, "", nil, 2015, testExercises())
 	m.cursor = 1
 	view := m.View()
 	assert.Contains(t, view, "▸")
@@ -42,7 +42,7 @@ func TestView_StatusIndicators(t *testing.T) {
 		{Year: 2015, Day: 1, Title: "Solved Both", Path: "p", HasP1: true, HasP2: true, Langs: []string{"go"}},
 		{Year: 2015, Day: 2, Title: "Only P1", Path: "p", HasP1: true, HasP2: false, Langs: []string{"py"}},
 	}
-	m := New(zeroCfg, 2015, exercises)
+	m := New(nil, "", nil, 2015, exercises)
 	view := m.View()
 	assert.Contains(t, view, "P1:")
 	assert.Contains(t, view, "P2:")
@@ -53,14 +53,14 @@ func TestView_EmptyLangs(t *testing.T) {
 	exercises := []discover.ExerciseInfo{
 		{Year: 2015, Day: 1, Title: "No Langs", Path: "p", Langs: nil},
 	}
-	m := New(zeroCfg, 2015, exercises)
+	m := New(nil, "", nil, 2015, exercises)
 	view := m.View()
 	assert.Contains(t, view, "-")
 }
 
 func TestView_ContainsHelp(t *testing.T) {
 	t.Parallel()
-	m := New(zeroCfg, 2015, testExercises())
+	m := New(nil, "", nil, 2015, testExercises())
 	view := m.View()
 	// Help bar should contain at least one of the key hints
 	assert.True(t, strings.Contains(view, "↑/k") || strings.Contains(view, "quit"))
@@ -143,7 +143,7 @@ func TestFullHelp(t *testing.T) {
 
 func TestHelpToggle(t *testing.T) {
 	t.Parallel()
-	m := New(zeroCfg, 2015, testExercises())
+	m := New(nil, "", nil, 2015, testExercises())
 	assert.False(t, m.help.ShowAll)
 
 	updated, _ := m.Update(keyMsg("?"))
@@ -157,14 +157,14 @@ func TestHelpToggle(t *testing.T) {
 
 func TestEnterEmpty(t *testing.T) {
 	t.Parallel()
-	m := New(zeroCfg, 2015, nil)
+	m := New(nil, "", nil, 2015, nil)
 	_, cmd := m.Update(keyMsg("l"))
 	assert.Nil(t, cmd)
 }
 
 func TestRightEmpty(t *testing.T) {
 	t.Parallel()
-	m := New(zeroCfg, 2015, nil)
+	m := New(nil, "", nil, 2015, nil)
 	_, cmd := m.Update(specialKeyMsg(0)) // unknown msg
 	assert.Nil(t, cmd)
 }
@@ -180,7 +180,7 @@ func TestView_LongTitle(t *testing.T) {
 			Langs: []string{"go"},
 		},
 	}
-	m := New(zeroCfg, 2015, exercises)
+	m := New(nil, "", nil, 2015, exercises)
 	view := m.View()
 	assert.Contains(t, view, "…")
 }

@@ -32,6 +32,7 @@ const (
 
 type golangRunner struct {
 	dir                string
+	goBin              string
 	cmd                *exec.Cmd
 	wrapperFilepath    string
 	executableFilepath string
@@ -58,7 +59,19 @@ func (g *golangRunner) Prepare(ctx context.Context) error {
 		g.executableFilepath += ".exe"
 	}
 
-	project = getModuleName()
+	goBin, lookErr := exec.LookPath(golangInstallation)
+	if lookErr != nil {
+		return errors.New("go toolchain not found in $PATH: ensure Go is installed and 'go' is on your PATH")
+	}
+
+	g.goBin = goBin
+
+	modName, modErr := getModuleName(ctx, g.dir, g.goBin)
+	if modErr != nil {
+		return modErr
+	}
+
+	project = modName
 
 	tokens := strings.Split(filepath.ToSlash(g.dir), "/")
 	buildPath := filepath.Join(tokens[len(tokens)-3:]...)
@@ -94,7 +107,8 @@ func (g *golangRunner) Prepare(ctx context.Context) error {
 
 	stderrBuffer := new(bytes.Buffer)
 
-	tidycmd := exec.CommandContext(ctx, golangInstallation, "mod", "tidy")
+	//nolint:gosec // g.goBin is resolved via exec.LookPath, not user input
+	tidycmd := exec.CommandContext(ctx, g.goBin, "mod", "tidy")
 	tidycmd.Stderr = stderrBuffer
 
 	if err := tidycmd.Run(); err != nil {
@@ -102,7 +116,7 @@ func (g *golangRunner) Prepare(ctx context.Context) error {
 	}
 
 	//nolint:gosec // no user input
-	cmd := exec.CommandContext(ctx, golangInstallation, "build",
+	cmd := exec.CommandContext(ctx, g.goBin, "build",
 		"-tags", "runtime",
 		"-o", g.executableFilepath,
 		g.wrapperFilepath)
@@ -206,17 +220,18 @@ func (g *golangRunner) String() string {
 	return goRunnerName
 }
 
-func getModuleName() string {
+func getModuleName(ctx context.Context, dir, goBin string) (string, error) {
 	errBuf := new(bytes.Buffer)
 	outBuf := new(bytes.Buffer)
 
-	cmd := exec.CommandContext(context.Background(), golangInstallation, "list", "-m")
+	cmd := exec.CommandContext(ctx, goBin, "list", "-m")
+	cmd.Dir = dir
 	cmd.Stdout = outBuf
 	cmd.Stderr = errBuf
 
 	if err := cmd.Run(); err != nil {
-		panic("failed to get module name: " + errBuf.String())
+		return "", fmt.Errorf("failed to get module name: %w: %s", err, errBuf.String())
 	}
 
-	return strings.Trim(outBuf.String(), "\n")
+	return strings.Trim(outBuf.String(), "\n"), nil
 }

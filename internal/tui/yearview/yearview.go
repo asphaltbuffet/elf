@@ -2,6 +2,7 @@ package yearview
 
 import (
 	"fmt"
+	"log/slog"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -12,26 +13,29 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/asphaltbuffet/elf/internal/tui/discover"
+	"github.com/asphaltbuffet/elf/internal/tui/exerciseview"
 	"github.com/asphaltbuffet/elf/internal/tui/nav"
-	"github.com/asphaltbuffet/elf/pkg/config"
 )
 
 // ActionMsg is sent when the user triggers an action on an exercise.
 type ActionMsg struct {
 	Action   string // "solve", "test", "benchmark"
 	Exercise discover.ExerciseInfo
-	Cfg      config.Config
+	App      exerciseview.Executor
+	Lang     string
 }
 
 // AnalyzeMsg is sent when the user triggers analysis for the year.
 type AnalyzeMsg struct {
 	YearDir string
-	Cfg     config.Config
+	Logger  *slog.Logger
 }
 
 // Model is the year view TUI model showing exercises for a single year.
 type Model struct {
-	cfg       config.Config
+	app       exerciseview.Executor
+	lang      string
+	logger    *slog.Logger
 	year      int
 	exercises []discover.ExerciseInfo
 	cursor    int
@@ -41,9 +45,17 @@ type Model struct {
 }
 
 // New creates a new year view model.
-func New(cfg config.Config, year int, exercises []discover.ExerciseInfo) Model {
+func New(
+	app exerciseview.Executor,
+	lang string,
+	logger *slog.Logger,
+	year int,
+	exercises []discover.ExerciseInfo,
+) Model {
 	return Model{
-		cfg:       cfg,
+		app:       app,
+		lang:      lang,
+		logger:    logger,
 		year:      year,
 		exercises: exercises,
 		help:      help.New(),
@@ -226,7 +238,8 @@ func (m Model) actionCmd(action string) tea.Cmd {
 		return ActionMsg{
 			Action:   action,
 			Exercise: ex,
-			Cfg:      m.cfg,
+			App:      m.app,
+			Lang:     m.lang,
 		}
 	}
 }
@@ -238,7 +251,7 @@ func (m Model) analyzeCmd() tea.Cmd {
 	return func() tea.Msg {
 		return AnalyzeMsg{
 			YearDir: yearDir,
-			Cfg:     m.cfg,
+			Logger:  m.logger,
 		}
 	}
 }

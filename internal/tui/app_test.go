@@ -2,6 +2,7 @@ package tui
 
 import (
 	"errors"
+	"log/slog"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -11,7 +12,6 @@ import (
 	"github.com/asphaltbuffet/elf/internal/tui/discover"
 	"github.com/asphaltbuffet/elf/internal/tui/nav"
 	"github.com/asphaltbuffet/elf/internal/tui/yearview"
-	"github.com/asphaltbuffet/elf/pkg/config"
 )
 
 // mockScreen is a minimal tea.Model that records calls for testing.
@@ -207,13 +207,11 @@ func TestApp_Update_ActionMsg(t *testing.T) {
 	screen := &mockScreen{viewStr: "dashboard"}
 	a := App{stack: []tea.Model{screen}}
 
-	cfg, err := config.NewConfig()
-	require.NoError(t, err)
-
 	msg := yearview.ActionMsg{
 		Action:   "solve",
 		Exercise: discover.ExerciseInfo{Year: 2015, Day: 1, Title: "Test", Langs: []string{"go"}},
-		Cfg:      cfg,
+		App:      nil,
+		Lang:     "go",
 	}
 
 	model, _ := a.Update(msg)
@@ -312,10 +310,7 @@ func TestStatusBadge(t *testing.T) {
 func TestRunAnalyze_BadDir(t *testing.T) {
 	t.Parallel()
 
-	cfg, err := config.NewConfig()
-	require.NoError(t, err)
-
-	cmd := runAnalyze(cfg, t.TempDir())
+	cmd := runAnalyze(slog.Default(), t.TempDir())
 	require.NotNil(t, cmd)
 
 	msg := cmd()
@@ -327,13 +322,10 @@ func TestRunAnalyze_BadDir(t *testing.T) {
 func TestApp_Update_AnalyzeMsg(t *testing.T) {
 	t.Parallel()
 
-	cfg, err := config.NewConfig()
-	require.NoError(t, err)
-
 	screen := &mockScreen{viewStr: "test"}
-	a := App{stack: []tea.Model{screen}, cfg: cfg}
+	a := App{stack: []tea.Model{screen}}
 
-	msg := yearview.AnalyzeMsg{YearDir: t.TempDir(), Cfg: cfg}
+	msg := yearview.AnalyzeMsg{YearDir: t.TempDir(), Logger: slog.Default()}
 	_, cmd := a.Update(msg)
 
 	assert.NotNil(t, cmd)
