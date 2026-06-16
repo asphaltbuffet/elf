@@ -3,8 +3,10 @@ package benchmark
 import (
 	"bytes"
 	"errors"
+	"log/slog"
 	"testing"
 
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -26,11 +28,10 @@ func TestGetBenchmarkCmd(t *testing.T) {
 	})
 }
 
-// resetState restores package-level variables and factory functions to defaults.
 func resetState(
 	t *testing.T,
 	origMakeConfig func(string) (config.Config, error),
-	origMakeBenchmarker func(config.ExerciseConfiguration, string) (Benchmarker, error),
+	origMakeBenchmarker func(string, string, afero.Fs, *slog.Logger) (Benchmarker, error),
 ) {
 	t.Helper()
 
@@ -67,7 +68,7 @@ func Test_runBenchmarkCmd(t *testing.T) {
 		makeConfig = func(_ string) (config.Config, error) {
 			return config.NewConfig()
 		}
-		makeBenchmarker = func(_ config.ExerciseConfiguration, _ string) (Benchmarker, error) {
+		makeBenchmarker = func(_, _ string, _ afero.Fs, _ *slog.Logger) (Benchmarker, error) {
 			return nil, errors.New("bad dir")
 		}
 
@@ -87,9 +88,11 @@ func Test_runBenchmarkCmd(t *testing.T) {
 		}
 
 		mockBm := mocks.NewMockBenchmarker(t)
-		mockBm.EXPECT().Benchmark(mock.Anything, mock.Anything).Return(nil, errors.New("runner crashed"))
+		mockBm.EXPECT().
+			Benchmark(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+			Return(nil, errors.New("runner crashed"))
 
-		makeBenchmarker = func(_ config.ExerciseConfiguration, _ string) (Benchmarker, error) {
+		makeBenchmarker = func(_, _ string, _ afero.Fs, _ *slog.Logger) (Benchmarker, error) {
 			return mockBm, nil
 		}
 
@@ -112,9 +115,11 @@ func Test_runBenchmarkCmd(t *testing.T) {
 		}
 
 		mockBm := mocks.NewMockBenchmarker(t)
-		mockBm.EXPECT().Benchmark(mock.Anything, mock.Anything).Return(nil, nil)
+		mockBm.EXPECT().
+			Benchmark(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+			Return(nil, nil)
 
-		makeBenchmarker = func(_ config.ExerciseConfiguration, _ string) (Benchmarker, error) {
+		makeBenchmarker = func(_, _ string, _ afero.Fs, _ *slog.Logger) (Benchmarker, error) {
 			return mockBm, nil
 		}
 
@@ -134,9 +139,10 @@ func Test_runBenchmarkCmd(t *testing.T) {
 		}
 
 		mockBm := mocks.NewMockBenchmarker(t)
-		mockBm.EXPECT().Benchmark(mock.Anything, 42).Return(nil, nil)
+		mockBm.EXPECT().Benchmark(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, 42).
+			Return(nil, nil)
 
-		makeBenchmarker = func(_ config.ExerciseConfiguration, _ string) (Benchmarker, error) {
+		makeBenchmarker = func(_, _ string, _ afero.Fs, _ *slog.Logger) (Benchmarker, error) {
 			return mockBm, nil
 		}
 

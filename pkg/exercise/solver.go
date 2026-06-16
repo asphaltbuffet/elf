@@ -3,69 +3,76 @@ package exercise
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
-	"path/filepath"
 
 	"github.com/lmittmann/tint"
 	"github.com/spf13/afero"
 
 	"github.com/asphaltbuffet/elf/pkg/protocol"
+	"github.com/asphaltbuffet/elf/pkg/runners"
 	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
 // Solve runs the exercise solution and optionally skips the pre-solve test run.
-func (e *Exercise) Solve(skipTests bool) ([]tasks.Result, error) {
-	ctx := context.Background()
-	logger := e.logger.With(slog.String("exercise", e.Title))
-	logger.Debug("solving", slog.String("language", e.Language))
+func (e *Exercise) Solve(
+	ctx context.Context,
+	fs afero.Fs,
+	logger *slog.Logger,
+	runner runners.Runner,
+	w io.Writer,
+	cb func(tasks.Result),
+	skipTests bool,
+) ([]tasks.Result, error) {
+	logger = logger.With(slog.String("exercise", e.Title))
+	logger.DebugContext(ctx, "solving", slog.String("language", e.Language))
 
-	results := []tasks.Result{}
-
-	inputFile := filepath.Join(e.Path, e.Data.InputFileName)
-	input, err := afero.ReadFile(e.appFs, inputFile)
+	input, err := e.readInput(fs)
 	if err != nil {
-		logger.Error("reading input file", slog.String("path", inputFile), tint.Err(err))
+		logger.ErrorContext(ctx, "reading input file", slog.String("path", e.Data.InputFileName), tint.Err(err))
 		return nil, err
 	}
 
-	e.Data.InputData = string(input)
+	e.Data.InputData = input
 
-	if err = e.runner.Prepare(ctx); err != nil {
-		logger.Error("preparing runner", tint.Err(err))
+	if err = runner.Prepare(ctx); err != nil {
+		logger.ErrorContext(ctx, "preparing runner", tint.Err(err))
 		return nil, err
 	}
 
-	if err = e.runner.Open(ctx); err != nil {
-		logger.Error("opening runner", tint.Err(err))
+	if err = runner.Open(ctx); err != nil {
+		logger.ErrorContext(ctx, "opening runner", tint.Err(err))
 		return nil, err
 	}
 
 	defer func() {
-		_ = e.runner.Close(ctx)
-		_ = e.runner.Cleanup()
+		_ = runner.Close(ctx)
+		_ = runner.Cleanup()
 	}()
 
-	fmt.Fprintln(e.writer, headerStyle(fmt.Sprintf("ADVENT OF CODE %d\nDay %d: %s", e.Year, e.Day, e.Title)))
+	results := []tasks.Result{}
+
+	fmt.Fprintln(w, headerStyle(fmt.Sprintf("ADVENT OF CODE %d\nDay %d: %s", e.Year, e.Day, e.Title)))
 
 	if !skipTests {
-		fmt.Fprintf(e.writer, "Testing (%s)...\n", e.runner)
+		fmt.Fprintf(w, "Testing (%s)...\n", runner)
 
 		var tr []tasks.Result
 
-		tr, err = e.runTests(ctx)
+		tr, err = e.runTests(ctx, runner, w, cb)
 		if err != nil {
-			logger.Error("running tests", tint.Err(err))
+			logger.ErrorContext(ctx, "running tests", tint.Err(err))
 			return nil, err
 		}
 
 		results = append(results, tr...)
 	}
 
-	fmt.Fprintf(e.writer, "Solving (%s)...\n", e.runner)
+	fmt.Fprintf(w, "Solving (%s)...\n", runner)
 
-	mainResults, err := e.runMainTasks(ctx)
+	mainResults, err := e.runMainTasks(ctx, runner, w, cb)
 	if err != nil {
-		logger.Error("running main tasks", tint.Err(err))
+		logger.ErrorContext(ctx, "running main tasks", tint.Err(err))
 		return nil, err
 	}
 
@@ -74,7 +81,12 @@ func (e *Exercise) Solve(skipTests bool) ([]tasks.Result, error) {
 	return results, nil
 }
 
-func (e *Exercise) runMainTasks(ctx context.Context) ([]tasks.Result, error) {
+func (e *Exercise) runMainTasks(
+	ctx context.Context,
+	runner runners.Runner,
+	w io.Writer,
+	cb func(tasks.Result),
+) ([]tasks.Result, error) {
 	var solveTasks []testTask
 
 	solveTasks = append(solveTasks, makeMainTasks(protocol.PartOne, e.Data)...)
@@ -83,15 +95,16 @@ func (e *Exercise) runMainTasks(ctx context.Context) ([]tasks.Result, error) {
 	results := make([]tasks.Result, 0, len(solveTasks))
 
 	for _, t := range solveTasks {
-		result, err := e.runner.Run(ctx, t.task)
+		result, err := runner.Run(ctx, t.task)
 		if err != nil {
 			return nil, err
 		}
 
-		r := handleTaskResult(e.writer, result, t.expected)
-		if e.onResult != nil {
-			e.onResult(r)
+		r := handleTaskResult(w, result, t.expected)
+		if cb != nil {
+			cb(r)
 		}
+
 		results = append(results, r)
 	}
 
@@ -100,6 +113,7 @@ func (e *Exercise) runMainTasks(ctx context.Context) ([]tasks.Result, error) {
 
 func makeMainTasks(part protocol.Part, data *Data) []testTask {
 	var solveTasks []testTask
+
 	var expected string
 
 	if part == protocol.PartOne {

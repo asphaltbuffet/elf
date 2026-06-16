@@ -63,23 +63,15 @@ func setupSubTest(t *testing.T) func(t *testing.T) {
 
 	mockDlr = &Downloader{
 		Exercise: &Exercise{
-			ID:       "",
-			Title:    "",
-			Language: "",
-			Year:     0,
-			Day:      0,
-			URL:      "",
-			Data:     &Data{},
-			Path:     "",
-			runner:   nil,
-			appFs:    testFs,
-			logger:   slog.New(slog.NewTextHandler(io.Discard, nil)),
+			Data: &Data{},
 		},
 		cacheDir:        "testCache",
 		cfgDir:          "./",
 		exerciseBaseDir: "exercises",
 		rClient:         resty.New().SetBaseURL("https://test.fake"),
 		token:           "fakeToken",
+		appFs:           testFs,
+		logger:          slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
 
 	httpmock.ActivateNonDefault(mockDlr.rClient.GetClient())

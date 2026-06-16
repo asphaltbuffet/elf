@@ -5,6 +5,11 @@
 package mocks
 
 import (
+	"context"
+	"io"
+	"log/slog"
+
+	"github.com/asphaltbuffet/elf/pkg/runners"
 	"github.com/asphaltbuffet/elf/pkg/tasks"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -81,8 +86,8 @@ func (_c *MockChallengeTester_String_Call) RunAndReturn(run func() string) *Mock
 }
 
 // Test provides a mock function for the type MockChallengeTester
-func (_mock *MockChallengeTester) Test() ([]tasks.Result, error) {
-	ret := _mock.Called()
+func (_mock *MockChallengeTester) Test(ctx context.Context, logger *slog.Logger, runner runners.Runner, w io.Writer, cb func(tasks.Result)) ([]tasks.Result, error) {
+	ret := _mock.Called(ctx, logger, runner, w, cb)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Test")
@@ -90,18 +95,18 @@ func (_mock *MockChallengeTester) Test() ([]tasks.Result, error) {
 
 	var r0 []tasks.Result
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func() ([]tasks.Result, error)); ok {
-		return returnFunc()
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *slog.Logger, runners.Runner, io.Writer, func(tasks.Result)) ([]tasks.Result, error)); ok {
+		return returnFunc(ctx, logger, runner, w, cb)
 	}
-	if returnFunc, ok := ret.Get(0).(func() []tasks.Result); ok {
-		r0 = returnFunc()
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *slog.Logger, runners.Runner, io.Writer, func(tasks.Result)) []tasks.Result); ok {
+		r0 = returnFunc(ctx, logger, runner, w, cb)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]tasks.Result)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func() error); ok {
-		r1 = returnFunc()
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *slog.Logger, runners.Runner, io.Writer, func(tasks.Result)) error); ok {
+		r1 = returnFunc(ctx, logger, runner, w, cb)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -114,13 +119,44 @@ type MockChallengeTester_Test_Call struct {
 }
 
 // Test is a helper method to define mock.On call
-func (_e *MockChallengeTester_Expecter) Test() *MockChallengeTester_Test_Call {
-	return &MockChallengeTester_Test_Call{Call: _e.mock.On("Test")}
+//   - ctx context.Context
+//   - logger *slog.Logger
+//   - runner runners.Runner
+//   - w io.Writer
+//   - cb func(tasks.Result)
+func (_e *MockChallengeTester_Expecter) Test(ctx interface{}, logger interface{}, runner interface{}, w interface{}, cb interface{}) *MockChallengeTester_Test_Call {
+	return &MockChallengeTester_Test_Call{Call: _e.mock.On("Test", ctx, logger, runner, w, cb)}
 }
 
-func (_c *MockChallengeTester_Test_Call) Run(run func()) *MockChallengeTester_Test_Call {
+func (_c *MockChallengeTester_Test_Call) Run(run func(ctx context.Context, logger *slog.Logger, runner runners.Runner, w io.Writer, cb func(tasks.Result))) *MockChallengeTester_Test_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run()
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 *slog.Logger
+		if args[1] != nil {
+			arg1 = args[1].(*slog.Logger)
+		}
+		var arg2 runners.Runner
+		if args[2] != nil {
+			arg2 = args[2].(runners.Runner)
+		}
+		var arg3 io.Writer
+		if args[3] != nil {
+			arg3 = args[3].(io.Writer)
+		}
+		var arg4 func(tasks.Result)
+		if args[4] != nil {
+			arg4 = args[4].(func(tasks.Result))
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+			arg4,
+		)
 	})
 	return _c
 }
@@ -130,7 +166,7 @@ func (_c *MockChallengeTester_Test_Call) Return(results []tasks.Result, err erro
 	return _c
 }
 
-func (_c *MockChallengeTester_Test_Call) RunAndReturn(run func() ([]tasks.Result, error)) *MockChallengeTester_Test_Call {
+func (_c *MockChallengeTester_Test_Call) RunAndReturn(run func(ctx context.Context, logger *slog.Logger, runner runners.Runner, w io.Writer, cb func(tasks.Result)) ([]tasks.Result, error)) *MockChallengeTester_Test_Call {
 	_c.Call.Return(run)
 	return _c
 }

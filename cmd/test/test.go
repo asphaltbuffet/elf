@@ -2,14 +2,18 @@
 package test
 
 import (
+	"context"
+	"io"
 	"log/slog"
 	"path/filepath"
 
 	"github.com/lmittmann/tint"
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
 	"github.com/asphaltbuffet/elf/pkg/config"
 	"github.com/asphaltbuffet/elf/pkg/exercise"
+	"github.com/asphaltbuffet/elf/pkg/runners"
 	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
@@ -21,14 +25,20 @@ var (
 	makeConfig = func(cf string) (config.Config, error) {
 		return config.NewConfig(config.WithFile(cf))
 	}
-	makeChallengeTester = func(cfg config.ExerciseConfiguration, lang, dir string) (ChallengeTester, error) {
-		return exercise.New(cfg, exercise.WithLanguage(lang), exercise.WithDir(dir))
+	makeChallengeTester = func(lang, dir string, fs afero.Fs, logger *slog.Logger) (ChallengeTester, error) {
+		return exercise.Load(dir, lang, "", fs, logger)
 	}
 )
 
 // ChallengeTester is the interface for running tests against an exercise challenge.
 type ChallengeTester interface {
-	Test() ([]tasks.Result, error)
+	Test(
+		ctx context.Context,
+		logger *slog.Logger,
+		runner runners.Runner,
+		w io.Writer,
+		cb func(tasks.Result),
+	) ([]tasks.Result, error)
 	String() string
 }
 
@@ -72,16 +82,23 @@ func runTestCmd(cmd *cobra.Command, args []string) error {
 		language = cfg.GetLanguage()
 	}
 
-	ch, err := makeChallengeTester(&cfg, language, dir)
+	logger := cfg.GetLogger()
+
+	ch, err := makeChallengeTester(language, dir, cfg.GetFs(), logger)
 	if err != nil {
 		return err
 	}
 
-	cfg.GetLogger().Debug("testing exercise", slog.Any("challenge", ch))
+	logger.Debug("testing exercise", slog.Any("challenge", ch))
 
-	_, err = ch.Test()
+	rc, ok := runners.Available[language]
+	if !ok {
+		return exercise.ErrNoRunner
+	}
+
+	_, err = ch.Test(cmd.Context(), logger, rc(dir), cmd.OutOrStdout(), nil)
 	if err != nil {
-		cfg.GetLogger().Error("testing exercise", tint.Err(err))
+		logger.Error("testing exercise", tint.Err(err))
 		cmd.Printf("Failed to run tests: %v\n", err)
 	}
 

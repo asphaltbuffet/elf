@@ -5,7 +5,13 @@
 package mocks
 
 import (
+	"context"
+	"io"
+	"log/slog"
+
+	"github.com/asphaltbuffet/elf/pkg/runners"
 	"github.com/asphaltbuffet/elf/pkg/tasks"
+	"github.com/spf13/afero"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -37,8 +43,8 @@ func (_m *MockChallenge) EXPECT() *MockChallenge_Expecter {
 }
 
 // Solve provides a mock function for the type MockChallenge
-func (_mock *MockChallenge) Solve(b bool) ([]tasks.Result, error) {
-	ret := _mock.Called(b)
+func (_mock *MockChallenge) Solve(ctx context.Context, fs afero.Fs, logger *slog.Logger, runner runners.Runner, w io.Writer, cb func(tasks.Result), skipTests bool) ([]tasks.Result, error) {
+	ret := _mock.Called(ctx, fs, logger, runner, w, cb, skipTests)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Solve")
@@ -46,18 +52,18 @@ func (_mock *MockChallenge) Solve(b bool) ([]tasks.Result, error) {
 
 	var r0 []tasks.Result
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(bool) ([]tasks.Result, error)); ok {
-		return returnFunc(b)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, afero.Fs, *slog.Logger, runners.Runner, io.Writer, func(tasks.Result), bool) ([]tasks.Result, error)); ok {
+		return returnFunc(ctx, fs, logger, runner, w, cb, skipTests)
 	}
-	if returnFunc, ok := ret.Get(0).(func(bool) []tasks.Result); ok {
-		r0 = returnFunc(b)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, afero.Fs, *slog.Logger, runners.Runner, io.Writer, func(tasks.Result), bool) []tasks.Result); ok {
+		r0 = returnFunc(ctx, fs, logger, runner, w, cb, skipTests)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]tasks.Result)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(bool) error); ok {
-		r1 = returnFunc(b)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, afero.Fs, *slog.Logger, runners.Runner, io.Writer, func(tasks.Result), bool) error); ok {
+		r1 = returnFunc(ctx, fs, logger, runner, w, cb, skipTests)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -70,19 +76,55 @@ type MockChallenge_Solve_Call struct {
 }
 
 // Solve is a helper method to define mock.On call
-//   - b bool
-func (_e *MockChallenge_Expecter) Solve(b interface{}) *MockChallenge_Solve_Call {
-	return &MockChallenge_Solve_Call{Call: _e.mock.On("Solve", b)}
+//   - ctx context.Context
+//   - fs afero.Fs
+//   - logger *slog.Logger
+//   - runner runners.Runner
+//   - w io.Writer
+//   - cb func(tasks.Result)
+//   - skipTests bool
+func (_e *MockChallenge_Expecter) Solve(ctx interface{}, fs interface{}, logger interface{}, runner interface{}, w interface{}, cb interface{}, skipTests interface{}) *MockChallenge_Solve_Call {
+	return &MockChallenge_Solve_Call{Call: _e.mock.On("Solve", ctx, fs, logger, runner, w, cb, skipTests)}
 }
 
-func (_c *MockChallenge_Solve_Call) Run(run func(b bool)) *MockChallenge_Solve_Call {
+func (_c *MockChallenge_Solve_Call) Run(run func(ctx context.Context, fs afero.Fs, logger *slog.Logger, runner runners.Runner, w io.Writer, cb func(tasks.Result), skipTests bool)) *MockChallenge_Solve_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 bool
+		var arg0 context.Context
 		if args[0] != nil {
-			arg0 = args[0].(bool)
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 afero.Fs
+		if args[1] != nil {
+			arg1 = args[1].(afero.Fs)
+		}
+		var arg2 *slog.Logger
+		if args[2] != nil {
+			arg2 = args[2].(*slog.Logger)
+		}
+		var arg3 runners.Runner
+		if args[3] != nil {
+			arg3 = args[3].(runners.Runner)
+		}
+		var arg4 io.Writer
+		if args[4] != nil {
+			arg4 = args[4].(io.Writer)
+		}
+		var arg5 func(tasks.Result)
+		if args[5] != nil {
+			arg5 = args[5].(func(tasks.Result))
+		}
+		var arg6 bool
+		if args[6] != nil {
+			arg6 = args[6].(bool)
 		}
 		run(
 			arg0,
+			arg1,
+			arg2,
+			arg3,
+			arg4,
+			arg5,
+			arg6,
 		)
 	})
 	return _c
@@ -93,7 +135,7 @@ func (_c *MockChallenge_Solve_Call) Return(results []tasks.Result, err error) *M
 	return _c
 }
 
-func (_c *MockChallenge_Solve_Call) RunAndReturn(run func(b bool) ([]tasks.Result, error)) *MockChallenge_Solve_Call {
+func (_c *MockChallenge_Solve_Call) RunAndReturn(run func(ctx context.Context, fs afero.Fs, logger *slog.Logger, runner runners.Runner, w io.Writer, cb func(tasks.Result), skipTests bool) ([]tasks.Result, error)) *MockChallenge_Solve_Call {
 	_c.Call.Return(run)
 	return _c
 }

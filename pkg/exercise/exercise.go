@@ -2,13 +2,7 @@ package exercise
 
 import (
 	"fmt"
-	"io"
 	"log/slog"
-
-	"github.com/spf13/afero"
-
-	"github.com/asphaltbuffet/elf/pkg/runners"
-	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
 // Exercise represents a single programming challenge with its metadata, runner, and I/O configuration.
@@ -21,12 +15,6 @@ type Exercise struct {
 	URL      string `json:"url"`
 	Data     *Data  `json:"data"`
 	Path     string `json:"-"`
-
-	runner   runners.Runner     `json:"-"`
-	appFs    afero.Fs           `json:"-"`
-	logger   *slog.Logger       `json:"-"`
-	writer   io.Writer          `json:"-"`
-	onResult func(tasks.Result) `json:"-"`
 
 	customInput string `json:"-"`
 }
@@ -71,9 +59,5 @@ func (e *Exercise) String() string {
 		return "INVALID EXERCISE"
 	}
 
-	if e.runner == nil {
-		return fmt.Sprintf("Advent of Code %d, Day %d: %s (?)", e.Year, e.Day, e.Title)
-	}
-
-	return fmt.Sprintf("Advent of Code %d, Day %d: %s (%s)", e.Year, e.Day, e.Title, e.runner.String())
+	return fmt.Sprintf("Advent of Code %d, Day %d: %s", e.Year, e.Day, e.Title)
 }

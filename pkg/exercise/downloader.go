@@ -47,6 +47,8 @@ type Downloader struct {
 	token           string
 	overwrites      *Overwrites
 	skipImpl        bool
+	appFs           afero.Fs
+	logger          *slog.Logger
 }
 
 // Overwrites controls which existing exercise files are overwritten during download.
@@ -62,17 +64,7 @@ func NewDownloader(cfg config.DownloadConfiguration, options ...func(*Downloader
 
 	d := &Downloader{
 		Exercise: &Exercise{
-			ID:       "",
-			Title:    "",
 			Language: cfg.GetLanguage(),
-			Year:     0,
-			Day:      0,
-			URL:      "",
-			Data:     nil,
-			Path:     "",
-			runner:   nil, // not used when downloading
-			appFs:    cfg.GetFs(),
-			logger:   cfg.GetLogger(),
 		},
 		cacheDir:        cfg.GetCacheDir(),
 		cfgDir:          cfg.GetConfigDir(),
@@ -80,6 +72,8 @@ func NewDownloader(cfg config.DownloadConfiguration, options ...func(*Downloader
 		rClient:         resty.New().SetBaseURL("https://adventofcode.com"),
 		token:           cfg.GetToken(),
 		inputFileName:   cfg.GetInputFilename(),
+		appFs:           cfg.GetFs(),
+		logger:          cfg.GetLogger(),
 	}
 
 	for _, option := range options {
@@ -186,7 +180,7 @@ func (d *Downloader) Download() error {
 	exPath, ok := d.getExercisePath(year, day)
 	if ok {
 		d.Exercise.Path = exPath
-		err = d.loadInfo()
+		err = d.loadInfo(d.appFs, d.logger)
 	} else {
 		err = d.loadFromURL(year, day)
 	}

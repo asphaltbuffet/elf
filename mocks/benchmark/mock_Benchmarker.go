@@ -5,6 +5,10 @@
 package mocks
 
 import (
+	"context"
+	"io"
+	"log/slog"
+
 	"github.com/asphaltbuffet/elf/pkg/tasks"
 	"github.com/spf13/afero"
 	mock "github.com/stretchr/testify/mock"
@@ -38,8 +42,8 @@ func (_m *MockBenchmarker) EXPECT() *MockBenchmarker_Expecter {
 }
 
 // Benchmark provides a mock function for the type MockBenchmarker
-func (_mock *MockBenchmarker) Benchmark(fs afero.Fs, n int) ([]tasks.Result, error) {
-	ret := _mock.Called(fs, n)
+func (_mock *MockBenchmarker) Benchmark(ctx context.Context, fs afero.Fs, logger *slog.Logger, w io.Writer, cb func(tasks.Result), iterations int) ([]tasks.Result, error) {
+	ret := _mock.Called(ctx, fs, logger, w, cb, iterations)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Benchmark")
@@ -47,18 +51,18 @@ func (_mock *MockBenchmarker) Benchmark(fs afero.Fs, n int) ([]tasks.Result, err
 
 	var r0 []tasks.Result
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(afero.Fs, int) ([]tasks.Result, error)); ok {
-		return returnFunc(fs, n)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, afero.Fs, *slog.Logger, io.Writer, func(tasks.Result), int) ([]tasks.Result, error)); ok {
+		return returnFunc(ctx, fs, logger, w, cb, iterations)
 	}
-	if returnFunc, ok := ret.Get(0).(func(afero.Fs, int) []tasks.Result); ok {
-		r0 = returnFunc(fs, n)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, afero.Fs, *slog.Logger, io.Writer, func(tasks.Result), int) []tasks.Result); ok {
+		r0 = returnFunc(ctx, fs, logger, w, cb, iterations)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]tasks.Result)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(afero.Fs, int) error); ok {
-		r1 = returnFunc(fs, n)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, afero.Fs, *slog.Logger, io.Writer, func(tasks.Result), int) error); ok {
+		r1 = returnFunc(ctx, fs, logger, w, cb, iterations)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -71,25 +75,49 @@ type MockBenchmarker_Benchmark_Call struct {
 }
 
 // Benchmark is a helper method to define mock.On call
+//   - ctx context.Context
 //   - fs afero.Fs
-//   - n int
-func (_e *MockBenchmarker_Expecter) Benchmark(fs interface{}, n interface{}) *MockBenchmarker_Benchmark_Call {
-	return &MockBenchmarker_Benchmark_Call{Call: _e.mock.On("Benchmark", fs, n)}
+//   - logger *slog.Logger
+//   - w io.Writer
+//   - cb func(tasks.Result)
+//   - iterations int
+func (_e *MockBenchmarker_Expecter) Benchmark(ctx interface{}, fs interface{}, logger interface{}, w interface{}, cb interface{}, iterations interface{}) *MockBenchmarker_Benchmark_Call {
+	return &MockBenchmarker_Benchmark_Call{Call: _e.mock.On("Benchmark", ctx, fs, logger, w, cb, iterations)}
 }
 
-func (_c *MockBenchmarker_Benchmark_Call) Run(run func(fs afero.Fs, n int)) *MockBenchmarker_Benchmark_Call {
+func (_c *MockBenchmarker_Benchmark_Call) Run(run func(ctx context.Context, fs afero.Fs, logger *slog.Logger, w io.Writer, cb func(tasks.Result), iterations int)) *MockBenchmarker_Benchmark_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 afero.Fs
+		var arg0 context.Context
 		if args[0] != nil {
-			arg0 = args[0].(afero.Fs)
+			arg0 = args[0].(context.Context)
 		}
-		var arg1 int
+		var arg1 afero.Fs
 		if args[1] != nil {
-			arg1 = args[1].(int)
+			arg1 = args[1].(afero.Fs)
+		}
+		var arg2 *slog.Logger
+		if args[2] != nil {
+			arg2 = args[2].(*slog.Logger)
+		}
+		var arg3 io.Writer
+		if args[3] != nil {
+			arg3 = args[3].(io.Writer)
+		}
+		var arg4 func(tasks.Result)
+		if args[4] != nil {
+			arg4 = args[4].(func(tasks.Result))
+		}
+		var arg5 int
+		if args[5] != nil {
+			arg5 = args[5].(int)
 		}
 		run(
 			arg0,
 			arg1,
+			arg2,
+			arg3,
+			arg4,
+			arg5,
 		)
 	})
 	return _c
@@ -100,7 +128,7 @@ func (_c *MockBenchmarker_Benchmark_Call) Return(results []tasks.Result, err err
 	return _c
 }
 
-func (_c *MockBenchmarker_Benchmark_Call) RunAndReturn(run func(fs afero.Fs, n int) ([]tasks.Result, error)) *MockBenchmarker_Benchmark_Call {
+func (_c *MockBenchmarker_Benchmark_Call) RunAndReturn(run func(ctx context.Context, fs afero.Fs, logger *slog.Logger, w io.Writer, cb func(tasks.Result), iterations int) ([]tasks.Result, error)) *MockBenchmarker_Benchmark_Call {
 	_c.Call.Return(run)
 	return _c
 }

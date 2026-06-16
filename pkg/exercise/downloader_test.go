@@ -357,9 +357,6 @@ func TestNewDownloader(t *testing.T) {
 					URL:      "",
 					Data:     nil,
 					Path:     "",
-					runner:   nil,
-					appFs:    nil,
-					logger:   nil,
 				},
 				exerciseBaseDir: "TEST_exercises",
 				cacheDir:        "testCacheDir",
@@ -397,10 +394,7 @@ func TestNewDownloader(t *testing.T) {
 						TestCases:     TestCase{},
 						Answers:       Answer{},
 					},
-					Path:   "",
-					runner: nil,
-					appFs:  nil,
-					logger: nil,
+					Path: "",
 				},
 				exerciseBaseDir: "TEST_exercises",
 				cacheDir:        "testCacheDir",
@@ -471,8 +465,9 @@ func TestDownloader_validate(t *testing.T) {
 
 	for _, tt := range tests {
 		d := &Downloader{
-			Exercise:        &Exercise{Language: "fake", appFs: afero.NewMemMapFs()},
+			Exercise:        &Exercise{Language: "fake"},
 			exerciseBaseDir: "testExercise",
+			appFs:           afero.NewMemMapFs(),
 			cacheDir:        "TEST_cacheDir",
 			cfgDir:          "TEST_cfgDir",
 			inputFileName:   "tt.fields.inputFileName",

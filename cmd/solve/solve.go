@@ -2,13 +2,17 @@
 package solve
 
 import (
+	"context"
+	"io"
 	"log/slog"
 	"path/filepath"
 
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
 	"github.com/asphaltbuffet/elf/pkg/config"
 	"github.com/asphaltbuffet/elf/pkg/exercise"
+	"github.com/asphaltbuffet/elf/pkg/runners"
 	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
@@ -22,11 +26,8 @@ var (
 	makeConfig = func(cf string) (config.Config, error) {
 		return config.NewConfig(config.WithFile(cf))
 	}
-	makeChallenge = func(cfg config.ExerciseConfiguration, lang, dir, inputFile string) (Challenge, error) {
-		return exercise.New(cfg,
-			exercise.WithLanguage(lang),
-			exercise.WithDir(dir),
-			exercise.WithInputFile(inputFile))
+	makeChallenge = func(lang, dir, inputFile string, fs afero.Fs, logger *slog.Logger) (Challenge, error) {
+		return exercise.Load(dir, lang, inputFile, fs, logger)
 	}
 )
 
@@ -59,7 +60,15 @@ func GetSolveCmd() *cobra.Command {
 
 // Challenge is the interface for solving an exercise challenge.
 type Challenge interface {
-	Solve(bool) ([]tasks.Result, error)
+	Solve(
+		ctx context.Context,
+		fs afero.Fs,
+		logger *slog.Logger,
+		runner runners.Runner,
+		w io.Writer,
+		cb func(tasks.Result),
+		skipTests bool,
+	) ([]tasks.Result, error)
 	String() string
 }
 
@@ -84,14 +93,20 @@ func runSolveCmd(cmd *cobra.Command, args []string) error {
 		input = cfg.GetInputFilename()
 	}
 
-	cfg.GetLogger().Debug("solving exercise", slog.Group("exercise", "dir", dir, "language", language))
+	logger := cfg.GetLogger()
+	logger.Debug("solving exercise", slog.Group("exercise", "dir", dir, "language", language))
 
-	ch, err := makeChallenge(&cfg, language, dir, filepath.Clean(input))
+	ch, err := makeChallenge(language, dir, filepath.Clean(input), cfg.GetFs(), logger)
 	if err != nil {
 		return err
 	}
 
-	_, solveErr := ch.Solve(noTest)
+	rc, ok := runners.Available[language]
+	if !ok {
+		return exercise.ErrNoRunner
+	}
+
+	_, solveErr := ch.Solve(cmd.Context(), cfg.GetFs(), logger, rc(dir), cmd.OutOrStdout(), nil, noTest)
 	if solveErr != nil {
 		cmd.PrintErrln("Failed to solve: ", solveErr)
 	}

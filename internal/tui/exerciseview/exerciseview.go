@@ -2,6 +2,7 @@
 package exerciseview
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"strings"
@@ -16,6 +17,7 @@ import (
 	"github.com/asphaltbuffet/elf/internal/tui/nav"
 	"github.com/asphaltbuffet/elf/pkg/config"
 	"github.com/asphaltbuffet/elf/pkg/exercise"
+	"github.com/asphaltbuffet/elf/pkg/runners"
 	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
@@ -195,51 +197,68 @@ func (m Model) View() string {
 }
 
 func runSolve(cfg config.Config, info discover.ExerciseInfo, lang string, ch chan<- tasks.Result) {
-	ex, newErr := exercise.New(cfg,
-		exercise.WithDir(info.Path),
-		exercise.WithLanguage(lang),
-		exercise.WithWriter(io.Discard),
-		exercise.WithResultCallback(func(r tasks.Result) { ch <- r }),
-	)
+	ctx := context.Background()
+	logger := cfg.GetLogger()
+	fs := cfg.GetFs()
+
+	ex, newErr := exercise.Load(info.Path, lang, "", fs, logger)
 	if newErr != nil {
 		ch <- tasks.Result{Status: tasks.StatusError, Output: newErr.Error()}
 		return
 	}
 
-	if _, solveErr := ex.Solve(false); solveErr != nil {
+	rc, ok := runners.Available[lang]
+	if !ok {
+		ch <- tasks.Result{Status: tasks.StatusError, Output: exercise.ErrNoRunner.Error()}
+		return
+	}
+
+	cb := func(r tasks.Result) { ch <- r }
+
+	if _, solveErr := ex.Solve(ctx, fs, logger, rc(info.Path), io.Discard, cb, false); solveErr != nil {
 		ch <- tasks.Result{Status: tasks.StatusError, Output: solveErr.Error()}
 	}
 }
 
 func runTest(cfg config.Config, info discover.ExerciseInfo, lang string, ch chan<- tasks.Result) {
-	ex, newErr := exercise.New(cfg,
-		exercise.WithDir(info.Path),
-		exercise.WithLanguage(lang),
-		exercise.WithWriter(io.Discard),
-		exercise.WithResultCallback(func(r tasks.Result) { ch <- r }),
-	)
+	ctx := context.Background()
+	logger := cfg.GetLogger()
+	fs := cfg.GetFs()
+
+	ex, newErr := exercise.Load(info.Path, lang, "", fs, logger)
 	if newErr != nil {
 		ch <- tasks.Result{Status: tasks.StatusError, Output: newErr.Error()}
 		return
 	}
 
-	if _, testErr := ex.Test(); testErr != nil {
+	rc, ok := runners.Available[lang]
+	if !ok {
+		ch <- tasks.Result{Status: tasks.StatusError, Output: exercise.ErrNoRunner.Error()}
+		return
+	}
+
+	cb := func(r tasks.Result) { ch <- r }
+
+	if _, testErr := ex.Test(ctx, logger, rc(info.Path), io.Discard, cb); testErr != nil {
 		ch <- tasks.Result{Status: tasks.StatusError, Output: testErr.Error()}
 	}
 }
 
 func runBenchmark(cfg config.Config, info discover.ExerciseInfo, ch chan<- tasks.Result) {
-	bmk, newErr := exercise.NewBenchmarker(cfg,
-		exercise.WithExerciseDir(info.Path),
-		exercise.WithBenchmarkWriter(io.Discard),
-		exercise.WithBenchmarkResultCallback(func(r tasks.Result) { ch <- r }),
-	)
+	ctx := context.Background()
+	logger := cfg.GetLogger()
+	fs := cfg.GetFs()
+
+	ex, newErr := exercise.Load(info.Path, cfg.GetLanguage(), "", fs, logger)
 	if newErr != nil {
 		ch <- tasks.Result{Status: tasks.StatusError, Output: newErr.Error()}
 		return
 	}
 
-	if _, benchErr := bmk.Benchmark(cfg.GetFs(), defaultBenchItr); benchErr != nil {
+	bmk := exercise.NewBenchmarker(ex)
+	cb := func(r tasks.Result) { ch <- r }
+
+	if _, benchErr := bmk.Benchmark(ctx, fs, logger, io.Discard, cb, defaultBenchItr); benchErr != nil {
 		ch <- tasks.Result{Status: tasks.StatusError, Output: benchErr.Error()}
 	}
 }

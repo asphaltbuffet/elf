@@ -3,9 +3,12 @@ package solve
 import (
 	"bytes"
 	"errors"
+	"log/slog"
 	"testing"
 
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	mocks "github.com/asphaltbuffet/elf/mocks/solve"
@@ -29,7 +32,7 @@ func TestGetSolveCmd(t *testing.T) {
 func resetState(
 	t *testing.T,
 	origMakeConfig func(string) (config.Config, error),
-	origMakeChallenge func(config.ExerciseConfiguration, string, string, string) (Challenge, error),
+	origMakeChallenge func(string, string, string, afero.Fs, *slog.Logger) (Challenge, error),
 ) {
 	t.Helper()
 
@@ -68,7 +71,7 @@ func Test_runSolveCmd(t *testing.T) {
 		makeConfig = func(_ string) (config.Config, error) {
 			return config.NewConfig()
 		}
-		makeChallenge = func(_ config.ExerciseConfiguration, _, _, _ string) (Challenge, error) {
+		makeChallenge = func(_, _, _ string, _ afero.Fs, _ *slog.Logger) (Challenge, error) {
 			return nil, errors.New("exercise not found")
 		}
 
@@ -88,9 +91,11 @@ func Test_runSolveCmd(t *testing.T) {
 		}
 
 		mockCh := mocks.NewMockChallenge(t)
-		mockCh.EXPECT().Solve(false).Return(nil, errors.New("solve failed"))
+		mockCh.EXPECT().
+			Solve(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, false).
+			Return(nil, errors.New("solve failed"))
 
-		makeChallenge = func(_ config.ExerciseConfiguration, _, _, _ string) (Challenge, error) {
+		makeChallenge = func(_, _, _ string, _ afero.Fs, _ *slog.Logger) (Challenge, error) {
 			return mockCh, nil
 		}
 
@@ -113,9 +118,11 @@ func Test_runSolveCmd(t *testing.T) {
 		}
 
 		mockCh := mocks.NewMockChallenge(t)
-		mockCh.EXPECT().Solve(false).Return(nil, nil)
+		mockCh.EXPECT().
+			Solve(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, false).
+			Return(nil, nil)
 
-		makeChallenge = func(_ config.ExerciseConfiguration, _, _, _ string) (Challenge, error) {
+		makeChallenge = func(_, _, _ string, _ afero.Fs, _ *slog.Logger) (Challenge, error) {
 			return mockCh, nil
 		}
 
@@ -136,9 +143,11 @@ func Test_runSolveCmd(t *testing.T) {
 
 		var gotLang string
 		mockCh := mocks.NewMockChallenge(t)
-		mockCh.EXPECT().Solve(false).Return(nil, nil)
+		mockCh.EXPECT().
+			Solve(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, false).
+			Return(nil, nil)
 
-		makeChallenge = func(_ config.ExerciseConfiguration, lang, _, _ string) (Challenge, error) {
+		makeChallenge = func(lang, _, _ string, _ afero.Fs, _ *slog.Logger) (Challenge, error) {
 			gotLang = lang
 			return mockCh, nil
 		}
@@ -163,9 +172,11 @@ func Test_runSolveCmd(t *testing.T) {
 		}
 
 		mockCh := mocks.NewMockChallenge(t)
-		mockCh.EXPECT().Solve(true).Return(nil, nil)
+		mockCh.EXPECT().
+			Solve(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, true).
+			Return(nil, nil)
 
-		makeChallenge = func(_ config.ExerciseConfiguration, _, _, _ string) (Challenge, error) {
+		makeChallenge = func(_, _, _ string, _ afero.Fs, _ *slog.Logger) (Challenge, error) {
 			return mockCh, nil
 		}
 
@@ -189,9 +200,11 @@ func Test_runSolveCmd(t *testing.T) {
 
 		var gotInput string
 		mockCh := mocks.NewMockChallenge(t)
-		mockCh.EXPECT().Solve(false).Return(nil, nil)
+		mockCh.EXPECT().
+			Solve(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, false).
+			Return(nil, nil)
 
-		makeChallenge = func(_ config.ExerciseConfiguration, _, _, inputFile string) (Challenge, error) {
+		makeChallenge = func(_, _, inputFile string, _ afero.Fs, _ *slog.Logger) (Challenge, error) {
 			gotInput = inputFile
 			return mockCh, nil
 		}

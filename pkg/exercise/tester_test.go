@@ -71,12 +71,13 @@ func Test_Test(t *testing.T) {
 	teardownTestCase := setupTestCase(t)
 	defer teardownTestCase(t)
 
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			teardownSubTest := setupSubTest(t)
 			defer teardownSubTest(t)
 
-			// set up mocks
 			mockRunner := mocks.NewMockRunner(t)
 			mockRunner.EXPECT().String().Return("MOCK").Maybe()
 			tt.setup(mockRunner)
@@ -89,16 +90,10 @@ func Test_Test(t *testing.T) {
 				Day:      22,
 				Data:     tt.fields.data,
 				Path:     "",
-				runner:   mockRunner,
-				logger:   slog.New(slog.NewTextHandler(io.Discard, nil)),
-				appFs:    testFs,
-				writer:   io.Discard,
 			}
 
-			// execute the function under test
-			got, err := e.Test()
+			got, err := e.Test(t.Context(), logger, mockRunner, io.Discard, nil)
 
-			// verify results
 			tt.assertion(t, err)
 			if err == nil {
 				assert.Equal(t, tt.want, got)
@@ -108,6 +103,7 @@ func Test_Test(t *testing.T) {
 }
 
 func Test_runTests(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	mockRunner := mocks.NewMockRunner(t)
 
 	mockRunner.EXPECT().Run(mock.Anything, mock.Anything).Return(&protocol.Result{
@@ -118,7 +114,6 @@ func Test_runTests(t *testing.T) {
 	}, nil)
 
 	e := &Exercise{
-		runner: mockRunner,
 		Data: &Data{
 			InputData: "FAKE INPUT",
 			TestCases: TestCase{
@@ -137,10 +132,11 @@ func Test_runTests(t *testing.T) {
 			},
 			Answers: Answer{},
 		},
-		writer: io.Discard,
 	}
 
-	_, err := e.runTests(t.Context())
+	_, err := e.runTests(t.Context(), mockRunner, io.Discard, nil)
 
 	require.NoError(t, err)
+
+	_ = logger
 }

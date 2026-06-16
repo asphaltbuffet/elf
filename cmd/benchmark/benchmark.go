@@ -2,6 +2,9 @@
 package benchmark
 
 import (
+	"context"
+	"io"
+	"log/slog"
 	"path/filepath"
 
 	"github.com/spf13/afero"
@@ -20,8 +23,13 @@ var (
 	makeConfig = func(cf string) (config.Config, error) {
 		return config.NewConfig(config.WithFile(cf))
 	}
-	makeBenchmarker = func(cfg config.ExerciseConfiguration, dir string) (Benchmarker, error) {
-		return exercise.NewBenchmarker(cfg, exercise.WithExerciseDir(dir))
+	makeBenchmarker = func(lang, dir string, fs afero.Fs, logger *slog.Logger) (Benchmarker, error) {
+		ex, err := exercise.Load(dir, lang, "", fs, logger)
+		if err != nil {
+			return nil, err
+		}
+
+		return exercise.NewBenchmarker(ex), nil
 	}
 )
 
@@ -53,7 +61,14 @@ func GetBenchmarkCmd() *cobra.Command {
 
 // Benchmarker is the interface for running benchmark tasks on an exercise.
 type Benchmarker interface {
-	Benchmark(afero.Fs, int) ([]tasks.Result, error)
+	Benchmark(
+		ctx context.Context,
+		fs afero.Fs,
+		logger *slog.Logger,
+		w io.Writer,
+		cb func(tasks.Result),
+		iterations int,
+	) ([]tasks.Result, error)
 	String() string
 }
 
@@ -70,12 +85,14 @@ func runBenchmarkCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	ex, err := makeBenchmarker(&cfg, dir)
+	lang := cfg.GetLanguage()
+
+	ex, err := makeBenchmarker(lang, dir, cfg.GetFs(), cfg.GetLogger())
 	if err != nil {
 		return err
 	}
 
-	_, err = ex.Benchmark(cfg.GetFs(), iterations)
+	_, err = ex.Benchmark(cmd.Context(), cfg.GetFs(), cfg.GetLogger(), cmd.OutOrStdout(), nil, iterations)
 	if err != nil {
 		cmd.PrintErrln("benchmark failed:", err)
 	}

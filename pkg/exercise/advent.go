@@ -4,9 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
-	"os"
 	"path"
 	"path/filepath"
 	"strings"
@@ -14,9 +12,7 @@ import (
 	"github.com/lmittmann/tint"
 	"github.com/spf13/afero"
 
-	"github.com/asphaltbuffet/elf/pkg/config"
 	"github.com/asphaltbuffet/elf/pkg/runners"
-	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
 // Sentinel errors for exercise construction and loading.
@@ -30,85 +26,47 @@ var (
 	ErrLoadInfo          = errors.New("load info")
 )
 
-// New creates an Exercise, applies functional options, and loads exercise metadata from info.json.
-func New(cfg config.ExerciseConfiguration, options ...func(*Exercise)) (*Exercise, error) {
-	e := &Exercise{
-		logger: cfg.GetLogger().With(slog.String("fn", "exercise")),
-		writer: os.Stdout,
-	}
-
-	for _, option := range options {
-		option(e)
-	}
-
-	e.appFs = cfg.GetFs()
-
-	switch {
-	case e.Language == "":
+// Load creates an Exercise from explicit parameters and loads metadata from info.json in fs.
+// language must be a key in runners.Available. customInput overrides the default input file
+// when non-empty.
+func Load(exercisePath, language, customInput string, fs afero.Fs, logger *slog.Logger) (*Exercise, error) {
+	if language == "" {
 		return nil, ErrEmptyLanguage
+	}
 
-	case e.Path != "":
-		if err := e.loadInfo(); err != nil {
-			return nil, err
-		}
+	if _, ok := runners.Available[language]; !ok {
+		return nil, fmt.Errorf("%s: %w", language, ErrNoRunner)
+	}
 
-	default:
+	if exercisePath == "" {
 		return nil, fmt.Errorf("instantiate exercise: %w", ErrNotFound)
+	}
+
+	e := &Exercise{
+		Path:        exercisePath,
+		Language:    language,
+		customInput: customInput,
+	}
+
+	if err := e.loadInfo(fs, logger.With(slog.String("fn", "exercise"))); err != nil {
+		return nil, err
 	}
 
 	return e, nil
 }
 
-// WithDir sets the filesystem path to the exercise directory.
-func WithDir(dir string) func(*Exercise) {
-	return func(e *Exercise) {
-		e.Path = dir
-	}
-}
-
-// WithLanguage sets the implementation language for the exercise runner.
-func WithLanguage(lang string) func(*Exercise) {
-	return func(e *Exercise) {
-		e.Language = lang
-	}
-}
-
-// WithInputFile overrides the default puzzle input file path.
-func WithInputFile(file string) func(*Exercise) {
-	return func(e *Exercise) {
-		e.customInput = file
-	}
-}
-
-// WithWriter sets the writer for CLI result output; pass [io.Discard] to suppress in TUI mode.
-func WithWriter(w io.Writer) func(*Exercise) {
-	return func(e *Exercise) {
-		e.writer = w
-	}
-}
-
-// WithResultCallback registers a function to receive each result as it is produced.
-func WithResultCallback(fn func(tasks.Result)) func(*Exercise) {
-	return func(e *Exercise) {
-		e.onResult = fn
-	}
-}
-
-func (e *Exercise) loadInfo() error {
-	logger := e.logger.With(slog.String("fn", "loadInfo"))
+func (e *Exercise) loadInfo(fs afero.Fs, logger *slog.Logger) error {
 	logger.Debug("populating exercise from info file", "path", e.Path)
 
-	// populate exercise info from info.json
 	fn := filepath.Join(e.Path, "info.json")
 
-	data, err := afero.ReadFile(e.appFs, path.Clean(fn))
+	data, err := afero.ReadFile(fs, path.Clean(fn))
 	if err != nil {
 		logger.Error("reading info file", tint.Err(err), slog.String("path", fn))
 		return fmt.Errorf("%w: %w", ErrLoadInfo, err)
 	}
 
-	err = json.Unmarshal(data, e)
-	if err != nil {
+	if err = json.Unmarshal(data, e); err != nil {
 		logger.Error("unmarshal json into info struct", tint.Err(err), slog.String("path", fn))
 		return fmt.Errorf("%w: %w", ErrLoadInfo, err)
 	}
@@ -118,18 +76,9 @@ func (e *Exercise) loadInfo() error {
 		return fmt.Errorf("%w: %w", ErrLoadInfo, ErrInvalidData)
 	}
 
-	// replace input file if custom input is set
 	if e.customInput != "" {
 		e.Data.InputFileName = e.customInput
 	}
-
-	// instantiate runner for language
-	rc, ok := runners.Available[e.Language]
-	if !ok {
-		return fmt.Errorf("%s: %w", e.Language, ErrNoRunner)
-	}
-
-	e.runner = rc(e.Path)
 
 	return nil
 }
@@ -140,7 +89,6 @@ func (e *Exercise) loadInfo() error {
 // Example: 01-someExerciseTitle.
 func (e *Exercise) Dir() string {
 	if e.Path == "" {
-		e.logger.Error("no path available")
 		return ""
 	}
 
@@ -152,8 +100,8 @@ func makeExerciseID(year, day int) string {
 }
 
 // GetImplementations returns a list of available implementations for the exercise.
-func (e *Exercise) GetImplementations() ([]string, error) {
-	dirEntries, err := afero.ReadDir(e.appFs, e.Path)
+func (e *Exercise) GetImplementations(fs afero.Fs) ([]string, error) {
+	dirEntries, err := afero.ReadDir(fs, e.Path)
 	if err != nil {
 		return nil, err
 	}
@@ -177,4 +125,16 @@ func (e *Exercise) GetImplementations() ([]string, error) {
 	}
 
 	return impls, nil
+}
+
+// readInput reads the exercise input file from fs.
+func (e *Exercise) readInput(fs afero.Fs) (string, error) {
+	inputFile := filepath.Join(e.Path, e.Data.InputFileName)
+
+	data, err := afero.ReadFile(fs, inputFile)
+	if err != nil {
+		return "", err
+	}
+
+	return string(data), nil
 }

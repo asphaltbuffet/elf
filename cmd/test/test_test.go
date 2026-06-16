@@ -3,9 +3,12 @@ package test
 import (
 	"bytes"
 	"errors"
+	"log/slog"
 	"testing"
 
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	mocks "github.com/asphaltbuffet/elf/mocks/test"
@@ -29,7 +32,7 @@ func TestGetTestCmd(t *testing.T) {
 func resetState(
 	t *testing.T,
 	origMakeConfig func(string) (config.Config, error),
-	origMakeChallengeTester func(config.ExerciseConfiguration, string, string) (ChallengeTester, error),
+	origMakeChallengeTester func(string, string, afero.Fs, *slog.Logger) (ChallengeTester, error),
 ) {
 	t.Helper()
 
@@ -66,7 +69,7 @@ func Test_runTestCmd(t *testing.T) {
 		makeConfig = func(_ string) (config.Config, error) {
 			return config.NewConfig()
 		}
-		makeChallengeTester = func(_ config.ExerciseConfiguration, _, _ string) (ChallengeTester, error) {
+		makeChallengeTester = func(_, _ string, _ afero.Fs, _ *slog.Logger) (ChallengeTester, error) {
 			return nil, errors.New("exercise not found")
 		}
 
@@ -86,9 +89,10 @@ func Test_runTestCmd(t *testing.T) {
 		}
 
 		mockCh := mocks.NewMockChallengeTester(t)
-		mockCh.EXPECT().Test().Return(nil, errors.New("test failed"))
+		mockCh.EXPECT().Test(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+			Return(nil, errors.New("test failed"))
 
-		makeChallengeTester = func(_ config.ExerciseConfiguration, _, _ string) (ChallengeTester, error) {
+		makeChallengeTester = func(_, _ string, _ afero.Fs, _ *slog.Logger) (ChallengeTester, error) {
 			return mockCh, nil
 		}
 
@@ -111,9 +115,10 @@ func Test_runTestCmd(t *testing.T) {
 		}
 
 		mockCh := mocks.NewMockChallengeTester(t)
-		mockCh.EXPECT().Test().Return(nil, nil)
+		mockCh.EXPECT().Test(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+			Return(nil, nil)
 
-		makeChallengeTester = func(_ config.ExerciseConfiguration, _, _ string) (ChallengeTester, error) {
+		makeChallengeTester = func(_, _ string, _ afero.Fs, _ *slog.Logger) (ChallengeTester, error) {
 			return mockCh, nil
 		}
 
@@ -134,9 +139,10 @@ func Test_runTestCmd(t *testing.T) {
 
 		var gotLang string
 		mockCh := mocks.NewMockChallengeTester(t)
-		mockCh.EXPECT().Test().Return(nil, nil)
+		mockCh.EXPECT().Test(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+			Return(nil, nil)
 
-		makeChallengeTester = func(_ config.ExerciseConfiguration, lang, _ string) (ChallengeTester, error) {
+		makeChallengeTester = func(lang, _ string, _ afero.Fs, _ *slog.Logger) (ChallengeTester, error) {
 			gotLang = lang
 			return mockCh, nil
 		}

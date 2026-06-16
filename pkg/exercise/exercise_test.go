@@ -4,8 +4,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
-	"github.com/asphaltbuffet/elf/pkg/runners"
 )
 
 func TestExercise_String(t *testing.T) {
@@ -25,12 +23,11 @@ func TestExercise_String(t *testing.T) {
 				URL:      "",
 				Data:     &Data{},
 				Path:     "",
-				runner:   runners.Available["go"]("foo"),
 			},
-			"Advent of Code 2015, Day 1: Fake Title (Go)",
+			"Advent of Code 2015, Day 1: Fake Title",
 		},
 		{
-			"last day in go",
+			"last day in py",
 			&Exercise{
 				ID:       "2015-25",
 				Title:    "Fake Title",
@@ -40,9 +37,8 @@ func TestExercise_String(t *testing.T) {
 				URL:      "",
 				Data:     &Data{},
 				Path:     "",
-				runner:   runners.Available["py"]("foo"),
 			},
-			"Advent of Code 2015, Day 25: Fake Title (Python)",
+			"Advent of Code 2015, Day 25: Fake Title",
 		},
 		{
 			"invalid language",
@@ -55,9 +51,8 @@ func TestExercise_String(t *testing.T) {
 				URL:      "",
 				Data:     &Data{},
 				Path:     "",
-				runner:   nil,
 			},
-			"Advent of Code 2015, Day 1: Fake Title (?)",
+			"Advent of Code 2015, Day 1: Fake Title",
 		},
 		{
 			"empty exercise",
@@ -75,9 +70,8 @@ func TestExercise_String(t *testing.T) {
 				URL:      "",
 				Data:     &Data{},
 				Path:     "",
-				runner:   nil,
 			},
-			"Advent of Code 0, Day 1: Fake Title (?)",
+			"Advent of Code 0, Day 1: Fake Title",
 		},
 		{
 			"no day",
@@ -90,9 +84,8 @@ func TestExercise_String(t *testing.T) {
 				URL:      "",
 				Data:     &Data{},
 				Path:     "",
-				runner:   nil,
 			},
-			"Advent of Code 2015, Day 0: Fake Title (?)",
+			"Advent of Code 2015, Day 0: Fake Title",
 		},
 		{
 			"no title",
@@ -105,9 +98,8 @@ func TestExercise_String(t *testing.T) {
 				URL:      "",
 				Data:     &Data{},
 				Path:     "",
-				runner:   nil,
 			},
-			"Advent of Code 2015, Day 1:  (?)",
+			"Advent of Code 2015, Day 1: ",
 		},
 	}
 	for _, tt := range tests {
