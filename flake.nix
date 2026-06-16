@@ -76,7 +76,15 @@
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
             go
+            jujutsu
+            jjui
             mise
+            ripgrep
+            fd
+            sd
+            gopls
+            nixd
+            gh
             gomod2nix.packages.${system}.default
           ];
 
