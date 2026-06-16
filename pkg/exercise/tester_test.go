@@ -31,7 +31,7 @@ func Test_Test(t *testing.T) {
 		{
 			name: "runner start error",
 			setup: func(_m *mocks.MockRunner) {
-				_m.EXPECT().Start().Return(errors.New("FAKE ERROR"))
+				_m.EXPECT().Prepare(mock.Anything).Return(errors.New("FAKE ERROR"))
 			},
 			fields:    fields{},
 			want:      nil,
@@ -40,9 +40,10 @@ func Test_Test(t *testing.T) {
 		{
 			name: "runner run error",
 			setup: func(_m *mocks.MockRunner) {
-				_m.EXPECT().Start().Return(nil)
-				_m.EXPECT().Run(mock.Anything).Return(nil, errors.New("FAKE ERROR"))
-				_m.EXPECT().Stop().Return(nil)
+				_m.EXPECT().Prepare(mock.Anything).Return(nil)
+				_m.EXPECT().Open(mock.Anything).Return(nil)
+				_m.EXPECT().Run(mock.Anything, mock.Anything).Return(nil, errors.New("FAKE ERROR"))
+				_m.EXPECT().Close(mock.Anything).Return(nil)
 				_m.EXPECT().Cleanup().Return(nil)
 			},
 			fields: fields{
@@ -109,7 +110,7 @@ func Test_Test(t *testing.T) {
 func Test_runTests(t *testing.T) {
 	mockRunner := mocks.NewMockRunner(t)
 
-	mockRunner.EXPECT().Run(mock.Anything).Return(&protocol.Result{
+	mockRunner.EXPECT().Run(mock.Anything, mock.Anything).Return(&protocol.Result{
 		TaskID:   "test.1.1",
 		Ok:       true,
 		Output:   "FAKE OUTPUT",
@@ -139,7 +140,7 @@ func Test_runTests(t *testing.T) {
 		writer: io.Discard,
 	}
 
-	_, err := e.runTests()
+	_, err := e.runTests(t.Context())
 
 	require.NoError(t, err)
 }

@@ -1,6 +1,7 @@
 package exercise
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"path/filepath"
@@ -14,6 +15,7 @@ import (
 
 // Solve runs the exercise solution and optionally skips the pre-solve test run.
 func (e *Exercise) Solve(skipTests bool) ([]tasks.Result, error) {
+	ctx := context.Background()
 	logger := e.logger.With(slog.String("exercise", e.Title))
 	logger.Debug("solving", slog.String("language", e.Language))
 
@@ -28,13 +30,18 @@ func (e *Exercise) Solve(skipTests bool) ([]tasks.Result, error) {
 
 	e.Data.InputData = string(input)
 
-	if err = e.runner.Start(); err != nil {
-		logger.Error("starting runner", tint.Err(err))
+	if err = e.runner.Prepare(ctx); err != nil {
+		logger.Error("preparing runner", tint.Err(err))
+		return nil, err
+	}
+
+	if err = e.runner.Open(ctx); err != nil {
+		logger.Error("opening runner", tint.Err(err))
 		return nil, err
 	}
 
 	defer func() {
-		_ = e.runner.Stop()
+		_ = e.runner.Close(ctx)
 		_ = e.runner.Cleanup()
 	}()
 
@@ -45,7 +52,7 @@ func (e *Exercise) Solve(skipTests bool) ([]tasks.Result, error) {
 
 		var tr []tasks.Result
 
-		tr, err = e.runTests()
+		tr, err = e.runTests(ctx)
 		if err != nil {
 			logger.Error("running tests", tint.Err(err))
 			return nil, err
@@ -56,7 +63,7 @@ func (e *Exercise) Solve(skipTests bool) ([]tasks.Result, error) {
 
 	fmt.Fprintf(e.writer, "Solving (%s)...\n", e.runner)
 
-	mainResults, err := e.runMainTasks()
+	mainResults, err := e.runMainTasks(ctx)
 	if err != nil {
 		logger.Error("running main tasks", tint.Err(err))
 		return nil, err
@@ -67,7 +74,7 @@ func (e *Exercise) Solve(skipTests bool) ([]tasks.Result, error) {
 	return results, nil
 }
 
-func (e *Exercise) runMainTasks() ([]tasks.Result, error) {
+func (e *Exercise) runMainTasks(ctx context.Context) ([]tasks.Result, error) {
 	var solveTasks []testTask
 
 	solveTasks = append(solveTasks, makeMainTasks(protocol.PartOne, e.Data)...)
@@ -76,7 +83,7 @@ func (e *Exercise) runMainTasks() ([]tasks.Result, error) {
 	results := make([]tasks.Result, 0, len(solveTasks))
 
 	for _, t := range solveTasks {
-		result, err := e.runner.Run(t.task)
+		result, err := e.runner.Run(ctx, t.task)
 		if err != nil {
 			return nil, err
 		}

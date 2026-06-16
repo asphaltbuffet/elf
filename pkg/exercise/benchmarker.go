@@ -1,6 +1,7 @@
 package exercise
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -78,6 +79,7 @@ func WithBenchmarkResultCallback(fn func(tasks.Result)) func(*Benchmarker) {
 
 // Benchmark runs each language implementation for the given number of iterations and returns timing results.
 func (b *Benchmarker) Benchmark(afs afero.Fs, iterations int) ([]tasks.Result, error) {
+	ctx := context.Background()
 	logger := b.logger
 	normFactor := NormalizationFactor()
 
@@ -113,7 +115,7 @@ func (b *Benchmarker) Benchmark(afs afero.Fs, iterations int) ([]tasks.Result, e
 		var implData *ImplementationData
 
 		var implResults []tasks.Result
-		implResults, implData, err = b.runBenchmark(iterations)
+		implResults, implData, err = b.runBenchmark(ctx, iterations)
 		if err != nil {
 			return nil, err
 		}
@@ -167,7 +169,7 @@ func NormalizationFactor() float64 {
 	return elapsed.Seconds()
 }
 
-func (b *Benchmarker) runBenchmark(iterations int) ([]tasks.Result, *ImplementationData, error) {
+func (b *Benchmarker) runBenchmark(ctx context.Context, iterations int) ([]tasks.Result, *ImplementationData, error) {
 	logger := b.logger
 
 	const numParts int = 2
@@ -178,7 +180,6 @@ func (b *Benchmarker) runBenchmark(iterations int) ([]tasks.Result, *Implementat
 		results        = make([]tasks.Result, 0, numParts*iterations)
 	)
 
-	// generate all the tasks needed for this benchmark run
 	for i := range iterations {
 		benchmarkTasks = append(
 			benchmarkTasks,
@@ -203,20 +204,25 @@ func (b *Benchmarker) runBenchmark(iterations int) ([]tasks.Result, *Implementat
 		progressbar.OptionSetWriter(b.writer),
 	)
 
-	if err := b.runner.Start(); err != nil {
-		logger.Error("start runner", tint.Err(err))
+	if err := b.runner.Prepare(ctx); err != nil {
+		logger.ErrorContext(ctx, "prepare runner", tint.Err(err))
+		return nil, nil, err
+	}
+
+	if err := b.runner.Open(ctx); err != nil {
+		logger.ErrorContext(ctx, "open runner", tint.Err(err))
 		return nil, nil, err
 	}
 
 	defer func() {
-		_ = b.runner.Stop()
+		_ = b.runner.Close(ctx)
 		_ = b.runner.Cleanup()
 	}()
 
 	for _, t := range benchmarkTasks {
-		benchResult, err := b.runner.Run(t)
+		benchResult, err := b.runner.Run(ctx, t)
 		if err != nil {
-			logger.Error("running benchmark", tint.Err(err))
+			logger.ErrorContext(ctx, "running benchmark", tint.Err(err))
 			return nil, nil, err
 		}
 
@@ -231,14 +237,14 @@ func (b *Benchmarker) runBenchmark(iterations int) ([]tasks.Result, *Implementat
 		}
 
 		if err = progBar.Add(1); err != nil {
-			logger.Error("updating progress bar", tint.Err(err))
+			logger.ErrorContext(ctx, "updating progress bar", tint.Err(err))
 			return nil, nil, err
 		}
 	}
 
 	stats, err := calculateMetrics(metricsResults)
 	if err != nil {
-		logger.Error("getting stats from results", tint.Err(err))
+		logger.ErrorContext(ctx, "getting stats from results", tint.Err(err))
 		return results, nil, err
 	}
 

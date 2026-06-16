@@ -1,18 +1,29 @@
 package runners
 
-import "github.com/asphaltbuffet/elf/pkg/protocol"
+import (
+	"context"
+
+	"github.com/asphaltbuffet/elf/pkg/protocol"
+)
 
 // Runner is an interface defining methods for starting, stopping,
 // cleaning up, and running tasks.
 type Runner interface {
-	// Start initializes the runner.
-	Start() error
-	// Stop terminates the runner.
-	Stop() error
-	// Cleanup handles any cleanup operations required after running a task.
+	// Prepare compiles or otherwise readies the runner before launch.
+	// May be a no-op for pre-built or discovered runners.
+	Prepare(ctx context.Context) error
+
+	// Open starts the runner subprocess.
+	Open(ctx context.Context) error
+
+	// Run executes a single task and returns the result.
+	Run(ctx context.Context, task *protocol.Task) (*protocol.Result, error)
+
+	// Close stops the runner subprocess gracefully.
+	Close(ctx context.Context) error
+
+	// Cleanup removes any artifacts created by Prepare. May be a no-op.
 	Cleanup() error
-	// Run executes a given task and returns the result or an error.
-	Run(task *protocol.Task) (*protocol.Result, error)
 
 	String() string
 }

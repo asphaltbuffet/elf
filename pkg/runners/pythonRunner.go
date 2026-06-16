@@ -12,7 +12,6 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
-	"time"
 
 	"github.com/asphaltbuffet/elf/pkg/protocol"
 )
@@ -40,29 +39,27 @@ func newPythonRunner(dir string) Runner {
 //go:embed interface/python.templ
 var pythonInterface []byte
 
-func (p *pythonRunner) Start() error {
-	// Save interaction code
-	if err := os.WriteFile(p.wrapperFilepath, pythonInterface, 0o600); err != nil {
-		return err
-	}
+func (p *pythonRunner) Prepare(_ context.Context) error {
+	return os.WriteFile(p.wrapperFilepath, pythonInterface, 0o600)
+}
 
-	// Sort out PYTHONPATH
+func (p *pythonRunner) Open(ctx context.Context) error {
 	absDir, err := filepath.Abs(p.dir)
 	if err != nil {
 		return err
 	}
 
 	pythonPathVar := strings.Join([]string{
-		filepath.Join(absDir, "../../..", "lib"), // so we can use aocpy
-		filepath.Join(absDir, "py"),              // so we can import stuff in the exercises directory
+		filepath.Join(absDir, "../../..", "lib"),
+		filepath.Join(absDir, "py"),
 	}, ":")
 
 	p.cmd = exec.CommandContext(
-		context.Background(),
+		ctx,
 		python3Installation,
 		"-B",
 		pythonWrapperFilename,
-	) // -B prevents .pyc files from being written
+	)
 	p.cmd.Env = append(p.cmd.Env, "PYTHONPATH="+pythonPathVar)
 	p.cmd.Dir = p.dir
 
@@ -76,28 +73,23 @@ func (p *pythonRunner) Start() error {
 	return p.cmd.Start()
 }
 
-func (p *pythonRunner) Stop() error {
-	const processExitTimeout time.Duration = 5 * time.Second
-
+func (p *pythonRunner) Close(ctx context.Context) error {
 	if p.cmd == nil || p.cmd.Process == nil {
 		return nil
 	}
 
-	// First try to send a SIGTERM.
 	if err := p.cmd.Process.Signal(syscall.SIGTERM); err != nil {
 		return fmt.Errorf("failed to send SIGTERM to python process: %w", err)
 	}
 
-	// Wait for the process to exit, but not forever.
 	done := make(chan error, 1)
 	go func() {
 		_, err := p.cmd.Process.Wait()
 		done <- err
 	}()
 
-	// wait up to 5 seconds for the process to exit.
 	select {
-	case <-time.After(processExitTimeout):
+	case <-ctx.Done():
 		if err := p.cmd.Process.Kill(); err != nil {
 			return fmt.Errorf("failed to kill python process: %w", err)
 		}
@@ -121,7 +113,7 @@ func (p *pythonRunner) Cleanup() error {
 	return err
 }
 
-func (p *pythonRunner) Run(task *protocol.Task) (*protocol.Result, error) {
+func (p *pythonRunner) Run(_ context.Context, task *protocol.Task) (*protocol.Result, error) {
 	taskJSON, err := json.Marshal(task)
 	if err != nil {
 		return nil, fmt.Errorf("marshalling task to json: %w", err)

@@ -288,7 +288,7 @@ func TestRunBenchmark(t *testing.T) {
 		{
 			name: "runner start error",
 			setup: func(_m *mocks.MockRunner) {
-				_m.EXPECT().Start().Return(errors.New("fake start error"))
+				_m.EXPECT().Prepare(mock.Anything).Return(errors.New("fake start error"))
 			},
 			fields:      fields{exerciseBaseDir: ""},
 			args:        args{iterations: 10},
@@ -299,8 +299,9 @@ func TestRunBenchmark(t *testing.T) {
 		{
 			name: "runner run error",
 			setup: func(_m *mocks.MockRunner) {
-				_m.EXPECT().Start().Return(nil)
-				_m.EXPECT().Run(mock.Anything).Return(nil, errors.New("fake run error"))
+				_m.EXPECT().Prepare(mock.Anything).Return(nil)
+				_m.EXPECT().Open(mock.Anything).Return(nil)
+				_m.EXPECT().Run(mock.Anything, mock.Anything).Return(nil, errors.New("fake run error"))
 			},
 			fields:      fields{exerciseBaseDir: ""},
 			args:        args{iterations: 10},
@@ -311,8 +312,9 @@ func TestRunBenchmark(t *testing.T) {
 		{
 			name: "all tasks fail",
 			setup: func(_m *mocks.MockRunner) {
-				_m.EXPECT().Start().Return(nil)
-				_m.EXPECT().Run(mock.Anything).Return(&protocol.Result{
+				_m.EXPECT().Prepare(mock.Anything).Return(nil)
+				_m.EXPECT().Open(mock.Anything).Return(nil)
+				_m.EXPECT().Run(mock.Anything, mock.Anything).Return(&protocol.Result{
 					TaskID:   "benchmark.1.1",
 					Ok:       false,
 					Output:   "fake output",
@@ -335,7 +337,7 @@ func TestRunBenchmark(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mockRunner := mocks.NewMockRunner(t)
 			mockRunner.EXPECT().String().Return("MOCK")
-			mockRunner.EXPECT().Stop().Return(nil).Maybe()
+			mockRunner.EXPECT().Close(mock.Anything).Return(nil).Maybe()
 			mockRunner.EXPECT().Cleanup().Return(nil).Maybe()
 
 			tt.setup(mockRunner)
@@ -358,7 +360,7 @@ func TestRunBenchmark(t *testing.T) {
 				exerciseBaseDir: tt.fields.exerciseBaseDir,
 			}
 
-			got, got1, err := b.runBenchmark(tt.args.iterations)
+			got, got1, err := b.runBenchmark(t.Context(), tt.args.iterations)
 
 			tt.assertion(t, err)
 			if err == nil {

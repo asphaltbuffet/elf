@@ -17,7 +17,7 @@ import (
 
 func Test_runMainTasks(t *testing.T) {
 	mockRunner := mocks.NewMockRunner(t)
-	mockCall := mockRunner.EXPECT().Run(mock.Anything).Return(&protocol.Result{
+	mockCall := mockRunner.EXPECT().Run(mock.Anything, mock.Anything).Return(&protocol.Result{
 		TaskID:   "solve.1",
 		Ok:       true,
 		Output:   "FAKE OUTPUT",
@@ -31,20 +31,20 @@ func Test_runMainTasks(t *testing.T) {
 		writer: io.Discard,
 	}
 
-	_, err := e.runMainTasks()
+	_, err := e.runMainTasks(t.Context())
 
 	require.NoError(t, err)
 
 	mockCall.Unset()
 
-	mockRunner.EXPECT().Run(mock.Anything).Return(&protocol.Result{
+	mockRunner.EXPECT().Run(mock.Anything, mock.Anything).Return(&protocol.Result{
 		TaskID:   "fake.1",
 		Ok:       false,
 		Output:   "fakey fake",
 		Duration: 0.666,
 	}, errors.New("FAKE ERROR")).Once()
 
-	_, err = e.runMainTasks()
+	_, err = e.runMainTasks(t.Context())
 
 	require.Error(t, err)
 }
@@ -82,7 +82,7 @@ func TestSolve(t *testing.T) {
 		{
 			name: "runner start error",
 			setup: func(_m *mocks.MockRunner) {
-				_m.EXPECT().Start().Return(errors.New("FAKE ERROR"))
+				_m.EXPECT().Prepare(mock.Anything).Return(errors.New("FAKE ERROR"))
 			},
 			fields: fields{
 				inputFile: "input.fake",
@@ -96,10 +96,11 @@ func TestSolve(t *testing.T) {
 		{
 			name: "runner run error",
 			setup: func(_m *mocks.MockRunner) {
-				_m.EXPECT().Start().Return(nil)
-				_m.EXPECT().Run(mock.Anything).Return(nil, errors.New("FAKE ERROR"))
+				_m.EXPECT().Prepare(mock.Anything).Return(nil)
+				_m.EXPECT().Open(mock.Anything).Return(nil)
+				_m.EXPECT().Run(mock.Anything, mock.Anything).Return(nil, errors.New("FAKE ERROR"))
 				_m.EXPECT().String().Return("fakeRunner")
-				_m.EXPECT().Stop().Return(nil)
+				_m.EXPECT().Close(mock.Anything).Return(nil)
 				_m.EXPECT().Cleanup().Return(nil)
 			},
 			fields: fields{

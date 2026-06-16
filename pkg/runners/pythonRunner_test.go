@@ -91,7 +91,7 @@ func Test_pythonRunner_Cleanup(t *testing.T) {
 	}
 }
 
-func Test_pythonRunner_Stop(t *testing.T) {
+func Test_pythonRunner_Close(t *testing.T) {
 	tests := []struct {
 		name      string
 		p         *pythonRunner
@@ -106,7 +106,7 @@ func Test_pythonRunner_Stop(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.assertion(t, tt.p.Stop())
+			tt.assertion(t, tt.p.Close(t.Context()))
 		})
 	}
 }

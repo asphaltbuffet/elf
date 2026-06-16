@@ -1,6 +1,7 @@
 package exercise
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -13,6 +14,8 @@ import (
 
 // Test runs the exercise test cases and returns pass/fail results for each.
 func (e *Exercise) Test() ([]tasks.Result, error) {
+	ctx := context.Background()
+
 	if e.Year == 0 && e.Day == 0 && e.Title == "" {
 		return nil, errors.New("exercise is empty")
 	}
@@ -20,8 +23,17 @@ func (e *Exercise) Test() ([]tasks.Result, error) {
 	logger := e.logger.With(slog.String("fn", "Test"), slog.String("exercise", e.Title))
 	logger.Debug("testing", slog.String("language", e.Language))
 
-	if err := e.runner.Start(); err != nil {
-		logger.Error("starting runner",
+	if err := e.runner.Prepare(ctx); err != nil {
+		logger.Error("preparing runner",
+			slog.String("path", e.Path),
+			slog.String("implementation", e.runner.String()),
+			tint.Err(err))
+
+		return nil, err
+	}
+
+	if err := e.runner.Open(ctx); err != nil {
+		logger.Error("opening runner",
 			slog.String("path", e.Path),
 			slog.String("implementation", e.runner.String()),
 			tint.Err(err))
@@ -30,13 +42,13 @@ func (e *Exercise) Test() ([]tasks.Result, error) {
 	}
 
 	defer func() {
-		_ = e.runner.Stop()
+		_ = e.runner.Close(ctx)
 		_ = e.runner.Cleanup()
 	}()
 
 	fmt.Fprintln(e.writer, headerStyle(fmt.Sprintf("ADVENT OF CODE %d\nDay %d: %s", e.Year, e.Day, e.Title)))
 
-	results, err := e.runTests()
+	results, err := e.runTests(ctx)
 	if err != nil {
 		logger.Error("running tests", tint.Err(err))
 
@@ -46,7 +58,7 @@ func (e *Exercise) Test() ([]tasks.Result, error) {
 	return results, nil
 }
 
-func (e *Exercise) runTests() ([]tasks.Result, error) {
+func (e *Exercise) runTests(ctx context.Context) ([]tasks.Result, error) {
 	var testTasks []testTask
 
 	testTasks = append(testTasks, makeTestTasks(protocol.PartOne, e.Data.TestCases.One)...)
@@ -55,9 +67,9 @@ func (e *Exercise) runTests() ([]tasks.Result, error) {
 	results := make([]tasks.Result, 0, len(testTasks))
 
 	for _, t := range testTasks {
-		result, err := e.runner.Run(t.task)
+		result, err := e.runner.Run(ctx, t.task)
 		if err != nil {
-			e.logger.Error("running test task", tint.Err(err))
+			e.logger.ErrorContext(ctx, "running test task", tint.Err(err))
 			return nil, err
 		}
 
