@@ -26,10 +26,12 @@ jobs:
           go-version-file: 'go.mod'
 
       - name: Set up mise
-        uses: jdx/mise-action@v3
+        uses: jdx/mise-action@v4
 
-      - name: Autogenerate files
-        run: mise run generate
+      - name: Generate code and mocks
+        run: |
+          mise run generate
+          mise run mock
 
       - uses: github/codeql-action/init@v4
         with:
