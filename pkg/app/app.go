@@ -23,6 +23,12 @@ type App struct {
 	baseDir  string
 }
 
+// RegisterRunners populates runners.Available from the given config.
+// Must be called before any exercise operation.
+func RegisterRunners(cfg config.Config) {
+	runners.RegisterFromDescriptors(cfg.GetRunners())
+}
+
 // New constructs an App from a config.Config, extracting FS, Logger, and display values.
 func New(cfg config.Config) *App {
 	return &App{

@@ -15,6 +15,7 @@ import (
 	"github.com/asphaltbuffet/elf/cmd/solve"
 	"github.com/asphaltbuffet/elf/cmd/test"
 	"github.com/asphaltbuffet/elf/internal/tui"
+	appPkg "github.com/asphaltbuffet/elf/pkg/app"
 	elfconfig "github.com/asphaltbuffet/elf/pkg/config"
 )
 
@@ -42,6 +43,8 @@ func GetRootCommand() *cobra.Command {
 				if err != nil {
 					return err
 				}
+
+				appPkg.RegisterRunners(cfg)
 
 				return tui.Run(cfg)
 			},

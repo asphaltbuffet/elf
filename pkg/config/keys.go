@@ -17,6 +17,10 @@ const (
 	AdventTokenKey Key = "advent.token" // Configuration key for the Advent of Code auth token.
 	AdventUserKey  Key = "advent.user"  // Configuration key for the Advent of Code user name.
 	AdventDirKey   Key = "advent.dir"   // Configuration key for the Advent of Code exercise directory.
+
+	// Runner configuration keys.
+
+	RunnersKey Key = "runner" // Configuration key for the [[runner]] table array.
 )
 
 func (k Key) String() string {

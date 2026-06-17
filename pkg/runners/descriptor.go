@@ -11,25 +11,25 @@ const wrapperBaseName = "runtime-wrapper"
 // OpenSpec describes how to launch the runner subprocess.
 // Either Interpreter or Binary must be set, not both.
 type OpenSpec struct {
-	Interpreter string   // path/name of interpreter (e.g. "python3"); looked up via $PATH
-	Args        []string // arguments; tokens substituted at Open time
-	Env         []string // additional env vars (KEY=VALUE); tokens substituted at Open time
-	Binary      string   // path to compiled binary; tokens substituted at Open time
+	Interpreter string   `mapstructure:"interpreter"` // path/name of interpreter (e.g. "python3"); looked up via $PATH
+	Args        []string `mapstructure:"args"`        // arguments; tokens substituted at Open time
+	Env         []string `mapstructure:"env"`         // additional env vars (KEY=VALUE); tokens substituted at Open time
+	Binary      string   `mapstructure:"binary"`      // path to compiled binary; tokens substituted at Open time
 }
 
 // PrepareSpec describes the Prepare phase.
 type PrepareSpec struct {
-	TemplatePath  string            // path to wrapper template file; empty = no template
-	TemplateVars  map[string]string // user-defined variables substituted into the template
-	BuildCommands [][]string        // ordered build commands; tokens substituted at Prepare time
+	TemplatePath  string            `mapstructure:"template_path"`  // path to wrapper template file; empty = no template
+	TemplateVars  map[string]string `mapstructure:"template_vars"`  // user-defined variables substituted into the template
+	BuildCommands [][]string        `mapstructure:"build_commands"` // ordered build commands; tokens substituted at Prepare time
 }
 
 // RunnerDescriptor is a config entry that fully specifies how to build and launch a Runner.
 type RunnerDescriptor struct {
-	Key     string // registry key and exercise subdirectory name (e.g. "py")
-	Name    string // display name (e.g. "Python")
-	Prepare PrepareSpec
-	Open    OpenSpec
+	Key     string      `mapstructure:"key"`     // registry key and exercise subdirectory name (e.g. "py")
+	Name    string      `mapstructure:"name"`    // display name (e.g. "Python")
+	Prepare PrepareSpec `mapstructure:"prepare"` // prepare phase spec
+	Open    OpenSpec    `mapstructure:"open"`    // open phase spec
 }
 
 // ToCreator returns a RunnerCreator that constructs a descriptorRunner from this descriptor.

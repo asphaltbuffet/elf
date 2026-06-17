@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	analyzer "github.com/asphaltbuffet/elf/pkg/analyze"
+	appPkg "github.com/asphaltbuffet/elf/pkg/app"
 	"github.com/asphaltbuffet/elf/pkg/config"
 )
 
@@ -56,6 +57,8 @@ func runAnalyzeCmd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
+	appPkg.RegisterRunners(cfg)
 
 	dir, err := filepath.Abs(args[0])
 	if err != nil {

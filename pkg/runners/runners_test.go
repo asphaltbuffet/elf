@@ -18,3 +18,19 @@ func TestExerciseMeta_LangDir(t *testing.T) {
 	}
 	assert.Equal(t, "/home/user/exercises/2015/01-not-quite-lisp/py", meta.LangDir())
 }
+
+func TestRegisterFromDescriptors(t *testing.T) {
+	restore := runners.ResetRegistry(map[string]runners.RunnerCreator{})
+	t.Cleanup(restore)
+
+	descs := []runners.RunnerDescriptor{
+		{Key: "py", Name: "Python", Open: runners.OpenSpec{Interpreter: "python3"}},
+		{Key: "rb", Name: "Ruby", Open: runners.OpenSpec{Interpreter: "ruby"}},
+	}
+
+	runners.RegisterFromDescriptors(descs)
+
+	assert.Contains(t, runners.Available, "py")
+	assert.Contains(t, runners.Available, "rb")
+	assert.Len(t, runners.Available, 2)
+}

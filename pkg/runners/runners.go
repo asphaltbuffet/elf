@@ -54,3 +54,12 @@ type RunnerCreator func(meta ExerciseMeta) Runner
 
 // Available is the runtime runner registry, populated at startup from config.
 var Available = map[string]RunnerCreator{}
+
+// RegisterFromDescriptors populates Available from a slice of RunnerDescriptors.
+// Existing entries are overwritten.
+func RegisterFromDescriptors(descs []RunnerDescriptor) {
+	for _, d := range descs {
+		desc := d // capture loop variable
+		Available[desc.Key] = desc.ToCreator()
+	}
+}

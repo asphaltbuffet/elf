@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	appPkg "github.com/asphaltbuffet/elf/pkg/app"
 	"github.com/asphaltbuffet/elf/pkg/config"
 	"github.com/asphaltbuffet/elf/pkg/exercise"
 )
@@ -66,6 +67,8 @@ func runDownloadCmd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
+	appPkg.RegisterRunners(cfg)
 
 	forced := &exercise.Overwrites{
 		Input: forceInput,

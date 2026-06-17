@@ -9,9 +9,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/lmittmann/tint"
 	"github.com/spf13/afero"
 	"github.com/spf13/viper"
+
+	"github.com/asphaltbuffet/elf/pkg/runners"
 )
 
 // Configuration constants for Viper setup and config file defaults.
@@ -232,4 +235,25 @@ func (c Config) GetInputFilename() string {
 // Intended for use in tests only.
 func (c Config) Viper() *viper.Viper {
 	return c.viper
+}
+
+// GetRunners returns the list of runner descriptors from config.
+func (c Config) GetRunners() []runners.RunnerDescriptor {
+	raw := c.viper.Get(string(RunnersKey))
+	if raw == nil {
+		return nil
+	}
+
+	var descs []runners.RunnerDescriptor
+
+	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
+		Result:           &descs,
+		WeaklyTypedInput: true,
+		TagName:          "mapstructure",
+	})
+	if err != nil || decoder.Decode(raw) != nil {
+		return nil
+	}
+
+	return descs
 }
