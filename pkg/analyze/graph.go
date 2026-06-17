@@ -25,6 +25,7 @@ var langColor = map[string]color.Color{
 	"Python": color.RGBA{R: 55, G: 118, B: 171, A: 255},
 }
 
+// Graph generates a line graph of benchmark run times and writes it to the configured output file.
 func (a *Analyzer) Graph() error {
 	return generateLineGraph(a.Data, a.Output)
 }
@@ -154,6 +155,7 @@ func generateLineGraph(benchData []*exercise.BenchmarkData, outfile string) erro
 	return nil
 }
 
+// NewBenchmarkPlots creates a grid of plots for each exercise day in the given year.
 func NewBenchmarkPlots(year int) ([][]*plot.Plot, error) {
 	const rows, cols = 1, 2
 	const yPosRedline = 15

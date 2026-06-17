@@ -19,12 +19,14 @@ import (
 	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
+// Benchmarker runs an exercise solution repeatedly to collect timing statistics.
 type Benchmarker struct {
 	*Exercise
 
 	exerciseBaseDir string
 }
 
+// NewBenchmarker creates a Benchmarker, applies options, and loads exercise metadata.
 func NewBenchmarker(cfg config.ExerciseConfiguration, options ...func(*Benchmarker)) (*Benchmarker, error) {
 	b := &Benchmarker{
 		Exercise: &Exercise{
@@ -52,24 +54,28 @@ func NewBenchmarker(cfg config.ExerciseConfiguration, options ...func(*Benchmark
 	return b, nil
 }
 
+// WithExerciseDir sets the filesystem path to the exercise directory for the benchmarker.
 func WithExerciseDir(dir string) func(*Benchmarker) {
 	return func(b *Benchmarker) {
 		b.Path = dir
 	}
 }
 
+// WithBenchmarkWriter sets the writer for benchmark progress output; pass [io.Discard] in TUI mode.
 func WithBenchmarkWriter(w io.Writer) func(*Benchmarker) {
 	return func(b *Benchmarker) {
 		b.writer = w
 	}
 }
 
+// WithBenchmarkResultCallback registers a function to receive each benchmark result as it is produced.
 func WithBenchmarkResultCallback(fn func(tasks.Result)) func(*Benchmarker) {
 	return func(b *Benchmarker) {
 		b.onResult = fn
 	}
 }
 
+// Benchmark runs each language implementation for the given number of iterations and returns timing results.
 func (b *Benchmarker) Benchmark(afs afero.Fs, iterations int) ([]tasks.Result, error) {
 	logger := b.logger
 	normFactor := NormalizationFactor()
@@ -142,6 +148,7 @@ func (b *Benchmarker) Benchmark(afs afero.Fs, iterations int) ([]tasks.Result, e
 	return results, afero.WriteFile(afs, outfile, jsonData, 0o600)
 }
 
+// NormalizationFactor returns a CPU-speed calibration factor for comparable cross-machine benchmarks.
 func NormalizationFactor() float64 {
 	start := time.Now()
 	m := map[int]string{}

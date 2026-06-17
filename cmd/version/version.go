@@ -1,5 +1,4 @@
-// Package version is the version subcommand.
-package version
+package versioncmd
 
 import (
 	"fmt"
@@ -9,6 +8,7 @@ import (
 
 var version = "dev"
 
+// NewVersionCmd returns the cobra command for printing the version number.
 func NewVersionCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "version",

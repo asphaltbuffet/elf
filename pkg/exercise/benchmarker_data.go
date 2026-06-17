@@ -10,6 +10,7 @@ import (
 	"github.com/asphaltbuffet/elf/pkg/runners"
 )
 
+// BenchmarkData holds the aggregated timing results for all implementations of a single exercise.
 type BenchmarkData struct {
 	Date time.Time `json:"run-date"`
 	// Dir             string                `json:"dir"`
@@ -21,12 +22,14 @@ type BenchmarkData struct {
 	Implementations []*ImplementationData `json:"implementations"`
 }
 
+// ImplementationData holds per-language timing data for both parts of an exercise.
 type ImplementationData struct {
 	Name    string    `json:"name"`
 	PartOne *PartData `json:"part-one"`
 	PartTwo *PartData `json:"part-two,omitempty"`
 }
 
+// PartData holds statistical timing metrics (mean, min, max, raw samples) for one exercise part.
 type PartData struct {
 	Mean float64   `json:"mean"`
 	Min  float64   `json:"min"`
@@ -34,6 +37,7 @@ type PartData struct {
 	Data []float64 `json:"data,omitempty"`
 }
 
+// ErrRunnerStart is returned when a language runner fails to initialize.
 var ErrRunnerStart = errors.New("runner start error")
 
 func (b *BenchmarkData) String() string {

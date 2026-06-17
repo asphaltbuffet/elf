@@ -1,3 +1,4 @@
+// Package config is the config subcommand.
 package config
 
 import (

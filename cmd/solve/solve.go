@@ -35,6 +35,7 @@ const exampleText = `
   elf solve --lang=py
   elf solve # using default language from config`
 
+// GetSolveCmd returns the cobra command for solving an exercise.
 func GetSolveCmd() *cobra.Command {
 	if solveCmd == nil {
 		solveCmd = &cobra.Command{
@@ -56,6 +57,7 @@ func GetSolveCmd() *cobra.Command {
 	return solveCmd
 }
 
+// Challenge is the interface for solving an exercise challenge.
 type Challenge interface {
 	Solve(bool) ([]tasks.Result, error)
 	String() string

@@ -19,6 +19,7 @@ import (
 	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
+// Sentinel errors for exercise construction and loading.
 var (
 	ErrEmptyLanguage     = errors.New("no language specified")
 	ErrNotFound          = afero.ErrFileNotFound
@@ -29,6 +30,7 @@ var (
 	ErrLoadInfo          = errors.New("load info")
 )
 
+// New creates an Exercise, applies functional options, and loads exercise metadata from info.json.
 func New(cfg config.ExerciseConfiguration, options ...func(*Exercise)) (*Exercise, error) {
 	e := &Exercise{
 		logger: cfg.GetLogger().With(slog.String("fn", "exercise")),
@@ -57,30 +59,35 @@ func New(cfg config.ExerciseConfiguration, options ...func(*Exercise)) (*Exercis
 	return e, nil
 }
 
+// WithDir sets the filesystem path to the exercise directory.
 func WithDir(dir string) func(*Exercise) {
 	return func(e *Exercise) {
 		e.Path = dir
 	}
 }
 
+// WithLanguage sets the implementation language for the exercise runner.
 func WithLanguage(lang string) func(*Exercise) {
 	return func(e *Exercise) {
 		e.Language = lang
 	}
 }
 
+// WithInputFile overrides the default puzzle input file path.
 func WithInputFile(file string) func(*Exercise) {
 	return func(e *Exercise) {
 		e.customInput = file
 	}
 }
 
+// WithWriter sets the writer for CLI result output; pass [io.Discard] to suppress in TUI mode.
 func WithWriter(w io.Writer) func(*Exercise) {
 	return func(e *Exercise) {
 		e.writer = w
 	}
 }
 
+// WithResultCallback registers a function to receive each result as it is produced.
 func WithResultCallback(fn func(tasks.Result)) func(*Exercise) {
 	return func(e *Exercise) {
 		e.onResult = fn

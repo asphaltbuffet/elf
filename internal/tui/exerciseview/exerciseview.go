@@ -1,3 +1,4 @@
+// Package exerciseview is the TUI screen that runs and streams results for a single exercise action.
 package exerciseview
 
 import (
@@ -71,6 +72,7 @@ func New(cfg config.Config, info discover.ExerciseInfo, action string) Model {
 	}
 }
 
+// Init starts the spinner and launches the exercise action in a goroutine, returning the first result.
 func (m Model) Init() tea.Cmd {
 	spinCmd := m.progress.InitialTick()
 
@@ -105,6 +107,7 @@ func (m Model) Init() tea.Cmd {
 	return tea.Batch(spinCmd, runCmd)
 }
 
+// Update streams results from the channel and handles completion, resize, and key events.
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -152,6 +155,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmd, rlCmd)
 }
 
+// View renders the result list, progress spinner, and completion status.
 func (m Model) View() string {
 	var b strings.Builder
 

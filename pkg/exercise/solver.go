@@ -12,6 +12,7 @@ import (
 	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
+// Solve runs the exercise solution and optionally skips the pre-solve test run.
 func (e *Exercise) Solve(skipTests bool) ([]tasks.Result, error) {
 	logger := e.logger.With(slog.String("exercise", e.Title))
 	logger.Debug("solving", slog.String("language", e.Language))

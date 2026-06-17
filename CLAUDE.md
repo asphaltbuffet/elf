@@ -6,6 +6,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - [ ] Consider using `version-file` in golangci-lint-action to read version from `.tool-versions` instead of hardcoding in workflow
 - [ ] Bump pinned actionlint version in `actionlint.yml` (currently `1.7.10`, check [releases](https://github.com/rhysd/actionlint/releases))
+- [ ] Migrate internal mockery-generated mocks toward hand-rolled fakes (prefer fakes for interfaces defined within this codebase; reserve mockery for external dependencies)
+
+## Issue Tracker
+
+Issues live in GitHub Issues at `github.com/asphaltbuffet/elf`. Use the `gh` CLI for all operations.
 
 ## Important
 
@@ -19,14 +24,14 @@ This project uses [mise](https://mise.jdx.dev) for tool management and task runn
 
 ```bash
 mise run test        # Run tests with gotestsum (generates coverage in bin/coverage.out)
-mise run lint        # Run golangci-lint with auto-fix
+mise run lint        # Run golangci-lint (read-only, used in CI)
+mise run lint-fix    # Run golangci-lint with auto-fix (use locally to apply fixes)
 mise run generate    # Run go generate (stringer)
 mise run mock        # Generate mocks with mockery
 mise run build       # Build to dist/
 mise run snapshot    # Build release snapshot with goreleaser
 mise run update-deps # Update direct dependencies to latest (then mod-tidy → nix-hash)
 mise run dev         # Full dev pipeline: generate, mock, lint, test, snapshot
-mise run ci          # CI pipeline: generate, mock, mod-tidy, test, cover, build, diff
 ```
 
 Always use `mise run dev` for full verification (generate, mock, lint, test, snapshot), not just `go test`/`go build`.
@@ -154,6 +159,20 @@ Mockery-generated mocks exist in `mocks/` for `Challenge`, `ChallengeTester`, `B
 - `govet shadow`: inner `:=` shadowing outer `err` is caught — rename inner variable (e.g., `graphErr`)
 - `mnd`: Extract magic numbers to named constants, even for visual widths/padding
 
+### Shell Tooling — `sd` Newline Limitation
+
+`sd` does **not** match across newlines. A pattern like `'foo,\n'` silently matches nothing (exits 0, no change). Always write patterns that match within a single line:
+
+```bash
+# Wrong — \n never matches, silent no-op
+sd 'SomeField:\s+pkg\.SomeType\w+,\n' '' file.go
+
+# Right — omit the \n; accept that a blank line may remain
+sd 'SomeField:\s+pkg\.SomeType\w+,' '' file.go
+```
+
+If you need to remove an entire line (including the newline), use the `Edit` tool instead of `sd`.
+
 ### Nix Flake
 
 - Uses `gomod2nix` with `buildGoApplication` (not `buildGoModule`)
@@ -174,3 +193,17 @@ Flake outputs:
 - `config-dir` and `cache-dir` default to `null` (omitted from TOML) so elf's runtime XDG logic applies
 - Config file generated via `pkgs.formats.toml {}` and placed at `xdg.configFile."elf/elf.toml"`
 - Environment variables (`ELF_ADVENT_TOKEN`, `ELF_LANGUAGE`) mapped via `home.sessionVariables`
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues at `github.com/asphaltbuffet/elf`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default label vocabulary (needs-triage, needs-info, ready-for-agent, ready-for-human, wontfix). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context layout — one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.

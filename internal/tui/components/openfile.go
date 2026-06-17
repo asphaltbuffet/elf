@@ -32,10 +32,16 @@ func NewImageDisplay(path string) *ImageDisplay {
 	return &ImageDisplay{path: path}
 }
 
-func (d *ImageDisplay) SetStdin(r io.Reader)  { d.stdin = r }
-func (d *ImageDisplay) SetStdout(w io.Writer) { d.stdout = w }
-func (d *ImageDisplay) SetStderr(io.Writer)   {}
+// SetStdin sets the reader for waiting on keypress after terminal graphics rendering.
+func (d *ImageDisplay) SetStdin(r io.Reader) { d.stdin = r }
 
+// SetStdout sets the writer for terminal graphics output.
+func (d *ImageDisplay) SetStdout(w io.Writer) { d.stdout = w }
+
+// SetStderr implements tea.ExecCommand; stderr is unused for image display.
+func (d *ImageDisplay) SetStderr(io.Writer) {}
+
+// Run attempts terminal graphics rendering and falls back to the system file opener.
 func (d *ImageDisplay) Run() error {
 	if rendered := d.tryTerminalGraphics(); rendered {
 		fmt.Fprintln(d.stdout, "\nPress any key to continue...")

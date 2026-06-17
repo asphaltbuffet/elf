@@ -25,12 +25,14 @@ var (
 	}
 )
 
+// DefaultIterations is the default number of benchmark runs per implementation.
 const DefaultIterations = 10
 
 const benchmarkExample = `
 elf benchmark --num=5 /path/to/exercise
 elf benchmark /path/to/exercise`
 
+// GetBenchmarkCmd returns the cobra command for benchmarking exercise implementations.
 func GetBenchmarkCmd() *cobra.Command {
 	if benchmarkCmd == nil {
 		benchmarkCmd = &cobra.Command{
@@ -49,6 +51,7 @@ func GetBenchmarkCmd() *cobra.Command {
 	return benchmarkCmd
 }
 
+// Benchmarker is the interface for running benchmark tasks on an exercise.
 type Benchmarker interface {
 	Benchmark(afero.Fs, int) ([]tasks.Result, error)
 	String() string

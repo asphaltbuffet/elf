@@ -171,3 +171,4 @@ manpages/
 release_notes/
 
 elf
+.direnv/

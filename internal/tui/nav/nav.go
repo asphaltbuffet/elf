@@ -1,3 +1,4 @@
+// Package nav defines shared message types for pushing and popping TUI screens.
 package nav
 
 import tea "github.com/charmbracelet/bubbletea"

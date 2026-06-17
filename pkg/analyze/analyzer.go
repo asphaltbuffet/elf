@@ -1,3 +1,4 @@
+// Package analyze loads benchmark data and renders run-time graphs.
 package analyze
 
 import (
@@ -13,6 +14,7 @@ import (
 	"github.com/asphaltbuffet/elf/pkg/exercise"
 )
 
+// Analyzer loads benchmark data from a directory and renders a run-time graph.
 type Analyzer struct {
 	Data   []*exercise.BenchmarkData
 	Dir    string
@@ -21,6 +23,7 @@ type Analyzer struct {
 	logger *slog.Logger
 }
 
+// NewAnalyzer creates an Analyzer, applies options, and loads benchmark data from the configured directory.
 func NewAnalyzer(cfg config.ExerciseConfiguration, opts ...func(*Analyzer)) (*Analyzer, error) {
 	analyzer := &Analyzer{
 		logger: cfg.GetLogger(),
@@ -42,18 +45,21 @@ func NewAnalyzer(cfg config.ExerciseConfiguration, opts ...func(*Analyzer)) (*An
 	return analyzer, nil
 }
 
+// WithDirectory sets the directory from which benchmark data files are loaded.
 func WithDirectory(dir string) func(*Analyzer) {
 	return func(a *Analyzer) {
 		a.Dir = dir
 	}
 }
 
+// WithOutput sets the output file path for the generated graph.
 func WithOutput(name string) func(*Analyzer) {
 	return func(a *Analyzer) {
 		a.Output = name
 	}
 }
 
+// Load reads all benchmark JSON files from the configured directory into Data.
 func (a *Analyzer) Load() error {
 	files, err := getBenchmarkFiles(a.Dir)
 	if err != nil {
