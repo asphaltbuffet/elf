@@ -83,6 +83,8 @@ func TestSolve(t *testing.T) {
 			name: "runner start error",
 			setup: func(_m *mocks.MockRunner) {
 				_m.EXPECT().Prepare(mock.Anything).Return(errors.New("FAKE ERROR"))
+				_m.EXPECT().Close(mock.Anything).Return(nil).Maybe()
+				_m.EXPECT().Cleanup().Return(nil).Maybe()
 			},
 			fields: fields{
 				inputFile: "input.fake",

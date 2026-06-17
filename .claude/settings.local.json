@@ -1,4 +1,18 @@
 {
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "mise run lint 2>&1 | tail -5; mise run test 2>&1 | tail -5",
+            "timeout": 120,
+            "statusMessage": "Running lint and tests..."
+          }
+        ]
+      }
+    ]
+  },
   "permissions": {
     "allow": [
       "Bash(golangci-lint run:*)",

@@ -1,0 +1,131 @@
+package runners
+
+import (
+	"context"
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestDescriptorRunner_Prepare_WritesTemplate(t *testing.T) {
+	templateContent := "hello {year} from {title}"
+	templateFile := filepath.Join(t.TempDir(), "test.templ")
+	require.NoError(t, os.WriteFile(templateFile, []byte(templateContent), 0o600))
+
+	exerciseDir := t.TempDir()
+
+	desc := RunnerDescriptor{
+		Key:  "py",
+		Name: "Python",
+		Prepare: PrepareSpec{
+			TemplatePath: templateFile,
+			WrapperExt:   ".py",
+		},
+		Open: OpenSpec{Interpreter: "python3"},
+	}
+
+	meta := ExerciseMeta{
+		Year: 2015, Day: 1, Title: "foo", Dir: exerciseDir, Key: "py",
+	}
+
+	runner := &descriptorRunner{desc: desc, meta: meta}
+	require.NoError(t, runner.Prepare(context.Background()))
+
+	langDir := filepath.Join(exerciseDir, "py")
+	wrapperPath := filepath.Join(langDir, "runtime-wrapper.py")
+	content, err := os.ReadFile(wrapperPath)
+	require.NoError(t, err)
+	assert.Equal(t, "hello 2015 from foo", string(content))
+}
+
+func TestDescriptorRunner_Prepare_NoTemplate(t *testing.T) {
+	exerciseDir := t.TempDir()
+
+	desc := RunnerDescriptor{
+		Key:  "go",
+		Name: "Go",
+		Prepare: PrepareSpec{
+			BuildCommands: [][]string{{"echo", "build"}},
+		},
+		Open: OpenSpec{Binary: "{binary_file}"},
+	}
+
+	meta := ExerciseMeta{
+		Year: 2015, Day: 1, Title: "foo", Dir: exerciseDir, Key: "go",
+	}
+
+	runner := &descriptorRunner{desc: desc, meta: meta}
+	// With no template_path and a build command that succeeds (echo), Prepare should not error
+	require.NoError(t, runner.Prepare(context.Background()))
+}
+
+func TestDescriptorRunner_Prepare_TemplateVarsSubstituted(t *testing.T) {
+	templateContent := "import {{ index . \"import_path\" }}"
+	templateFile := filepath.Join(t.TempDir(), "test.go.tmpl")
+	require.NoError(t, os.WriteFile(templateFile, []byte(templateContent), 0o600))
+
+	exerciseDir := t.TempDir()
+
+	desc := RunnerDescriptor{
+		Key:  "go",
+		Name: "Go",
+		Prepare: PrepareSpec{
+			TemplatePath: templateFile,
+			WrapperExt:   ".go",
+			TemplateVars: map[string]string{
+				"import_path": "github.com/me/aoc/{year}/{day}-{title}/go",
+			},
+		},
+		Open: OpenSpec{Binary: "{binary_file}"},
+	}
+
+	meta := ExerciseMeta{
+		Year: 2015, Day: 1, Title: "foo", Dir: exerciseDir, Key: "go",
+	}
+
+	runner := &descriptorRunner{desc: desc, meta: meta}
+	require.NoError(t, runner.Prepare(context.Background()))
+
+	langDir := filepath.Join(exerciseDir, "go")
+	wrapperPath := filepath.Join(langDir, "runtime-wrapper.go")
+	content, err := os.ReadFile(wrapperPath)
+	require.NoError(t, err)
+	assert.Equal(t, "import github.com/me/aoc/2015/01-foo/go", string(content))
+}
+
+func TestDescriptorRunner_Open_Interpreter(t *testing.T) {
+	// Use a real interpreter that just echoes JSON back — "cat" reads stdin and writes stdout
+	// We simulate the runner protocol with a shell script
+	scriptContent := `#!/bin/sh
+while IFS= read -r line; do
+  echo "$line"
+done
+`
+	scriptFile := filepath.Join(t.TempDir(), "echo.sh")
+	require.NoError(t, os.WriteFile(scriptFile, []byte(scriptContent), 0o700))
+
+	exerciseDir := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(exerciseDir, "sh"), 0o755))
+
+	desc := RunnerDescriptor{
+		Key:  "sh",
+		Name: "Shell",
+		Open: OpenSpec{
+			Interpreter: "sh",
+			Args:        []string{scriptFile},
+		},
+	}
+
+	meta := ExerciseMeta{Dir: exerciseDir, Key: "sh"}
+	runner := &descriptorRunner{desc: desc, meta: meta}
+
+	ctx := context.Background()
+	require.NoError(t, runner.Open(ctx))
+	require.NotNil(t, runner.cmd)
+	require.NotNil(t, runner.stdin)
+
+	_ = runner.Close(ctx)
+}

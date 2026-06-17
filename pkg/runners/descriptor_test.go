@@ -49,19 +49,19 @@ func TestSubstituteTokens(t *testing.T) {
 			name:       "year day title tokens",
 			input:      "{year}/{day}/{title}",
 			wrapperExt: "",
-			want:       "2015/1/not-quite-lisp",
+			want:       "2015/01/not-quite-lisp",
 		},
 		{
 			name:       "multiple tokens",
 			input:      "github.com/me/aoc/{year}/{day}-{title}/go",
 			wrapperExt: "",
-			want:       "github.com/me/aoc/2015/1-not-quite-lisp/go",
+			want:       "github.com/me/aoc/2015/01-not-quite-lisp/go",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := substituteTokens(tt.input, meta, tt.wrapperExt)
+			got := substituteTokens(tt.input, meta, tt.wrapperExt, "")
 			assert.Equal(t, tt.want, got)
 		})
 	}

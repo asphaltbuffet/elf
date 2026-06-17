@@ -174,6 +174,11 @@ func (b *Benchmarker) runBenchmark(
 		progressbar.OptionSetWriter(w),
 	)
 
+	defer func() {
+		_ = runner.Close(ctx)
+		_ = runner.Cleanup()
+	}()
+
 	if err := runner.Prepare(ctx); err != nil {
 		logger.ErrorContext(ctx, "prepare runner", tint.Err(err))
 		return nil, nil, err
@@ -183,11 +188,6 @@ func (b *Benchmarker) runBenchmark(
 		logger.ErrorContext(ctx, "open runner", tint.Err(err))
 		return nil, nil, err
 	}
-
-	defer func() {
-		_ = runner.Close(ctx)
-		_ = runner.Cleanup()
-	}()
 
 	for _, t := range benchmarkTasks {
 		benchResult, err := runner.Run(ctx, t)

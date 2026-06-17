@@ -29,6 +29,11 @@ func (e *Exercise) Test(
 	logger = logger.With(slog.String("fn", "Test"), slog.String("exercise", e.Title))
 	logger.DebugContext(ctx, "testing", slog.String("language", e.Language))
 
+	defer func() {
+		_ = runner.Close(ctx)
+		_ = runner.Cleanup()
+	}()
+
 	if err := runner.Prepare(ctx); err != nil {
 		logger.ErrorContext(ctx, "preparing runner",
 			slog.String("path", e.Path),
@@ -46,11 +51,6 @@ func (e *Exercise) Test(
 
 		return nil, err
 	}
-
-	defer func() {
-		_ = runner.Close(ctx)
-		_ = runner.Cleanup()
-	}()
 
 	fmt.Fprintln(w, headerStyle(fmt.Sprintf("ADVENT OF CODE %d\nDay %d: %s", e.Year, e.Day, e.Title)))
 
