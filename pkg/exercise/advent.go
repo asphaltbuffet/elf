@@ -35,7 +35,11 @@ func Load(exercisePath, language, customInput string, fs afero.Fs, logger *slog.
 	}
 
 	if _, ok := runners.Available[language]; !ok {
-		return nil, fmt.Errorf("%s: %w", language, ErrNoRunner)
+		return nil, fmt.Errorf(
+			"no runner configured for %q: run 'elf runners install' to install built-in runner templates, then add [[runner]] blocks to your elf.toml: %w",
+			language,
+			ErrNoRunner,
+		)
 	}
 
 	if exercisePath == "" {

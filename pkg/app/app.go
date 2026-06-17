@@ -4,6 +4,7 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log/slog"
 
@@ -62,7 +63,11 @@ func (a *App) Solve(
 ) ([]tasks.Result, error) {
 	rc, ok := runners.Available[language]
 	if !ok {
-		return nil, exercise.ErrNoRunner
+		return nil, fmt.Errorf(
+			"no runner configured for %q: run 'elf runners install' to install built-in runner templates, then add [[runner]] blocks to your elf.toml: %w",
+			language,
+			exercise.ErrNoRunner,
+		)
 	}
 
 	ex, err := exercise.Load(path, language, customInput, a.FS, a.Logger)
@@ -90,7 +95,11 @@ func (a *App) Test(
 ) ([]tasks.Result, error) {
 	rc, ok := runners.Available[language]
 	if !ok {
-		return nil, exercise.ErrNoRunner
+		return nil, fmt.Errorf(
+			"no runner configured for %q: run 'elf runners install' to install built-in runner templates, then add [[runner]] blocks to your elf.toml: %w",
+			language,
+			exercise.ErrNoRunner,
+		)
 	}
 
 	ex, err := exercise.Load(path, language, customInput, a.FS, a.Logger)
