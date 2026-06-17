@@ -64,7 +64,15 @@ func (a *App) Solve(
 		return nil, err
 	}
 
-	return ex.Solve(ctx, a.FS, a.Logger, rc(path), w, cb, skipTests)
+	return ex.Solve(
+		ctx,
+		a.FS,
+		a.Logger,
+		rc(runners.ExerciseMeta{Year: ex.Year, Day: ex.Day, Title: ex.Title, Dir: path, Key: language}),
+		w,
+		cb,
+		skipTests,
+	)
 }
 
 // Test loads the exercise at path and runs its test suite.
@@ -84,7 +92,13 @@ func (a *App) Test(
 		return nil, err
 	}
 
-	return ex.Test(ctx, a.Logger, rc(path), w, cb)
+	return ex.Test(
+		ctx,
+		a.Logger,
+		rc(runners.ExerciseMeta{Year: ex.Year, Day: ex.Day, Title: ex.Title, Dir: path, Key: language}),
+		w,
+		cb,
+	)
 }
 
 // Benchmark loads the exercise at path and benchmarks all available

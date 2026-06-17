@@ -69,7 +69,13 @@ func (b *Benchmarker) Benchmark(
 		}
 
 		b.Language = impl
-		runner := implRunner(b.Path)
+		runner := implRunner(runners.ExerciseMeta{
+			Year:  b.Year,
+			Day:   b.Day,
+			Title: b.Title,
+			Dir:   b.Path,
+			Key:   impl,
+		})
 
 		var implData *ImplementationData
 

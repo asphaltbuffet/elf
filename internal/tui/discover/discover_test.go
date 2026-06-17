@@ -6,6 +6,8 @@ import (
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/asphaltbuffet/elf/pkg/runners"
 )
 
 func setupTestFs(t *testing.T) afero.Fs {
@@ -46,6 +48,13 @@ func setupTestFs(t *testing.T) afero.Fs {
 }
 
 func TestScan(t *testing.T) {
+	// Seed the runner registry so detectLanguages recognises "go" and "py".
+	restore := runners.ResetRegistry(map[string]runners.RunnerCreator{
+		"go": func(_ runners.ExerciseMeta) runners.Runner { return nil },
+		"py": func(_ runners.ExerciseMeta) runners.Runner { return nil },
+	})
+	t.Cleanup(restore)
+
 	fs := setupTestFs(t)
 
 	result, err := Scan(fs, "exercises")
