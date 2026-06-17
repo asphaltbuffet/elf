@@ -14,34 +14,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// A Task represents a unit of work to be performed.
-type Task struct {
-	// TaskID is the unique identifier for the task.
-	TaskID string `json:"task_id"`
-
-	// Part is the part of the work that the task should perform.
-	Part Part `json:"part"`
-
-	// Input is the input data for the task.
-	Input string `json:"input"`
-
-	// OutputDir is the directory where the task should store its output.
-	// This field is optional.
-	OutputDir string `json:"output_dir,omitempty"`
-}
-
-// A Result represents the outcome of a Task.
-type Result struct {
-	// TaskID is the unique identifier for the task that produced this result.
-	TaskID string `json:"task_id"`
-	// Ok indicates whether the task was successful.
-	Ok bool `json:"ok"`
-	// Output is the output of the task, if successful.
-	Output string `json:"output"`
-	// Duration is the amount of time it took for the task to complete.
-	Duration float64 `json:"duration"`
-}
-
 type customWriter struct {
 	pending []byte
 	entries [][]byte

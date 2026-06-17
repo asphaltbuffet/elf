@@ -2,6 +2,7 @@
 package exerciseview
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"strings"
@@ -14,10 +15,33 @@ import (
 	"github.com/asphaltbuffet/elf/internal/tui/components"
 	"github.com/asphaltbuffet/elf/internal/tui/discover"
 	"github.com/asphaltbuffet/elf/internal/tui/nav"
-	"github.com/asphaltbuffet/elf/pkg/config"
-	"github.com/asphaltbuffet/elf/pkg/exercise"
 	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
+
+// Executor is the narrow interface that exerciseview uses to run domain operations.
+// *app.App satisfies this interface.
+type Executor interface {
+	Solve(
+		ctx context.Context,
+		path, language, customInput string,
+		w io.Writer,
+		cb func(tasks.Result),
+		skipTests bool,
+	) ([]tasks.Result, error)
+	Test(
+		ctx context.Context,
+		path, language, customInput string,
+		w io.Writer,
+		cb func(tasks.Result),
+	) ([]tasks.Result, error)
+	Benchmark(
+		ctx context.Context,
+		path, language string,
+		w io.Writer,
+		cb func(tasks.Result),
+		iterations int,
+	) ([]tasks.Result, error)
+}
 
 type resultMsg struct {
 	result tasks.Result
@@ -29,7 +53,7 @@ type doneMsg struct {
 
 // Model is the exercise view TUI model.
 type Model struct {
-	cfg      config.Config
+	exec     Executor
 	info     discover.ExerciseInfo
 	action   string
 	lang     string
@@ -52,15 +76,13 @@ const (
 )
 
 // New creates a new exercise view model.
-func New(cfg config.Config, info discover.ExerciseInfo, action string) Model {
-	lang := cfg.GetLanguage()
-
+func New(exec Executor, lang string, info discover.ExerciseInfo, action string) Model {
 	if lang == "" && len(info.Langs) > 0 {
 		lang = info.Langs[0]
 	}
 
 	return Model{
-		cfg:      cfg,
+		exec:     exec,
 		info:     info,
 		action:   action,
 		lang:     lang,
@@ -77,7 +99,7 @@ func (m Model) Init() tea.Cmd {
 	spinCmd := m.progress.InitialTick()
 
 	ch := m.resultCh
-	cfg := m.cfg
+	exec := m.exec
 	info := m.info
 	lang := m.lang
 	action := m.action
@@ -88,11 +110,11 @@ func (m Model) Init() tea.Cmd {
 
 			switch action {
 			case "solve":
-				runSolve(cfg, info, lang, ch)
+				runSolve(exec, info, lang, ch)
 			case "test":
-				runTest(cfg, info, lang, ch)
+				runTest(exec, info, lang, ch)
 			case "benchmark":
-				runBenchmark(cfg, info, ch)
+				runBenchmark(exec, info, ch)
 			}
 		}()
 
@@ -194,53 +216,34 @@ func (m Model) View() string {
 	return b.String()
 }
 
-func runSolve(cfg config.Config, info discover.ExerciseInfo, lang string, ch chan<- tasks.Result) {
-	ex, newErr := exercise.New(cfg,
-		exercise.WithDir(info.Path),
-		exercise.WithLanguage(lang),
-		exercise.WithWriter(io.Discard),
-		exercise.WithResultCallback(func(r tasks.Result) { ch <- r }),
-	)
-	if newErr != nil {
-		ch <- tasks.Result{Status: tasks.StatusError, Output: newErr.Error()}
-		return
-	}
+func runSolve(exec Executor, info discover.ExerciseInfo, lang string, ch chan<- tasks.Result) {
+	cb := func(r tasks.Result) { ch <- r }
 
-	if _, solveErr := ex.Solve(false); solveErr != nil {
-		ch <- tasks.Result{Status: tasks.StatusError, Output: solveErr.Error()}
+	if _, err := exec.Solve(context.Background(), info.Path, lang, "", io.Discard, cb, false); err != nil {
+		ch <- tasks.Result{Status: tasks.StatusError, Output: err.Error()}
 	}
 }
 
-func runTest(cfg config.Config, info discover.ExerciseInfo, lang string, ch chan<- tasks.Result) {
-	ex, newErr := exercise.New(cfg,
-		exercise.WithDir(info.Path),
-		exercise.WithLanguage(lang),
-		exercise.WithWriter(io.Discard),
-		exercise.WithResultCallback(func(r tasks.Result) { ch <- r }),
-	)
-	if newErr != nil {
-		ch <- tasks.Result{Status: tasks.StatusError, Output: newErr.Error()}
-		return
-	}
+func runTest(exec Executor, info discover.ExerciseInfo, lang string, ch chan<- tasks.Result) {
+	cb := func(r tasks.Result) { ch <- r }
 
-	if _, testErr := ex.Test(); testErr != nil {
-		ch <- tasks.Result{Status: tasks.StatusError, Output: testErr.Error()}
+	if _, err := exec.Test(context.Background(), info.Path, lang, "", io.Discard, cb); err != nil {
+		ch <- tasks.Result{Status: tasks.StatusError, Output: err.Error()}
 	}
 }
 
-func runBenchmark(cfg config.Config, info discover.ExerciseInfo, ch chan<- tasks.Result) {
-	bmk, newErr := exercise.NewBenchmarker(cfg,
-		exercise.WithExerciseDir(info.Path),
-		exercise.WithBenchmarkWriter(io.Discard),
-		exercise.WithBenchmarkResultCallback(func(r tasks.Result) { ch <- r }),
-	)
-	if newErr != nil {
-		ch <- tasks.Result{Status: tasks.StatusError, Output: newErr.Error()}
-		return
-	}
+func runBenchmark(exec Executor, info discover.ExerciseInfo, ch chan<- tasks.Result) {
+	cb := func(r tasks.Result) { ch <- r }
 
-	if _, benchErr := bmk.Benchmark(cfg.GetFs(), defaultBenchItr); benchErr != nil {
-		ch <- tasks.Result{Status: tasks.StatusError, Output: benchErr.Error()}
+	if _, err := exec.Benchmark(
+		context.Background(),
+		info.Path,
+		info.Langs[0],
+		io.Discard,
+		cb,
+		defaultBenchItr,
+	); err != nil {
+		ch <- tasks.Result{Status: tasks.StatusError, Output: err.Error()}
 	}
 }
 

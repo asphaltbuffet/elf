@@ -9,7 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/asphaltbuffet/elf/pkg/runners"
+	"github.com/asphaltbuffet/elf/pkg/protocol"
 	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
@@ -135,7 +135,7 @@ func statusBadge(status tasks.TaskStatus) string {
 	return lipgloss.NewStyle().Faint(true).Render("???")
 }
 
-func taskLabel(part runners.Part, subpart int) string {
+func taskLabel(part protocol.Part, subpart int) string {
 	style := lipgloss.NewStyle().Foreground(colorCyan).Width(6).Align(lipgloss.Right) //nolint:mnd // visual width
 
 	if subpart >= 0 {

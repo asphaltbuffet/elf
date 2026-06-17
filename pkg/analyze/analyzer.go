@@ -10,7 +10,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/asphaltbuffet/elf/pkg/config"
 	"github.com/asphaltbuffet/elf/pkg/exercise"
 )
 
@@ -24,9 +23,9 @@ type Analyzer struct {
 }
 
 // NewAnalyzer creates an Analyzer, applies options, and loads benchmark data from the configured directory.
-func NewAnalyzer(cfg config.ExerciseConfiguration, opts ...func(*Analyzer)) (*Analyzer, error) {
+func NewAnalyzer(logger *slog.Logger, opts ...func(*Analyzer)) (*Analyzer, error) {
 	analyzer := &Analyzer{
-		logger: cfg.GetLogger(),
+		logger: logger,
 	}
 
 	for _, opt := range opts {

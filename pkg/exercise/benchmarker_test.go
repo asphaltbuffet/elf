@@ -11,9 +11,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	configMocks "github.com/asphaltbuffet/elf/mocks/config"
 	mocks "github.com/asphaltbuffet/elf/mocks/runners"
-	"github.com/asphaltbuffet/elf/pkg/runners"
+	"github.com/asphaltbuffet/elf/pkg/protocol"
 	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
@@ -75,17 +74,17 @@ func TestBenchmark(t *testing.T) {
 	teardownTestCase := setupTestCase(t)
 	defer teardownTestCase(t)
 
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// set up testing
 			teardownSubTest := setupSubTest(t)
 			defer teardownSubTest(t)
 
-			// set up mocks
 			mockRunner := mocks.NewMockRunner(t)
 			tt.setup(mockRunner)
 
-			mockBenchmarker := &Benchmarker{
+			b := &Benchmarker{
 				Exercise: &Exercise{
 					ID:       tt.args.id,
 					Title:    "Fake Title",
@@ -95,17 +94,12 @@ func TestBenchmark(t *testing.T) {
 					URL:      "www.fake.com",
 					Data:     tt.args.data,
 					Path:     tt.args.path,
-					runner:   nil,
-					appFs:    testFs,
-					logger:   slog.New(slog.NewTextHandler(io.Discard, nil)),
 				},
 				exerciseBaseDir: "",
 			}
 
-			// execute the function under test
-			got, err := mockBenchmarker.Benchmark(mockBenchmarker.appFs, tt.args.iterations)
+			got, err := b.Benchmark(t.Context(), testFs, logger, io.Discard, nil, tt.args.iterations)
 
-			// validate the results
 			require.ErrorIs(t, err, tt.wantErr)
 			if err == nil {
 				assert.Len(t, got, tt.want)
@@ -120,6 +114,8 @@ func TestBenchmarkWithMissingInput(t *testing.T) {
 
 	testFs = afero.NewCopyOnWriteFs(roBase, afero.NewMemMapFs())
 
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
 	e := &Exercise{
 		ID:       "1111-22",
 		Title:    "Fake Title",
@@ -132,37 +128,17 @@ func TestBenchmarkWithMissingInput(t *testing.T) {
 			TestCases:     TestCase{},
 			Answers:       Answer{},
 		},
-		Path:   "",
-		runner: nil,
-		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
-		appFs:  testFs,
+		Path: "",
 	}
 
 	b := &Benchmarker{Exercise: e, exerciseBaseDir: ""}
 
-	// execute the function under test
-	_, err := b.Benchmark(testFs, 1)
+	_, err := b.Benchmark(t.Context(), testFs, logger, io.Discard, nil, 1)
 
 	require.Error(t, err)
 }
 
-func TestNormalizationFactor(t *testing.T) {
-	const maxNormTime float64 = 0.5
-
-	t1 := NormalizationFactor()
-
-	// not a great test
-	assert.NotZero(t, t1)
-
-	// make sure that it doesn't run too long
-	assert.LessOrEqualf(t, t1, maxNormTime, "normalization test takes > %.3fs", maxNormTime)
-}
-
 func TestNewBenchmarker(t *testing.T) {
-	type args struct {
-		options []func(*Benchmarker)
-	}
-
 	type wants struct {
 		path       string
 		exerciseID string
@@ -170,39 +146,29 @@ func TestNewBenchmarker(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		args      args
+		path      string
+		lang      string
 		wants     wants
 		assertion require.ErrorAssertionFunc
 	}{
 		{
-			name: "no options",
-			args: args{
-				options: []func(*Benchmarker){},
-			},
+			name:      "invalid path",
+			path:      "fake",
+			lang:      "go",
 			wants:     wants{},
 			assertion: require.Error,
 		},
 		{
-			name: "with invalid path",
-			args: args{
-				options: []func(*Benchmarker){WithExerciseDir("fake")},
-			},
-			wants:     wants{path: "fake", exerciseID: ""},
-			assertion: require.Error,
-		},
-		{
-			name: "empty path",
-			args: args{
-				options: []func(*Benchmarker){WithExerciseDir("")},
-			},
+			name:      "empty path",
+			path:      "",
+			lang:      "go",
 			wants:     wants{},
 			assertion: require.Error,
 		},
 		{
-			name: "valid path",
-			args: args{
-				options: []func(*Benchmarker){WithExerciseDir("exercises/2017/01-fakeFullDay")},
-			},
+			name:      "valid path",
+			path:      "exercises/2017/01-fakeFullDay",
+			lang:      "py",
 			wants:     wants{path: "exercises/2017/01-fakeFullDay", exerciseID: "2017-01"},
 			assertion: require.NoError,
 		},
@@ -211,22 +177,19 @@ func TestNewBenchmarker(t *testing.T) {
 	teardownTestCase := setupTestCase(t)
 	defer teardownTestCase(t)
 
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			teardownSubTest := setupSubTest(t)
 			defer teardownSubTest(t)
 
-			mockConfig := configMocks.NewMockExerciseConfiguration(t)
-
-			mockConfig.EXPECT().GetFs().Return(testFs)
-			mockConfig.EXPECT().GetLogger().Return(slog.New(slog.NewTextHandler(io.Discard, nil)))
-
-			got, err := NewBenchmarker(mockConfig, tt.args.options...)
+			ex, err := Load(tt.path, tt.lang, "", testFs, logger)
 
 			tt.assertion(t, err)
 			if err == nil {
+				got := NewBenchmarker(ex)
 				require.NotNil(t, got)
-
 				assert.Equal(t, tt.wants.path, got.Path)
 				assert.Equal(t, tt.wants.exerciseID, got.ID)
 			}
@@ -288,7 +251,7 @@ func TestRunBenchmark(t *testing.T) {
 		{
 			name: "runner start error",
 			setup: func(_m *mocks.MockRunner) {
-				_m.EXPECT().Start().Return(errors.New("fake start error"))
+				_m.EXPECT().Prepare(mock.Anything).Return(errors.New("fake start error"))
 			},
 			fields:      fields{exerciseBaseDir: ""},
 			args:        args{iterations: 10},
@@ -299,8 +262,9 @@ func TestRunBenchmark(t *testing.T) {
 		{
 			name: "runner run error",
 			setup: func(_m *mocks.MockRunner) {
-				_m.EXPECT().Start().Return(nil)
-				_m.EXPECT().Run(mock.Anything).Return(nil, errors.New("fake run error"))
+				_m.EXPECT().Prepare(mock.Anything).Return(nil)
+				_m.EXPECT().Open(mock.Anything).Return(nil)
+				_m.EXPECT().Run(mock.Anything, mock.Anything).Return(nil, errors.New("fake run error"))
 			},
 			fields:      fields{exerciseBaseDir: ""},
 			args:        args{iterations: 10},
@@ -311,8 +275,9 @@ func TestRunBenchmark(t *testing.T) {
 		{
 			name: "all tasks fail",
 			setup: func(_m *mocks.MockRunner) {
-				_m.EXPECT().Start().Return(nil)
-				_m.EXPECT().Run(mock.Anything).Return(&runners.Result{
+				_m.EXPECT().Prepare(mock.Anything).Return(nil)
+				_m.EXPECT().Open(mock.Anything).Return(nil)
+				_m.EXPECT().Run(mock.Anything, mock.Anything).Return(&protocol.Result{
 					TaskID:   "benchmark.1.1",
 					Ok:       false,
 					Output:   "fake output",
@@ -331,11 +296,13 @@ func TestRunBenchmark(t *testing.T) {
 		},
 	}
 
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockRunner := mocks.NewMockRunner(t)
 			mockRunner.EXPECT().String().Return("MOCK")
-			mockRunner.EXPECT().Stop().Return(nil).Maybe()
+			mockRunner.EXPECT().Close(mock.Anything).Return(nil).Maybe()
 			mockRunner.EXPECT().Cleanup().Return(nil).Maybe()
 
 			tt.setup(mockRunner)
@@ -350,15 +317,11 @@ func TestRunBenchmark(t *testing.T) {
 					URL:      "https://fake.com",
 					Data:     &Data{},
 					Path:     "fake/test/path",
-					runner:   mockRunner,
-					appFs:    testFs,
-					logger:   slog.New(slog.NewTextHandler(io.Discard, nil)),
-					writer:   io.Discard,
 				},
 				exerciseBaseDir: tt.fields.exerciseBaseDir,
 			}
 
-			got, got1, err := b.runBenchmark(tt.args.iterations)
+			got, got1, err := b.runBenchmark(t.Context(), logger, mockRunner, io.Discard, nil, tt.args.iterations)
 
 			tt.assertion(t, err)
 			if err == nil {

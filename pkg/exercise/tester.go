@@ -1,44 +1,62 @@
 package exercise
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 
 	"github.com/lmittmann/tint"
 
+	"github.com/asphaltbuffet/elf/pkg/protocol"
 	"github.com/asphaltbuffet/elf/pkg/runners"
 	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
 // Test runs the exercise test cases and returns pass/fail results for each.
-func (e *Exercise) Test() ([]tasks.Result, error) {
+func (e *Exercise) Test(
+	ctx context.Context,
+	logger *slog.Logger,
+	runner runners.Runner,
+	w io.Writer,
+	cb func(tasks.Result),
+) ([]tasks.Result, error) {
 	if e.Year == 0 && e.Day == 0 && e.Title == "" {
 		return nil, errors.New("exercise is empty")
 	}
 
-	logger := e.logger.With(slog.String("fn", "Test"), slog.String("exercise", e.Title))
-	logger.Debug("testing", slog.String("language", e.Language))
+	logger = logger.With(slog.String("fn", "Test"), slog.String("exercise", e.Title))
+	logger.DebugContext(ctx, "testing", slog.String("language", e.Language))
 
-	if err := e.runner.Start(); err != nil {
-		logger.Error("starting runner",
+	if err := runner.Prepare(ctx); err != nil {
+		logger.ErrorContext(ctx, "preparing runner",
 			slog.String("path", e.Path),
-			slog.String("implementation", e.runner.String()),
+			slog.String("implementation", runner.String()),
+			tint.Err(err))
+
+		return nil, err
+	}
+
+	if err := runner.Open(ctx); err != nil {
+		logger.ErrorContext(ctx, "opening runner",
+			slog.String("path", e.Path),
+			slog.String("implementation", runner.String()),
 			tint.Err(err))
 
 		return nil, err
 	}
 
 	defer func() {
-		_ = e.runner.Stop()
-		_ = e.runner.Cleanup()
+		_ = runner.Close(ctx)
+		_ = runner.Cleanup()
 	}()
 
-	fmt.Fprintln(e.writer, headerStyle(fmt.Sprintf("ADVENT OF CODE %d\nDay %d: %s", e.Year, e.Day, e.Title)))
+	fmt.Fprintln(w, headerStyle(fmt.Sprintf("ADVENT OF CODE %d\nDay %d: %s", e.Year, e.Day, e.Title)))
 
-	results, err := e.runTests()
+	results, err := e.runTests(ctx, runner, w, cb)
 	if err != nil {
-		logger.Error("running tests", tint.Err(err))
+		logger.ErrorContext(ctx, "running tests", tint.Err(err))
 
 		return nil, err
 	}
@@ -46,37 +64,42 @@ func (e *Exercise) Test() ([]tasks.Result, error) {
 	return results, nil
 }
 
-func (e *Exercise) runTests() ([]tasks.Result, error) {
+func (e *Exercise) runTests(
+	ctx context.Context,
+	runner runners.Runner,
+	w io.Writer,
+	cb func(tasks.Result),
+) ([]tasks.Result, error) {
 	var testTasks []testTask
 
-	testTasks = append(testTasks, makeTestTasks(runners.PartOne, e.Data.TestCases.One)...)
-	testTasks = append(testTasks, makeTestTasks(runners.PartTwo, e.Data.TestCases.Two)...)
+	testTasks = append(testTasks, makeTestTasks(protocol.PartOne, e.Data.TestCases.One)...)
+	testTasks = append(testTasks, makeTestTasks(protocol.PartTwo, e.Data.TestCases.Two)...)
 
 	results := make([]tasks.Result, 0, len(testTasks))
 
 	for _, t := range testTasks {
-		result, err := e.runner.Run(t.task)
+		result, err := runner.Run(ctx, t.task)
 		if err != nil {
-			e.logger.Error("running test task", tint.Err(err))
 			return nil, err
 		}
 
-		r := handleTaskResult(e.writer, result, t.expected)
-		if e.onResult != nil {
-			e.onResult(r)
+		r := handleTaskResult(w, result, t.expected)
+		if cb != nil {
+			cb(r)
 		}
+
 		results = append(results, r)
 	}
 
 	return results, nil
 }
 
-func makeTestTasks(p runners.Part, tests []*Test) []testTask {
+func makeTestTasks(p protocol.Part, tests []*Test) []testTask {
 	var testTasks []testTask
 
 	for i, t := range tests {
 		testTasks = append(testTasks, testTask{
-			task: &runners.Task{
+			task: &protocol.Task{
 				TaskID:    tasks.MakeTaskID(tasks.Test, p, i),
 				Part:      p,
 				Input:     t.Input,

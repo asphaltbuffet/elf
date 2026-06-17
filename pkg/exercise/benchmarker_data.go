@@ -7,7 +7,7 @@ import (
 
 	"github.com/montanaflynn/stats"
 
-	"github.com/asphaltbuffet/elf/pkg/runners"
+	"github.com/asphaltbuffet/elf/pkg/protocol"
 )
 
 // BenchmarkData holds the aggregated timing results for all implementations of a single exercise.
@@ -50,8 +50,8 @@ func (i *ImplementationData) String() string {
 		i.Name, len(i.PartOne.Data), len(i.PartTwo.Data))
 }
 
-func calculateMetrics(results map[runners.Part][]float64) (map[runners.Part]*PartData, error) {
-	metrics := make(map[runners.Part]*PartData)
+func calculateMetrics(results map[protocol.Part][]float64) (map[protocol.Part]*PartData, error) {
+	metrics := make(map[protocol.Part]*PartData)
 
 	for part, durations := range results {
 		data := stats.LoadRawData(durations)

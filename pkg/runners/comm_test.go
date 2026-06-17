@@ -8,6 +8,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/asphaltbuffet/elf/pkg/protocol"
 )
 
 func Test_customWriter_Write(t *testing.T) {
@@ -264,7 +266,7 @@ func Test_readJSONFromCommand(t *testing.T) {
 
 		_ = cmd.Run()
 
-		var result Result
+		var result protocol.Result
 		err := readJSONFromCommand(&result, cmd)
 
 		require.NoError(t, err)
@@ -288,7 +290,7 @@ func Test_readJSONFromCommand(t *testing.T) {
 
 		_ = cmd.Run()
 
-		var result Result
+		var result protocol.Result
 		err := readJSONFromCommand(&result, cmd)
 
 		require.NoError(t, err)
@@ -307,7 +309,7 @@ func Test_readJSONFromCommand(t *testing.T) {
 
 		_ = cmd.Run()
 
-		var result Result
+		var result protocol.Result
 		err := readJSONFromCommand(&result, cmd)
 
 		require.Error(t, err)

@@ -1,12 +1,12 @@
 package exercise
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
 	"math"
-	"os"
 	"path/filepath"
 	"time"
 
@@ -14,7 +14,7 @@ import (
 	"github.com/schollz/progressbar/v3"
 	"github.com/spf13/afero"
 
-	"github.com/asphaltbuffet/elf/pkg/config"
+	"github.com/asphaltbuffet/elf/pkg/protocol"
 	"github.com/asphaltbuffet/elf/pkg/runners"
 	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
@@ -26,93 +26,55 @@ type Benchmarker struct {
 	exerciseBaseDir string
 }
 
-// NewBenchmarker creates a Benchmarker, applies options, and loads exercise metadata.
-func NewBenchmarker(cfg config.ExerciseConfiguration, options ...func(*Benchmarker)) (*Benchmarker, error) {
-	b := &Benchmarker{
-		Exercise: &Exercise{
-			appFs:    cfg.GetFs(),
-			Language: "go",
-			logger:   cfg.GetLogger().With(slog.String("fn", "benchmark")),
-			writer:   os.Stdout,
-		},
-	}
-
-	for _, option := range options {
-		option(b)
-	}
-
-	switch {
-	case b.Path != "":
-		if err := b.Exercise.loadInfo(); err != nil {
-			return nil, err
-		}
-
-	default:
-		return nil, fmt.Errorf("instantiate exercise: %w", ErrNotFound)
-	}
-
-	return b, nil
-}
-
-// WithExerciseDir sets the filesystem path to the exercise directory for the benchmarker.
-func WithExerciseDir(dir string) func(*Benchmarker) {
-	return func(b *Benchmarker) {
-		b.Path = dir
-	}
-}
-
-// WithBenchmarkWriter sets the writer for benchmark progress output; pass [io.Discard] in TUI mode.
-func WithBenchmarkWriter(w io.Writer) func(*Benchmarker) {
-	return func(b *Benchmarker) {
-		b.writer = w
-	}
-}
-
-// WithBenchmarkResultCallback registers a function to receive each benchmark result as it is produced.
-func WithBenchmarkResultCallback(fn func(tasks.Result)) func(*Benchmarker) {
-	return func(b *Benchmarker) {
-		b.onResult = fn
-	}
+// NewBenchmarker creates a Benchmarker from an already-loaded Exercise.
+func NewBenchmarker(ex *Exercise) *Benchmarker {
+	return &Benchmarker{Exercise: ex}
 }
 
 // Benchmark runs each language implementation for the given number of iterations and returns timing results.
-func (b *Benchmarker) Benchmark(afs afero.Fs, iterations int) ([]tasks.Result, error) {
-	logger := b.logger
+func (b *Benchmarker) Benchmark(
+	ctx context.Context,
+	fs afero.Fs,
+	logger *slog.Logger,
+	w io.Writer,
+	cb func(tasks.Result),
+	iterations int,
+) ([]tasks.Result, error) {
 	normFactor := NormalizationFactor()
 
 	// TODO: add way to specify which implementations to run (e.g. --impls go,py or --impls all)
-	impls, err := b.GetImplementations()
+	impls, err := b.GetImplementations(fs)
 	if err != nil {
 		return nil, fmt.Errorf("get impls: %w", err)
 	}
 
-	inputFile := filepath.Join(b.Path, b.Data.InputFileName)
-	input, err := afero.ReadFile(afs, inputFile)
+	input, err := b.readInput(fs)
 	if err != nil {
-		logger.Error("reading input file", slog.String("path", inputFile), tint.Err(err))
+		logger.ErrorContext(ctx, "reading input file", slog.String("path", b.Data.InputFileName), tint.Err(err))
 		return nil, err
 	}
 
-	b.Data.InputData = string(input)
+	b.Data.InputData = input
 
 	benchmarks := make([]*ImplementationData, 0, len(impls))
 
 	results := []tasks.Result{}
 
 	for _, impl := range impls {
-		logger.Debug("running benchmark", slog.String("impl", impl))
+		logger.DebugContext(ctx, "running benchmark", slog.String("impl", impl))
+
 		implRunner, ok := runners.Available[impl]
 		if !ok {
 			return nil, fmt.Errorf("%w: %s", ErrNoRunner, impl)
 		}
 
 		b.Language = impl
-		b.runner = implRunner(b.Path)
+		runner := implRunner(b.Path)
 
 		var implData *ImplementationData
 
 		var implResults []tasks.Result
-		implResults, implData, err = b.runBenchmark(iterations)
+		implResults, implData, err = b.runBenchmark(ctx, logger, runner, w, cb, iterations)
 		if err != nil {
 			return nil, err
 		}
@@ -120,8 +82,8 @@ func (b *Benchmarker) Benchmark(afs afero.Fs, iterations int) ([]tasks.Result, e
 		results = append(results, implResults...)
 		benchmarks = append(benchmarks, implData)
 
-		logger.Debug("benchmarking complete", "lang", impl, "iterations", iterations)
-		_, _ = fmt.Fprintln(b.writer, "") // blank line between implementations
+		logger.DebugContext(ctx, "benchmarking complete", "lang", impl, "iterations", iterations)
+		_, _ = fmt.Fprintln(w, "") // blank line between implementations
 	}
 
 	var benchmarkData []BenchmarkData
@@ -141,11 +103,11 @@ func (b *Benchmarker) Benchmark(afs afero.Fs, iterations int) ([]tasks.Result, e
 
 	jsonData, err := json.MarshalIndent(benchmarkData, "", "  ")
 	if err != nil {
-		logger.Error("marshalling benchmark data", tint.Err(err))
+		logger.ErrorContext(ctx, "marshalling benchmark data", tint.Err(err))
 		return nil, err
 	}
 
-	return results, afero.WriteFile(afs, outfile, jsonData, 0o600)
+	return results, afero.WriteFile(fs, outfile, jsonData, 0o600)
 }
 
 // NormalizationFactor returns a CPU-speed calibration factor for comparable cross-machine benchmarks.
@@ -166,29 +128,33 @@ func NormalizationFactor() float64 {
 	return elapsed.Seconds()
 }
 
-func (b *Benchmarker) runBenchmark(iterations int) ([]tasks.Result, *ImplementationData, error) {
-	logger := b.logger
-
+func (b *Benchmarker) runBenchmark(
+	ctx context.Context,
+	logger *slog.Logger,
+	runner runners.Runner,
+	w io.Writer,
+	cb func(tasks.Result),
+	iterations int,
+) ([]tasks.Result, *ImplementationData, error) {
 	const numParts int = 2
 
 	var (
-		benchmarkTasks []*runners.Task
-		metricsResults = make(map[runners.Part][]float64, numParts*iterations)
+		benchmarkTasks []*protocol.Task
+		metricsResults = make(map[protocol.Part][]float64, numParts*iterations)
 		results        = make([]tasks.Result, 0, numParts*iterations)
 	)
 
-	// generate all the tasks needed for this benchmark run
 	for i := range iterations {
 		benchmarkTasks = append(
 			benchmarkTasks,
-			&runners.Task{
-				TaskID: tasks.MakeTaskID(tasks.Benchmark, runners.PartOne, i),
-				Part:   runners.PartOne,
+			&protocol.Task{
+				TaskID: tasks.MakeTaskID(tasks.Benchmark, protocol.PartOne, i),
+				Part:   protocol.PartOne,
 				Input:  b.Data.InputData,
 			},
-			&runners.Task{
-				TaskID: tasks.MakeTaskID(tasks.Benchmark, runners.PartTwo, i),
-				Part:   runners.PartTwo,
+			&protocol.Task{
+				TaskID: tasks.MakeTaskID(tasks.Benchmark, protocol.PartTwo, i),
+				Part:   protocol.PartTwo,
 				Input:  b.Data.InputData,
 			})
 	}
@@ -197,54 +163,60 @@ func (b *Benchmarker) runBenchmark(iterations int) ([]tasks.Result, *Implementat
 		len(benchmarkTasks),
 		progressbar.OptionSetPredictTime(true),
 		progressbar.OptionSetDescription(
-			fmt.Sprintf("Benchmarking %q (%s)", b.Title, b.runner),
+			fmt.Sprintf("Benchmarking %q (%s)", b.Title, runner),
 		),
-		progressbar.OptionSetWriter(b.writer),
+		progressbar.OptionSetWriter(w),
 	)
 
-	if err := b.runner.Start(); err != nil {
-		logger.Error("start runner", tint.Err(err))
+	if err := runner.Prepare(ctx); err != nil {
+		logger.ErrorContext(ctx, "prepare runner", tint.Err(err))
+		return nil, nil, err
+	}
+
+	if err := runner.Open(ctx); err != nil {
+		logger.ErrorContext(ctx, "open runner", tint.Err(err))
 		return nil, nil, err
 	}
 
 	defer func() {
-		_ = b.runner.Stop()
-		_ = b.runner.Cleanup()
+		_ = runner.Close(ctx)
+		_ = runner.Cleanup()
 	}()
 
 	for _, t := range benchmarkTasks {
-		benchResult, err := b.runner.Run(t)
+		benchResult, err := runner.Run(ctx, t)
 		if err != nil {
-			logger.Error("running benchmark", tint.Err(err))
+			logger.ErrorContext(ctx, "running benchmark", tint.Err(err))
 			return nil, nil, err
 		}
 
 		if benchResult.Ok && benchResult.Output != "" {
-			r := handleTaskResult(b.writer, benchResult, "")
-			if b.onResult != nil {
-				b.onResult(r)
+			r := handleTaskResult(w, benchResult, "")
+			if cb != nil {
+				cb(r)
 			}
+
 			results = append(results, r)
 
 			metricsResults[r.Part] = append(metricsResults[r.Part], benchResult.Duration)
 		}
 
 		if err = progBar.Add(1); err != nil {
-			logger.Error("updating progress bar", tint.Err(err))
+			logger.ErrorContext(ctx, "updating progress bar", tint.Err(err))
 			return nil, nil, err
 		}
 	}
 
 	stats, err := calculateMetrics(metricsResults)
 	if err != nil {
-		logger.Error("getting stats from results", tint.Err(err))
+		logger.ErrorContext(ctx, "getting stats from results", tint.Err(err))
 		return results, nil, err
 	}
 
 	return results,
 		&ImplementationData{
-			Name:    b.runner.String(),
-			PartOne: stats[runners.PartOne],
-			PartTwo: stats[runners.PartTwo],
+			Name:    runner.String(),
+			PartOne: stats[protocol.PartOne],
+			PartTwo: stats[protocol.PartTwo],
 		}, nil
 }

@@ -2,14 +2,12 @@
 package solve
 
 import (
-	"log/slog"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
 
+	appPkg "github.com/asphaltbuffet/elf/pkg/app"
 	"github.com/asphaltbuffet/elf/pkg/config"
-	"github.com/asphaltbuffet/elf/pkg/exercise"
-	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
 var (
@@ -18,15 +16,8 @@ var (
 	input    string
 	noTest   bool
 
-	// Factory variables for testing.
 	makeConfig = func(cf string) (config.Config, error) {
 		return config.NewConfig(config.WithFile(cf))
-	}
-	makeChallenge = func(cfg config.ExerciseConfiguration, lang, dir, inputFile string) (Challenge, error) {
-		return exercise.New(cfg,
-			exercise.WithLanguage(lang),
-			exercise.WithDir(dir),
-			exercise.WithInputFile(inputFile))
 	}
 )
 
@@ -57,12 +48,6 @@ func GetSolveCmd() *cobra.Command {
 	return solveCmd
 }
 
-// Challenge is the interface for solving an exercise challenge.
-type Challenge interface {
-	Solve(bool) ([]tasks.Result, error)
-	String() string
-}
-
 func runSolveCmd(cmd *cobra.Command, args []string) error {
 	cf, _ := cmd.Flags().GetString("config-file")
 
@@ -84,14 +69,9 @@ func runSolveCmd(cmd *cobra.Command, args []string) error {
 		input = cfg.GetInputFilename()
 	}
 
-	cfg.GetLogger().Debug("solving exercise", slog.Group("exercise", "dir", dir, "language", language))
+	a := appPkg.New(cfg)
 
-	ch, err := makeChallenge(&cfg, language, dir, filepath.Clean(input))
-	if err != nil {
-		return err
-	}
-
-	_, solveErr := ch.Solve(noTest)
+	_, solveErr := a.Solve(cmd.Context(), dir, language, filepath.Clean(input), cmd.OutOrStdout(), nil, noTest)
 	if solveErr != nil {
 		cmd.PrintErrln("Failed to solve: ", solveErr)
 	}

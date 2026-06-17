@@ -3,6 +3,7 @@ package tui
 
 import (
 	"fmt"
+	"log/slog"
 	"path/filepath"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -13,27 +14,29 @@ import (
 	"github.com/asphaltbuffet/elf/internal/tui/nav"
 	"github.com/asphaltbuffet/elf/internal/tui/yearview"
 	"github.com/asphaltbuffet/elf/pkg/analyze"
+	appPkg "github.com/asphaltbuffet/elf/pkg/app"
 	"github.com/asphaltbuffet/elf/pkg/config"
 )
 
 // App is the root TUI model managing a navigation stack.
 type App struct {
 	stack  []tea.Model
-	cfg    config.Config
+	a      *appPkg.App
 	width  int
 	height int
 }
 
 // Run creates and starts the TUI program.
 func Run(cfg config.Config) error {
-	dash := dashboard.New(cfg)
+	a := appPkg.New(cfg)
+	dash := dashboard.New(a)
 
-	app := App{
-		cfg:   cfg,
+	tuiApp := App{
+		a:     a,
 		stack: []tea.Model{dash},
 	}
 
-	p := tea.NewProgram(app, tea.WithAltScreen())
+	p := tea.NewProgram(tuiApp, tea.WithAltScreen())
 
 	if _, err := p.Run(); err != nil {
 		return fmt.Errorf("tui: %w", err)
@@ -88,13 +91,13 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a, tea.Quit
 
 	case yearview.ActionMsg:
-		ev := exerciseview.New(msg.Cfg, msg.Exercise, msg.Action)
+		ev := exerciseview.New(msg.App, msg.Lang, msg.Exercise, msg.Action)
 		a.stack = append(a.stack, ev)
 
 		return a, ev.Init()
 
 	case yearview.AnalyzeMsg:
-		return a, runAnalyze(msg.Cfg, msg.YearDir)
+		return a, runAnalyze(msg.Logger, msg.YearDir)
 
 	case analyzeDoneMsg:
 		if msg.err != nil {
@@ -131,11 +134,11 @@ type imageDisplayDoneMsg struct {
 	err error
 }
 
-func runAnalyze(cfg config.Config, yearDir string) tea.Cmd {
+func runAnalyze(logger *slog.Logger, yearDir string) tea.Cmd {
 	return func() tea.Msg {
 		outFile := filepath.Join(yearDir, "run-times.png")
 
-		aa, err := analyze.NewAnalyzer(&cfg,
+		aa, err := analyze.NewAnalyzer(logger,
 			analyze.WithDirectory(yearDir),
 			analyze.WithOutput(outFile),
 		)

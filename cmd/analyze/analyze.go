@@ -3,6 +3,7 @@ package analyze
 
 import (
 	"fmt"
+	"log/slog"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
@@ -25,8 +26,8 @@ var (
 	makeConfig = func(cf string) (config.Config, error) {
 		return config.NewConfig(config.WithFile(cf))
 	}
-	makeAnalyzer = func(cfg config.ExerciseConfiguration, dir, out string) (Analyzer, error) {
-		return analyzer.NewAnalyzer(cfg, analyzer.WithDirectory(dir), analyzer.WithOutput(out))
+	makeAnalyzer = func(logger *slog.Logger, dir, out string) (Analyzer, error) {
+		return analyzer.NewAnalyzer(logger, analyzer.WithDirectory(dir), analyzer.WithOutput(out))
 	}
 )
 
@@ -66,7 +67,7 @@ func runAnalyzeCmd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("output file: %w", err)
 	}
 
-	aa, err := makeAnalyzer(&cfg, dir, out)
+	aa, err := makeAnalyzer(cfg.GetLogger(), dir, out)
 	if err != nil {
 		return fmt.Errorf("creating grapher: %w", err)
 	}

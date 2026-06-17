@@ -5,14 +5,14 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/asphaltbuffet/elf/pkg/runners"
+	"github.com/asphaltbuffet/elf/pkg/protocol"
 	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
 func Test_MakeTaskID(t *testing.T) {
 	type args struct {
 		task    tasks.TaskType
-		part    runners.Part
+		part    protocol.Part
 		subPart []int
 	}
 
@@ -23,32 +23,32 @@ func Test_MakeTaskID(t *testing.T) {
 	}{
 		{
 			name: "negative subpart",
-			args: args{tasks.Test, runners.PartOne, []int{-1}},
+			args: args{tasks.Test, protocol.PartOne, []int{-1}},
 			want: "test.1.-1",
 		},
 		{
 			name: "positive subpart",
-			args: args{tasks.Test, runners.PartTwo, []int{1}},
+			args: args{tasks.Test, protocol.PartTwo, []int{1}},
 			want: "test.2.1",
 		},
 		{
 			name: "solve part one",
-			args: args{tasks.Solve, runners.PartTwo, nil},
+			args: args{tasks.Solve, protocol.PartTwo, nil},
 			want: "solve.2",
 		},
 		{
 			name: "solve part two",
-			args: args{tasks.Solve, runners.PartTwo, nil},
+			args: args{tasks.Solve, protocol.PartTwo, nil},
 			want: "solve.2",
 		},
 		{
 			name: "visualize",
-			args: args{tasks.Visualize, runners.PartOne, []int{25}},
+			args: args{tasks.Visualize, protocol.PartOne, []int{25}},
 			want: "visualize.1.25",
 		},
 		{
 			name: "Benchmark with subpart",
-			args: args{tasks.Benchmark, runners.PartOne, []int{-1}},
+			args: args{tasks.Benchmark, protocol.PartOne, []int{-1}},
 			want: "benchmark.1.-1",
 		},
 	}
@@ -67,7 +67,7 @@ func Test_MakeTaskID(t *testing.T) {
 func Test_MakeTaskID_WithPanic(t *testing.T) {
 	type args struct {
 		task    tasks.TaskType
-		part    runners.Part
+		part    protocol.Part
 		subPart []int
 	}
 
@@ -78,19 +78,19 @@ func Test_MakeTaskID_WithPanic(t *testing.T) {
 	}{
 		{
 			name: "Solve with subpart",
-			args: args{tasks.Solve, runners.PartOne, []int{-1}},
+			args: args{tasks.Solve, protocol.PartOne, []int{-1}},
 		},
 		{
 			name: "Test with no subpart",
-			args: args{tasks.Test, runners.PartOne, []int{}},
+			args: args{tasks.Test, protocol.PartOne, []int{}},
 		},
 		{
 			name: "Test with many subparts",
-			args: args{tasks.Test, runners.PartOne, []int{1, 2, 3}},
+			args: args{tasks.Test, protocol.PartOne, []int{1, 2, 3}},
 		},
 		{
 			name: "invalid task type",
-			args: args{42, runners.PartOne, []int{-1}},
+			args: args{42, protocol.PartOne, []int{-1}},
 		},
 	}
 
@@ -110,7 +110,7 @@ func Test_ParseTaskID(t *testing.T) {
 
 	type wants struct {
 		taskType tasks.TaskType
-		part     runners.Part
+		part     protocol.Part
 		subPart  int
 	}
 
@@ -119,9 +119,9 @@ func Test_ParseTaskID(t *testing.T) {
 		args  args
 		wants wants
 	}{
-		{"valid test", args{id: "test.1.2"}, wants{tasks.Test, runners.PartOne, 2}},
+		{"valid test", args{id: "test.1.2"}, wants{tasks.Test, protocol.PartOne, 2}},
 		{"valid benchmark", args{id: "benchmark.1.2"}, wants{tasks.Benchmark, 1, 2}},
-		{"valid test", args{id: "solve.2"}, wants{tasks.Solve, runners.PartTwo, 0}},
+		{"valid test", args{id: "solve.2"}, wants{tasks.Solve, protocol.PartTwo, 0}},
 		{"invalid short", args{id: "visualize.2"}, wants{tasks.Invalid, 0, 0}},
 		{"invalid type", args{id: "fake.2.1"}, wants{tasks.Invalid, 0, 0}},
 		{"no parts", args{id: "test"}, wants{tasks.Invalid, 0, 0}},

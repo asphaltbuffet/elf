@@ -11,13 +11,14 @@ import (
 	"github.com/stretchr/testify/require"
 
 	mocks "github.com/asphaltbuffet/elf/mocks/runners"
-	"github.com/asphaltbuffet/elf/pkg/runners"
+	"github.com/asphaltbuffet/elf/pkg/protocol"
 	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
 func Test_runMainTasks(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	mockRunner := mocks.NewMockRunner(t)
-	mockCall := mockRunner.EXPECT().Run(mock.Anything).Return(&runners.Result{
+	mockCall := mockRunner.EXPECT().Run(mock.Anything, mock.Anything).Return(&protocol.Result{
 		TaskID:   "solve.1",
 		Ok:       true,
 		Output:   "FAKE OUTPUT",
@@ -25,28 +26,27 @@ func Test_runMainTasks(t *testing.T) {
 	}, nil).Times(2)
 
 	e := &Exercise{
-		runner: mockRunner,
-		Data:   &Data{InputData: "FAKE INPUT"},
-		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
-		writer: io.Discard,
+		Data: &Data{InputData: "FAKE INPUT"},
 	}
 
-	_, err := e.runMainTasks()
+	_, err := e.runMainTasks(t.Context(), mockRunner, io.Discard, nil)
 
 	require.NoError(t, err)
 
 	mockCall.Unset()
 
-	mockRunner.EXPECT().Run(mock.Anything).Return(&runners.Result{
+	mockRunner.EXPECT().Run(mock.Anything, mock.Anything).Return(&protocol.Result{
 		TaskID:   "fake.1",
 		Ok:       false,
 		Output:   "fakey fake",
 		Duration: 0.666,
 	}, errors.New("FAKE ERROR")).Once()
 
-	_, err = e.runMainTasks()
+	_, err = e.runMainTasks(t.Context(), mockRunner, io.Discard, nil)
 
 	require.Error(t, err)
+
+	_ = logger // used in TestSolve
 }
 
 func TestSolve(t *testing.T) {
@@ -82,7 +82,7 @@ func TestSolve(t *testing.T) {
 		{
 			name: "runner start error",
 			setup: func(_m *mocks.MockRunner) {
-				_m.EXPECT().Start().Return(errors.New("FAKE ERROR"))
+				_m.EXPECT().Prepare(mock.Anything).Return(errors.New("FAKE ERROR"))
 			},
 			fields: fields{
 				inputFile: "input.fake",
@@ -96,10 +96,11 @@ func TestSolve(t *testing.T) {
 		{
 			name: "runner run error",
 			setup: func(_m *mocks.MockRunner) {
-				_m.EXPECT().Start().Return(nil)
-				_m.EXPECT().Run(mock.Anything).Return(nil, errors.New("FAKE ERROR"))
+				_m.EXPECT().Prepare(mock.Anything).Return(nil)
+				_m.EXPECT().Open(mock.Anything).Return(nil)
+				_m.EXPECT().Run(mock.Anything, mock.Anything).Return(nil, errors.New("FAKE ERROR"))
 				_m.EXPECT().String().Return("fakeRunner")
-				_m.EXPECT().Stop().Return(nil)
+				_m.EXPECT().Close(mock.Anything).Return(nil)
 				_m.EXPECT().Cleanup().Return(nil)
 			},
 			fields: fields{
@@ -116,6 +117,8 @@ func TestSolve(t *testing.T) {
 	teardownTestCase := setupTestCase(t)
 	defer teardownTestCase(t)
 
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			teardownSubTest := setupSubTest(t)
@@ -127,7 +130,6 @@ func TestSolve(t *testing.T) {
 			require.NoError(t, err)
 			f.Close()
 
-			// set up mocks
 			mockRunner := mocks.NewMockRunner(t)
 			tt.setup(mockRunner)
 
@@ -152,27 +154,20 @@ func TestSolve(t *testing.T) {
 					},
 					Answers: Answer{},
 				},
-				Path:   "",
-				runner: mockRunner,
-				logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
-				appFs:  testFs,
-				writer: io.Discard,
+				Path: "",
 			}
 
-			// execute the function under test
 			// skipTests == false
-			got, err := e.Solve(false)
+			got, err := e.Solve(t.Context(), testFs, logger, mockRunner, io.Discard, nil, false)
 
-			// verify results
 			tt.assertion(t, err)
 			if err == nil {
 				assert.Equal(t, tt.want, got)
 			}
 
 			// skipTests == true
-			got, err = e.Solve(true)
+			got, err = e.Solve(t.Context(), testFs, logger, mockRunner, io.Discard, nil, true)
 
-			// verify results
 			tt.assertion(t, err)
 			if err == nil {
 				assert.Equal(t, tt.want, got)

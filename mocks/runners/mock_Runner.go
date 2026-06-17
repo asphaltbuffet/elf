@@ -5,7 +5,9 @@
 package mocks
 
 import (
-	"github.com/asphaltbuffet/elf/pkg/runners"
+	"context"
+
+	"github.com/asphaltbuffet/elf/pkg/protocol"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -80,28 +82,181 @@ func (_c *MockRunner_Cleanup_Call) RunAndReturn(run func() error) *MockRunner_Cl
 	return _c
 }
 
+// Close provides a mock function for the type MockRunner
+func (_mock *MockRunner) Close(ctx context.Context) error {
+	ret := _mock.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Close")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = returnFunc(ctx)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockRunner_Close_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Close'
+type MockRunner_Close_Call struct {
+	*mock.Call
+}
+
+// Close is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockRunner_Expecter) Close(ctx interface{}) *MockRunner_Close_Call {
+	return &MockRunner_Close_Call{Call: _e.mock.On("Close", ctx)}
+}
+
+func (_c *MockRunner_Close_Call) Run(run func(ctx context.Context)) *MockRunner_Close_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockRunner_Close_Call) Return(err error) *MockRunner_Close_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockRunner_Close_Call) RunAndReturn(run func(ctx context.Context) error) *MockRunner_Close_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Open provides a mock function for the type MockRunner
+func (_mock *MockRunner) Open(ctx context.Context) error {
+	ret := _mock.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Open")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = returnFunc(ctx)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockRunner_Open_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Open'
+type MockRunner_Open_Call struct {
+	*mock.Call
+}
+
+// Open is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockRunner_Expecter) Open(ctx interface{}) *MockRunner_Open_Call {
+	return &MockRunner_Open_Call{Call: _e.mock.On("Open", ctx)}
+}
+
+func (_c *MockRunner_Open_Call) Run(run func(ctx context.Context)) *MockRunner_Open_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockRunner_Open_Call) Return(err error) *MockRunner_Open_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockRunner_Open_Call) RunAndReturn(run func(ctx context.Context) error) *MockRunner_Open_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Prepare provides a mock function for the type MockRunner
+func (_mock *MockRunner) Prepare(ctx context.Context) error {
+	ret := _mock.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Prepare")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = returnFunc(ctx)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockRunner_Prepare_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Prepare'
+type MockRunner_Prepare_Call struct {
+	*mock.Call
+}
+
+// Prepare is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockRunner_Expecter) Prepare(ctx interface{}) *MockRunner_Prepare_Call {
+	return &MockRunner_Prepare_Call{Call: _e.mock.On("Prepare", ctx)}
+}
+
+func (_c *MockRunner_Prepare_Call) Run(run func(ctx context.Context)) *MockRunner_Prepare_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockRunner_Prepare_Call) Return(err error) *MockRunner_Prepare_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockRunner_Prepare_Call) RunAndReturn(run func(ctx context.Context) error) *MockRunner_Prepare_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Run provides a mock function for the type MockRunner
-func (_mock *MockRunner) Run(task *runners.Task) (*runners.Result, error) {
-	ret := _mock.Called(task)
+func (_mock *MockRunner) Run(ctx context.Context, task *protocol.Task) (*protocol.Result, error) {
+	ret := _mock.Called(ctx, task)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Run")
 	}
 
-	var r0 *runners.Result
+	var r0 *protocol.Result
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(*runners.Task) (*runners.Result, error)); ok {
-		return returnFunc(task)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *protocol.Task) (*protocol.Result, error)); ok {
+		return returnFunc(ctx, task)
 	}
-	if returnFunc, ok := ret.Get(0).(func(*runners.Task) *runners.Result); ok {
-		r0 = returnFunc(task)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *protocol.Task) *protocol.Result); ok {
+		r0 = returnFunc(ctx, task)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*runners.Result)
+			r0 = ret.Get(0).(*protocol.Result)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(*runners.Task) error); ok {
-		r1 = returnFunc(task)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *protocol.Task) error); ok {
+		r1 = returnFunc(ctx, task)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -114,118 +269,36 @@ type MockRunner_Run_Call struct {
 }
 
 // Run is a helper method to define mock.On call
-//   - task *runners.Task
-func (_e *MockRunner_Expecter) Run(task interface{}) *MockRunner_Run_Call {
-	return &MockRunner_Run_Call{Call: _e.mock.On("Run", task)}
+//   - ctx context.Context
+//   - task *protocol.Task
+func (_e *MockRunner_Expecter) Run(ctx interface{}, task interface{}) *MockRunner_Run_Call {
+	return &MockRunner_Run_Call{Call: _e.mock.On("Run", ctx, task)}
 }
 
-func (_c *MockRunner_Run_Call) Run(run func(task *runners.Task)) *MockRunner_Run_Call {
+func (_c *MockRunner_Run_Call) Run(run func(ctx context.Context, task *protocol.Task)) *MockRunner_Run_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 *runners.Task
+		var arg0 context.Context
 		if args[0] != nil {
-			arg0 = args[0].(*runners.Task)
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 *protocol.Task
+		if args[1] != nil {
+			arg1 = args[1].(*protocol.Task)
 		}
 		run(
 			arg0,
+			arg1,
 		)
 	})
 	return _c
 }
 
-func (_c *MockRunner_Run_Call) Return(result *runners.Result, err error) *MockRunner_Run_Call {
+func (_c *MockRunner_Run_Call) Return(result *protocol.Result, err error) *MockRunner_Run_Call {
 	_c.Call.Return(result, err)
 	return _c
 }
 
-func (_c *MockRunner_Run_Call) RunAndReturn(run func(task *runners.Task) (*runners.Result, error)) *MockRunner_Run_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// Start provides a mock function for the type MockRunner
-func (_mock *MockRunner) Start() error {
-	ret := _mock.Called()
-
-	if len(ret) == 0 {
-		panic("no return value specified for Start")
-	}
-
-	var r0 error
-	if returnFunc, ok := ret.Get(0).(func() error); ok {
-		r0 = returnFunc()
-	} else {
-		r0 = ret.Error(0)
-	}
-	return r0
-}
-
-// MockRunner_Start_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Start'
-type MockRunner_Start_Call struct {
-	*mock.Call
-}
-
-// Start is a helper method to define mock.On call
-func (_e *MockRunner_Expecter) Start() *MockRunner_Start_Call {
-	return &MockRunner_Start_Call{Call: _e.mock.On("Start")}
-}
-
-func (_c *MockRunner_Start_Call) Run(run func()) *MockRunner_Start_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run()
-	})
-	return _c
-}
-
-func (_c *MockRunner_Start_Call) Return(err error) *MockRunner_Start_Call {
-	_c.Call.Return(err)
-	return _c
-}
-
-func (_c *MockRunner_Start_Call) RunAndReturn(run func() error) *MockRunner_Start_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// Stop provides a mock function for the type MockRunner
-func (_mock *MockRunner) Stop() error {
-	ret := _mock.Called()
-
-	if len(ret) == 0 {
-		panic("no return value specified for Stop")
-	}
-
-	var r0 error
-	if returnFunc, ok := ret.Get(0).(func() error); ok {
-		r0 = returnFunc()
-	} else {
-		r0 = ret.Error(0)
-	}
-	return r0
-}
-
-// MockRunner_Stop_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Stop'
-type MockRunner_Stop_Call struct {
-	*mock.Call
-}
-
-// Stop is a helper method to define mock.On call
-func (_e *MockRunner_Expecter) Stop() *MockRunner_Stop_Call {
-	return &MockRunner_Stop_Call{Call: _e.mock.On("Stop")}
-}
-
-func (_c *MockRunner_Stop_Call) Run(run func()) *MockRunner_Stop_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run()
-	})
-	return _c
-}
-
-func (_c *MockRunner_Stop_Call) Return(err error) *MockRunner_Stop_Call {
-	_c.Call.Return(err)
-	return _c
-}
-
-func (_c *MockRunner_Stop_Call) RunAndReturn(run func() error) *MockRunner_Stop_Call {
+func (_c *MockRunner_Run_Call) RunAndReturn(run func(ctx context.Context, task *protocol.Task) (*protocol.Result, error)) *MockRunner_Run_Call {
 	_c.Call.Return(run)
 	return _c
 }

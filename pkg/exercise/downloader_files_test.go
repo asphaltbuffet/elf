@@ -35,10 +35,7 @@ func TestDownloader_writeInputFile(t *testing.T) {
 						TestCases:     TestCase{},
 						Answers:       Answer{},
 					},
-					Path:   "",
-					runner: nil,
-					appFs:  nil,
-					logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+					Path: "",
 				},
 				overwrites: &Overwrites{
 					Input: false,
@@ -65,6 +62,7 @@ func TestDownloader_writeInputFile(t *testing.T) {
 			mockDownloader.token = "fakeToken"
 			mockDownloader.overwrites = tt.fields.overwrites
 			mockDownloader.appFs = testFs
+			mockDownloader.logger = slog.New(slog.NewTextHandler(io.Discard, nil))
 
 			tt.assertion(t, mockDownloader.writeInputFile())
 		})

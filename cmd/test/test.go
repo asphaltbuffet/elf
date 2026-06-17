@@ -2,35 +2,23 @@
 package test
 
 import (
-	"log/slog"
 	"path/filepath"
 
 	"github.com/lmittmann/tint"
 	"github.com/spf13/cobra"
 
+	appPkg "github.com/asphaltbuffet/elf/pkg/app"
 	"github.com/asphaltbuffet/elf/pkg/config"
-	"github.com/asphaltbuffet/elf/pkg/exercise"
-	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
 var (
 	testCmd  *cobra.Command
 	language string
 
-	// Factory variables for testing.
 	makeConfig = func(cf string) (config.Config, error) {
 		return config.NewConfig(config.WithFile(cf))
 	}
-	makeChallengeTester = func(cfg config.ExerciseConfiguration, lang, dir string) (ChallengeTester, error) {
-		return exercise.New(cfg, exercise.WithLanguage(lang), exercise.WithDir(dir))
-	}
 )
-
-// ChallengeTester is the interface for running tests against an exercise challenge.
-type ChallengeTester interface {
-	Test() ([]tasks.Result, error)
-	String() string
-}
 
 const exampleTestText = `
 elf test /path/to/exercise --lang=go
@@ -72,17 +60,12 @@ func runTestCmd(cmd *cobra.Command, args []string) error {
 		language = cfg.GetLanguage()
 	}
 
-	ch, err := makeChallengeTester(&cfg, language, dir)
-	if err != nil {
-		return err
-	}
+	a := appPkg.New(cfg)
 
-	cfg.GetLogger().Debug("testing exercise", slog.Any("challenge", ch))
-
-	_, err = ch.Test()
-	if err != nil {
-		cfg.GetLogger().Error("testing exercise", tint.Err(err))
-		cmd.Printf("Failed to run tests: %v\n", err)
+	_, testErr := a.Test(cmd.Context(), dir, language, "", cmd.OutOrStdout(), nil)
+	if testErr != nil {
+		cfg.GetLogger().Error("testing exercise", tint.Err(testErr))
+		cmd.Printf("Failed to run tests: %v\n", testErr)
 	}
 
 	return nil

@@ -41,7 +41,7 @@ func Test_newGolangRunner(t *testing.T) {
 	}
 }
 
-func Test_golangRunner_Cleanup(t *testing.T) {
+func Test_golangRunner_Cleanup(t *testing.T) { //nolint:paralleltest // shared temp dir
 	tf := t.TempDir() // automatically cleaned up after test
 
 	exDir := filepath.Join(tf, "2015", "01-testDayOne", "go")
@@ -103,7 +103,7 @@ func Test_golangRunner_Cleanup(t *testing.T) {
 	}
 }
 
-func Test_golangRunner_Stop(t *testing.T) {
+func Test_golangRunner_Close(t *testing.T) {
 	tests := []struct {
 		name      string
 		g         *golangRunner
@@ -118,7 +118,7 @@ func Test_golangRunner_Stop(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.assertion(t, tt.g.Stop())
+			tt.assertion(t, tt.g.Close(t.Context()))
 		})
 	}
 }

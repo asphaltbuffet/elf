@@ -16,7 +16,8 @@ import (
 	"strings"
 	"syscall"
 	"text/template"
-	"time"
+
+	"github.com/asphaltbuffet/elf/pkg/protocol"
 )
 
 var project string
@@ -31,6 +32,7 @@ const (
 
 type golangRunner struct {
 	dir                string
+	goBin              string
 	cmd                *exec.Cmd
 	wrapperFilepath    string
 	executableFilepath string
@@ -49,24 +51,27 @@ func newGolangRunner(dir string) Runner {
 var golangInterfaceFile []byte
 
 // Start compiles the exercise code and starts the executable.
-func (g *golangRunner) Start() error {
-	//nolint:sloglint // runner has no logger context, uses global for debug
-	slog.LogAttrs(context.TODO(), slog.LevelDebug, "setting up runner",
-		slog.String("dir", g.dir),
-	)
+func (g *golangRunner) Prepare(ctx context.Context) error {
+	//nolint:sloglint // runner has no logger, uses global for debug
+	slog.LogAttrs(ctx, slog.LevelDebug, "setting up runner", slog.String("dir", g.dir))
 
-	// windows requires .exe extension
 	if runtime.GOOS == "windows" {
 		g.executableFilepath += ".exe"
 	}
 
-	project = getModuleName()
+	goBin, lookErr := exec.LookPath(golangInstallation)
+	if lookErr != nil {
+		return errors.New("go toolchain not found in $PATH: ensure Go is installed and 'go' is on your PATH")
+	}
 
-	//nolint:sloglint // runner has no logger context, uses global for debug
-	slog.LogAttrs(context.TODO(), slog.LevelDebug, "paths created",
-		slog.String("dir", g.dir),
-		slog.String("project", "project"),
-	)
+	g.goBin = goBin
+
+	modName, modErr := getModuleName(ctx, g.dir, g.goBin)
+	if modErr != nil {
+		return modErr
+	}
+
+	project = modName
 
 	tokens := strings.Split(filepath.ToSlash(g.dir), "/")
 	buildPath := filepath.Join(tokens[len(tokens)-3:]...)
@@ -89,31 +94,29 @@ func (g *golangRunner) Start() error {
 		wrapperContent = b.Bytes()
 	}
 
-	// write wrapped code
 	if err := os.WriteFile(g.wrapperFilepath, wrapperContent, 0o600); err != nil {
 		return err
 	}
 
-	//nolint:sloglint // runner has no logger context, uses global for debug
-	slog.LogAttrs(context.Background(), slog.LevelDebug, "building runner",
+	//nolint:sloglint // runner has no logger, uses global for debug
+	slog.LogAttrs(ctx, slog.LevelDebug, "building runner",
 		slog.String("wrapper", g.wrapperFilepath),
 		slog.String("executable", g.executableFilepath),
-		slog.String("buildPath", buildPath),
-		slog.String("project", project),
 		slog.String("importPath", importPath),
 	)
 
 	stderrBuffer := new(bytes.Buffer)
 
-	tidycmd := exec.CommandContext(context.Background(), golangInstallation, "mod", "tidy")
-
+	//nolint:gosec // g.goBin is resolved via exec.LookPath, not user input
+	tidycmd := exec.CommandContext(ctx, g.goBin, "mod", "tidy")
 	tidycmd.Stderr = stderrBuffer
+
 	if err := tidycmd.Run(); err != nil {
 		return fmt.Errorf("tidy failed: %w: %s", err, stderrBuffer.String())
 	}
 
 	//nolint:gosec // no user input
-	cmd := exec.CommandContext(context.Background(), golangInstallation, "build",
+	cmd := exec.CommandContext(ctx, g.goBin, "build",
 		"-tags", "runtime",
 		"-o", g.executableFilepath,
 		g.wrapperFilepath)
@@ -127,14 +130,16 @@ func (g *golangRunner) Start() error {
 		return errors.New("compilation failed")
 	}
 
+	return nil
+}
+
+func (g *golangRunner) Open(ctx context.Context) error {
 	absExecPath, err := filepath.Abs(g.executableFilepath)
 	if err != nil {
 		return err
 	}
 
-	// run executable for exercise (wrapped)
-
-	g.cmd = exec.CommandContext(context.Background(), absExecPath)
+	g.cmd = exec.CommandContext(ctx, absExecPath)
 	g.cmd.Dir = g.dir
 
 	stdin, err := setupBuffers(g.cmd)
@@ -147,28 +152,23 @@ func (g *golangRunner) Start() error {
 	return g.cmd.Start()
 }
 
-func (g *golangRunner) Stop() error {
-	const processExitTimeout time.Duration = 5 * time.Second
-
+func (g *golangRunner) Close(ctx context.Context) error {
 	if g.cmd == nil || g.cmd.Process == nil {
 		return nil
 	}
 
-	// First try to send a SIGTERM.
 	if err := g.cmd.Process.Signal(syscall.SIGTERM); err != nil {
 		return fmt.Errorf("failed to send SIGTERM to go process: %w", err)
 	}
 
-	// Wait for the process to exit, but not forever.
 	done := make(chan error, 1)
 	go func() {
 		_, err := g.cmd.Process.Wait()
 		done <- err
 	}()
 
-	// wait up to 5 seconds for the process to exit.
 	select {
-	case <-time.After(processExitTimeout):
+	case <-ctx.Done():
 		if err := g.cmd.Process.Kill(); err != nil {
 			return fmt.Errorf("failed to kill go process: %w", err)
 		}
@@ -195,7 +195,7 @@ func (g *golangRunner) Cleanup() error {
 	return errors.Join(wrapperErr, execErr)
 }
 
-func (g *golangRunner) Run(task *Task) (*Result, error) {
+func (g *golangRunner) Run(_ context.Context, task *protocol.Task) (*protocol.Result, error) {
 	taskJSON, err := json.Marshal(task)
 	if err != nil {
 		return nil, fmt.Errorf("marshalling task to json: %w", err)
@@ -206,7 +206,7 @@ func (g *golangRunner) Run(task *Task) (*Result, error) {
 		return nil, fmt.Errorf("writing task to stdin: %w", err)
 	}
 
-	r := new(Result)
+	r := new(protocol.Result)
 
 	if jsonErr := readJSONFromCommand(r, g.cmd); jsonErr != nil {
 		return nil, jsonErr
@@ -220,17 +220,18 @@ func (g *golangRunner) String() string {
 	return goRunnerName
 }
 
-func getModuleName() string {
+func getModuleName(ctx context.Context, dir, goBin string) (string, error) {
 	errBuf := new(bytes.Buffer)
 	outBuf := new(bytes.Buffer)
 
-	cmd := exec.CommandContext(context.Background(), golangInstallation, "list", "-m")
+	cmd := exec.CommandContext(ctx, goBin, "list", "-m")
+	cmd.Dir = dir
 	cmd.Stdout = outBuf
 	cmd.Stderr = errBuf
 
 	if err := cmd.Run(); err != nil {
-		panic("failed to get module name: " + errBuf.String())
+		return "", fmt.Errorf("failed to get module name: %w: %s", err, errBuf.String())
 	}
 
-	return strings.Trim(outBuf.String(), "\n")
+	return strings.Trim(outBuf.String(), "\n"), nil
 }

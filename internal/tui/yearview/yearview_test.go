@@ -7,10 +7,7 @@ import (
 
 	"github.com/asphaltbuffet/elf/internal/tui/discover"
 	"github.com/asphaltbuffet/elf/internal/tui/nav"
-	"github.com/asphaltbuffet/elf/pkg/config"
 )
-
-var zeroCfg config.Config
 
 func testExercises() []discover.ExerciseInfo {
 	return []discover.ExerciseInfo{
@@ -30,7 +27,7 @@ func specialKeyMsg(k tea.KeyType) tea.KeyMsg {
 
 func TestNew(t *testing.T) {
 	exercises := testExercises()
-	m := New(zeroCfg, 2015, exercises)
+	m := New(nil, "", nil, 2015, exercises)
 
 	if m.year != 2015 {
 		t.Errorf("expected year 2015, got %d", m.year)
@@ -47,7 +44,7 @@ func TestNew(t *testing.T) {
 
 func TestCursorDown(t *testing.T) {
 	exercises := testExercises()
-	m := New(zeroCfg, 2015, exercises)
+	m := New(nil, "", nil, 2015, exercises)
 
 	// Move down once
 	updated, _ := m.Update(keyMsg("j"))
@@ -68,7 +65,7 @@ func TestCursorDown(t *testing.T) {
 
 func TestCursorUp(t *testing.T) {
 	exercises := testExercises()
-	m := New(zeroCfg, 2015, exercises)
+	m := New(nil, "", nil, 2015, exercises)
 	m.cursor = 2
 
 	updated, _ := m.Update(keyMsg("k"))
@@ -81,7 +78,7 @@ func TestCursorUp(t *testing.T) {
 
 func TestCursorDownAtEnd(t *testing.T) {
 	exercises := testExercises()
-	m := New(zeroCfg, 2015, exercises)
+	m := New(nil, "", nil, 2015, exercises)
 	m.cursor = 2 // last exercise
 
 	updated, _ := m.Update(keyMsg("j"))
@@ -94,7 +91,7 @@ func TestCursorDownAtEnd(t *testing.T) {
 
 func TestCursorUpAtZero(t *testing.T) {
 	exercises := testExercises()
-	m := New(zeroCfg, 2015, exercises)
+	m := New(nil, "", nil, 2015, exercises)
 
 	updated, _ := m.Update(keyMsg("k"))
 	model := updated.(Model)
@@ -106,7 +103,7 @@ func TestCursorUpAtZero(t *testing.T) {
 
 func TestCursorDownArrowKey(t *testing.T) {
 	exercises := testExercises()
-	m := New(zeroCfg, 2015, exercises)
+	m := New(nil, "", nil, 2015, exercises)
 
 	updated, _ := m.Update(specialKeyMsg(tea.KeyDown))
 	model := updated.(Model)
@@ -118,7 +115,7 @@ func TestCursorDownArrowKey(t *testing.T) {
 
 func TestCursorUpArrowKey(t *testing.T) {
 	exercises := testExercises()
-	m := New(zeroCfg, 2015, exercises)
+	m := New(nil, "", nil, 2015, exercises)
 	m.cursor = 1
 
 	updated, _ := m.Update(specialKeyMsg(tea.KeyUp))
@@ -131,7 +128,7 @@ func TestCursorUpArrowKey(t *testing.T) {
 
 func TestSolveAction(t *testing.T) {
 	exercises := testExercises()
-	m := New(zeroCfg, 2015, exercises)
+	m := New(nil, "", nil, 2015, exercises)
 
 	_, cmd := m.Update(keyMsg("s"))
 
@@ -157,7 +154,7 @@ func TestSolveAction(t *testing.T) {
 
 func TestTestAction(t *testing.T) {
 	exercises := testExercises()
-	m := New(zeroCfg, 2015, exercises)
+	m := New(nil, "", nil, 2015, exercises)
 	m.cursor = 1
 
 	_, cmd := m.Update(keyMsg("t"))
@@ -184,7 +181,7 @@ func TestTestAction(t *testing.T) {
 
 func TestBenchmarkAction(t *testing.T) {
 	exercises := testExercises()
-	m := New(zeroCfg, 2015, exercises)
+	m := New(nil, "", nil, 2015, exercises)
 
 	_, cmd := m.Update(keyMsg("b"))
 
@@ -206,7 +203,7 @@ func TestBenchmarkAction(t *testing.T) {
 
 func TestAnalyzeAction(t *testing.T) {
 	exercises := testExercises()
-	m := New(zeroCfg, 2015, exercises)
+	m := New(nil, "", nil, 2015, exercises)
 
 	_, cmd := m.Update(keyMsg("a"))
 
@@ -228,7 +225,7 @@ func TestAnalyzeAction(t *testing.T) {
 
 func TestBackEsc(t *testing.T) {
 	exercises := testExercises()
-	m := New(zeroCfg, 2015, exercises)
+	m := New(nil, "", nil, 2015, exercises)
 
 	_, cmd := m.Update(specialKeyMsg(tea.KeyEsc))
 
@@ -244,7 +241,7 @@ func TestBackEsc(t *testing.T) {
 
 func TestBackH(t *testing.T) {
 	exercises := testExercises()
-	m := New(zeroCfg, 2015, exercises)
+	m := New(nil, "", nil, 2015, exercises)
 
 	_, cmd := m.Update(keyMsg("h"))
 
@@ -260,7 +257,7 @@ func TestBackH(t *testing.T) {
 
 func TestQuit(t *testing.T) {
 	exercises := testExercises()
-	m := New(zeroCfg, 2015, exercises)
+	m := New(nil, "", nil, 2015, exercises)
 
 	_, cmd := m.Update(keyMsg("q"))
 
@@ -275,7 +272,7 @@ func TestQuit(t *testing.T) {
 }
 
 func TestActionsWithEmptyExercises(t *testing.T) {
-	m := New(zeroCfg, 2015, nil)
+	m := New(nil, "", nil, 2015, nil)
 
 	actions := []string{"s", "t", "b", "a"}
 
@@ -290,7 +287,7 @@ func TestActionsWithEmptyExercises(t *testing.T) {
 
 func TestEnterAction(t *testing.T) {
 	exercises := testExercises()
-	m := New(zeroCfg, 2015, exercises)
+	m := New(nil, "", nil, 2015, exercises)
 
 	_, cmd := m.Update(specialKeyMsg(tea.KeyEnter))
 
@@ -312,7 +309,7 @@ func TestEnterAction(t *testing.T) {
 
 func TestRightAction(t *testing.T) {
 	exercises := testExercises()
-	m := New(zeroCfg, 2015, exercises)
+	m := New(nil, "", nil, 2015, exercises)
 
 	_, cmd := m.Update(keyMsg("l"))
 
@@ -334,7 +331,7 @@ func TestRightAction(t *testing.T) {
 
 func TestWindowSizeMsg(t *testing.T) {
 	exercises := testExercises()
-	m := New(zeroCfg, 2015, exercises)
+	m := New(nil, "", nil, 2015, exercises)
 
 	updated, cmd := m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 	model := updated.(Model)
@@ -354,7 +351,7 @@ func TestWindowSizeMsg(t *testing.T) {
 
 func TestSolveActionCursorPosition(t *testing.T) {
 	exercises := testExercises()
-	m := New(zeroCfg, 2015, exercises)
+	m := New(nil, "", nil, 2015, exercises)
 	m.cursor = 2
 
 	_, cmd := m.Update(keyMsg("s"))
@@ -377,7 +374,7 @@ func TestSolveActionCursorPosition(t *testing.T) {
 
 func TestInit(t *testing.T) {
 	exercises := testExercises()
-	m := New(zeroCfg, 2015, exercises)
+	m := New(nil, "", nil, 2015, exercises)
 
 	cmd := m.Init()
 	if cmd != nil {

@@ -3,6 +3,7 @@ package dashboard
 
 import (
 	"fmt"
+	"log/slog"
 	"strconv"
 	"strings"
 
@@ -10,12 +11,23 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/spf13/afero"
 
 	"github.com/asphaltbuffet/elf/internal/tui/discover"
+	"github.com/asphaltbuffet/elf/internal/tui/exerciseview"
 	"github.com/asphaltbuffet/elf/internal/tui/nav"
 	"github.com/asphaltbuffet/elf/internal/tui/yearview"
-	"github.com/asphaltbuffet/elf/pkg/config"
 )
+
+// Info is the narrow interface dashboard uses for display and scanning.
+// *app.App satisfies this interface.
+type Info interface {
+	exerciseview.Executor
+	Language() string
+	BaseDir() string
+	GetFs() afero.Fs
+	GetLogger() *slog.Logger
+}
 
 const progressBarWidth = 20
 
@@ -26,7 +38,7 @@ type scanCompleteMsg struct {
 
 // Model is the dashboard TUI model.
 type Model struct {
-	cfg       config.Config
+	app       Info
 	years     []int
 	exercises map[int][]discover.ExerciseInfo
 	cursor    int
@@ -38,9 +50,9 @@ type Model struct {
 }
 
 // New creates a new dashboard model.
-func New(cfg config.Config) Model {
+func New(app Info) Model {
 	return Model{
-		cfg:     cfg,
+		app:     app,
 		loading: true,
 		help:    help.New(),
 	}
@@ -49,7 +61,7 @@ func New(cfg config.Config) Model {
 // Init triggers an async filesystem scan for exercises.
 func (m Model) Init() tea.Cmd {
 	return func() tea.Msg {
-		result, err := discover.Scan(m.cfg.GetFs(), m.cfg.GetBaseDir())
+		result, err := discover.Scan(m.app.GetFs(), m.app.BaseDir())
 		return scanCompleteMsg{years: result, err: err}
 	}
 }
@@ -98,7 +110,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.enter, keys.right):
 			if len(m.years) > 0 {
 				year := m.years[m.cursor]
-				yv := yearview.New(m.cfg, year, m.exercises[year])
+				yv := yearview.New(m.app, m.app.Language(), m.app.GetLogger(), year, m.exercises[year])
 
 				return m, func() tea.Msg {
 					return nav.PushScreenMsg{Screen: yv}
@@ -131,13 +143,13 @@ func (m Model) View() string {
 
 	// config summary
 	cfgInfo := lipgloss.NewStyle().Faint(true).Render(
-		fmt.Sprintf("  Language: %s  •  Exercises: %s", m.cfg.GetLanguage(), m.cfg.GetBaseDir()),
+		fmt.Sprintf("  Language: %s  •  Exercises: %s", m.app.Language(), m.app.BaseDir()),
 	)
 	b.WriteString(cfgInfo + "\n\n")
 
 	if len(m.years) == 0 {
 		b.WriteString("  No exercises found.\n")
-		fmt.Fprintf(&b, "  Check your exercise directory: %s\n", m.cfg.GetBaseDir())
+		fmt.Fprintf(&b, "  Check your exercise directory: %s\n", m.app.BaseDir())
 	} else {
 		for i, year := range m.years {
 			exercises := m.exercises[year]

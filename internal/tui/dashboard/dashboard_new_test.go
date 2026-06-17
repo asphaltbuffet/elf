@@ -1,7 +1,10 @@
 package dashboard
 
 import (
+	"context"
 	"errors"
+	"io"
+	"log/slog"
 	"strings"
 	"testing"
 
@@ -10,24 +13,64 @@ import (
 	"github.com/spf13/afero"
 
 	"github.com/asphaltbuffet/elf/internal/tui/discover"
-	"github.com/asphaltbuffet/elf/pkg/config"
+	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
-func testConfig(t *testing.T) config.Config {
+// fakeDashboardInfo satisfies the DashboardInfo interface for testing.
+type fakeDashboardInfo struct {
+	fs      afero.Fs
+	lang    string
+	baseDir string
+}
+
+func (f *fakeDashboardInfo) Language() string        { return f.lang }
+func (f *fakeDashboardInfo) BaseDir() string         { return f.baseDir }
+func (f *fakeDashboardInfo) GetFs() afero.Fs         { return f.fs }
+func (f *fakeDashboardInfo) GetLogger() *slog.Logger { return slog.Default() }
+
+func (f *fakeDashboardInfo) Solve(
+	_ context.Context,
+	_, _, _ string,
+	_ io.Writer,
+	_ func(tasks.Result),
+	_ bool,
+) ([]tasks.Result, error) {
+	return nil, nil
+}
+
+func (f *fakeDashboardInfo) Test(
+	_ context.Context,
+	_, _, _ string,
+	_ io.Writer,
+	_ func(tasks.Result),
+) ([]tasks.Result, error) {
+	return nil, nil
+}
+
+func (f *fakeDashboardInfo) Benchmark(
+	_ context.Context,
+	_, _ string,
+	_ io.Writer,
+	_ func(tasks.Result),
+	_ int,
+) ([]tasks.Result, error) {
+	return nil, nil
+}
+
+func testApp(t *testing.T) *fakeDashboardInfo {
 	t.Helper()
 
-	cfg, err := config.NewConfig(config.WithFs(afero.NewMemMapFs()))
-	if err != nil {
-		t.Fatalf("failed to create test config: %v", err)
+	return &fakeDashboardInfo{
+		fs:      afero.NewMemMapFs(),
+		lang:    "go",
+		baseDir: "exercises",
 	}
-
-	return cfg
 }
 
 func populatedModelWithConfig(t *testing.T) Model {
 	t.Helper()
 
-	cfg := testConfig(t)
+	app := testApp(t)
 
 	exercises := map[int][]discover.ExerciseInfo{
 		2023: {
@@ -47,7 +90,7 @@ func populatedModelWithConfig(t *testing.T) Model {
 	}
 
 	return Model{
-		cfg:       cfg,
+		app:       app,
 		years:     []int{2023, 2015},
 		exercises: exercises,
 		loading:   false,
@@ -56,8 +99,8 @@ func populatedModelWithConfig(t *testing.T) Model {
 }
 
 func TestNew(t *testing.T) {
-	cfg := testConfig(t)
-	m := New(cfg)
+	app := testApp(t)
+	m := New(app)
 
 	if !m.loading {
 		t.Error("expected loading to be true on new model")
@@ -75,8 +118,8 @@ func TestNew(t *testing.T) {
 }
 
 func TestInit(t *testing.T) {
-	cfg := testConfig(t)
-	m := New(cfg)
+	app := testApp(t)
+	m := New(app)
 
 	cmd := m.Init()
 	if cmd == nil {
@@ -116,9 +159,9 @@ func TestViewError(t *testing.T) {
 }
 
 func TestViewEmptyYears(t *testing.T) {
-	cfg := testConfig(t)
+	app := testApp(t)
 	m := Model{
-		cfg:       cfg,
+		app:       app,
 		loading:   false,
 		years:     []int{},
 		exercises: map[int][]discover.ExerciseInfo{},
@@ -170,11 +213,11 @@ func TestRenderProgressZeroTotal(t *testing.T) {
 func TestRenderProgressPartial(t *testing.T) {
 	result := renderProgress(5, 10, 20)
 
-	if !strings.Contains(result, "\u2588") {
+	if !strings.Contains(result, "█") {
 		t.Errorf("expected filled blocks in partial progress, got: %s", result)
 	}
 
-	if !strings.Contains(result, "\u2591") {
+	if !strings.Contains(result, "░") {
 		t.Errorf("expected empty blocks in partial progress, got: %s", result)
 	}
 }
@@ -182,7 +225,7 @@ func TestRenderProgressPartial(t *testing.T) {
 func TestRenderProgressFull(t *testing.T) {
 	result := renderProgress(10, 10, 20)
 
-	if !strings.Contains(result, "\u2588") {
+	if !strings.Contains(result, "█") {
 		t.Errorf("expected filled blocks, got: %s", result)
 	}
 }
@@ -190,7 +233,7 @@ func TestRenderProgressFull(t *testing.T) {
 func TestRenderProgressEmpty(t *testing.T) {
 	result := renderProgress(0, 10, 20)
 
-	if strings.Contains(result, "\u2588") {
+	if strings.Contains(result, "█") {
 		t.Errorf("expected no filled blocks for zero completed, got: %s", result)
 	}
 }

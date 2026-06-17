@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/asphaltbuffet/elf/pkg/runners"
+	"github.com/asphaltbuffet/elf/pkg/protocol"
 )
 
 // TaskType represents the type of task to be executed.
@@ -26,9 +26,9 @@ const (
 //
 // Examples:
 //
-//	MakeTaskID(Test, runners.PartOne, 1) => "Test.1.1"
-//	MakeTaskID(Solve, runners.PartTwo) => "Solve.2"
-func MakeTaskID(name TaskType, part runners.Part, subparts ...int) string {
+//	MakeTaskID(Test, protocol.PartOne, 1) => "Test.1.1"
+//	MakeTaskID(Solve, protocol.PartTwo) => "Solve.2"
+func MakeTaskID(name TaskType, part protocol.Part, subparts ...int) string {
 	switch name {
 	case Benchmark, Test, Visualize:
 		if len(subparts) != 1 {
@@ -51,7 +51,7 @@ func MakeTaskID(name TaskType, part runners.Part, subparts ...int) string {
 }
 
 // ParseTaskID parses a task ID string into its component TaskType, Part, and sub-part index.
-func ParseTaskID(id string) (TaskType, runners.Part, int) {
+func ParseTaskID(id string) (TaskType, protocol.Part, int) {
 	tokens := strings.Split(id, ".")
 
 	switch t := StringToTaskType(tokens[0]); t {
@@ -70,7 +70,7 @@ func ParseTaskID(id string) (TaskType, runners.Part, int) {
 			break
 		}
 
-		return t, runners.Part(p), n
+		return t, protocol.Part(p), n
 
 	case Solve:
 		if len(tokens) != 2 { //nolint:mnd // 2 is the expected length
@@ -82,13 +82,13 @@ func ParseTaskID(id string) (TaskType, runners.Part, int) {
 			break
 		}
 
-		return t, runners.Part(p), 0
+		return t, protocol.Part(p), 0
 
 	case Invalid:
 		break
 	}
 
-	return Invalid, runners.Part(0), 0
+	return Invalid, protocol.Part(0), 0
 }
 
 // StringToTaskType converts a lowercase task name string to its TaskType constant.
