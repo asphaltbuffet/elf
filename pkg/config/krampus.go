@@ -116,8 +116,17 @@ func NewConfig(options ...func(*Config)) (Config, error) {
 // WithFile sets the configuration file and type.
 //
 // If the file is empty, the default file name and type are used.
+// If f is an absolute path, the full path is stored so that setViperConfigFile
+// can call viper.SetConfigFile directly (bypassing AddConfigPath search).
 func WithFile(f string) func(*Config) {
 	return func(c *Config) {
+		// Absolute paths are stored as-is; setViperConfigFile will use SetConfigFile.
+		if filepath.IsAbs(f) {
+			c.cfgFile = f
+			c.cfgFileType = strings.TrimPrefix(filepath.Ext(f), ".")
+			return
+		}
+
 		file := filepath.Base(f)
 		ext := filepath.Ext(f)
 
@@ -163,6 +172,13 @@ func (c *Config) setViperConfigFile() {
 
 	if c.cfgFile == "" {
 		c.cfgFile = DefaultConfigFileBase + "." + DefaultConfigExt
+	}
+
+	// If cfgFile is an absolute path, use SetConfigFile so viper reads it directly
+	// without relying on AddConfigPath search.
+	if filepath.IsAbs(c.cfgFile) {
+		c.viper.SetConfigFile(c.cfgFile)
+		return
 	}
 
 	c.viper.SetConfigName(c.cfgFile)

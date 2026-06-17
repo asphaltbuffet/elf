@@ -9,6 +9,7 @@ require (
 	github.com/charmbracelet/fang v1.0.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/go-resty/resty/v2 v2.17.2
+	github.com/go-viper/mapstructure/v2 v2.5.0
 	github.com/muesli/mango-cobra v1.3.0
 	github.com/muesli/roff v0.1.0
 	github.com/spf13/afero v1.15.0
@@ -36,7 +37,6 @@ require (
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
 	github.com/fsnotify/fsnotify v1.10.1 // indirect
-	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.4.0 // indirect

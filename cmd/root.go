@@ -12,6 +12,7 @@ import (
 	"github.com/asphaltbuffet/elf/cmd/config"
 	"github.com/asphaltbuffet/elf/cmd/download"
 	"github.com/asphaltbuffet/elf/cmd/man"
+	runnerspkg "github.com/asphaltbuffet/elf/cmd/runners"
 	"github.com/asphaltbuffet/elf/cmd/solve"
 	"github.com/asphaltbuffet/elf/cmd/test"
 	"github.com/asphaltbuffet/elf/internal/tui"
@@ -57,6 +58,7 @@ func GetRootCommand() *cobra.Command {
 		rootCmd.AddCommand(config.GetConfigCmd())
 		rootCmd.AddCommand(download.GetDownloadCmd())
 		rootCmd.AddCommand(man.NewManCmd())
+		rootCmd.AddCommand(runnerspkg.GetRunnersCmd())
 		rootCmd.AddCommand(solve.GetSolveCmd())
 		rootCmd.AddCommand(test.GetTestCmd())
 	}
