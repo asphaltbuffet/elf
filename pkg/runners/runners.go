@@ -63,3 +63,12 @@ func RegisterFromDescriptors(descs []RunnerDescriptor) {
 		Available[desc.Key] = desc.ToCreator()
 	}
 }
+
+// ResetRegistry replaces the Available map with m and returns a function that
+// restores the previous map. Intended for use in tests.
+func ResetRegistry(m map[string]RunnerCreator) func() {
+	prev := Available
+	Available = m
+
+	return func() { Available = prev }
+}
