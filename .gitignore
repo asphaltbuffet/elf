@@ -172,3 +172,8 @@ release_notes/
 
 elf
 .direnv/
+
+# Claude Code personal config and agent scaffolding
+.claude/plans/
+.claude/settings.local.json
+docs/superpowers/

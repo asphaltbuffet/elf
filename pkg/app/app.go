@@ -4,7 +4,6 @@ package app
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"log/slog"
 
@@ -61,19 +60,13 @@ func (a *App) Solve(
 	cb func(tasks.Result),
 	skipTests bool,
 ) ([]tasks.Result, error) {
-	rc, ok := runners.Available[language]
-	if !ok {
-		return nil, fmt.Errorf(
-			"no runner configured for %q: run 'elf runners install' to install built-in runner templates, then add [[runner]] blocks to your elf.toml: %w",
-			language,
-			exercise.ErrNoRunner,
-		)
-	}
-
 	ex, err := exercise.Load(path, language, customInput, a.FS, a.Logger)
 	if err != nil {
 		return nil, err
 	}
+
+	// Load guarantees language is registered; the lookup cannot fail here.
+	rc := runners.Available[language]
 
 	return ex.Solve(
 		ctx,
@@ -93,19 +86,13 @@ func (a *App) Test(
 	w io.Writer,
 	cb func(tasks.Result),
 ) ([]tasks.Result, error) {
-	rc, ok := runners.Available[language]
-	if !ok {
-		return nil, fmt.Errorf(
-			"no runner configured for %q: run 'elf runners install' to install built-in runner templates, then add [[runner]] blocks to your elf.toml: %w",
-			language,
-			exercise.ErrNoRunner,
-		)
-	}
-
 	ex, err := exercise.Load(path, language, customInput, a.FS, a.Logger)
 	if err != nil {
 		return nil, err
 	}
+
+	// Load guarantees language is registered; the lookup cannot fail here.
+	rc := runners.Available[language]
 
 	return ex.Test(
 		ctx,

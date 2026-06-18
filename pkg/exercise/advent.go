@@ -26,6 +26,16 @@ var (
 	ErrLoadInfo          = errors.New("load info")
 )
 
+// errNoRunner builds the user-facing error for an unregistered language, wrapping
+// ErrNoRunner and pointing at 'elf runners install'.
+func errNoRunner(language string) error {
+	return fmt.Errorf(
+		"no runner configured for %q: run 'elf runners install' to install built-in runner templates, then add [[runner]] blocks to your elf.toml: %w",
+		language,
+		ErrNoRunner,
+	)
+}
+
 // Load creates an Exercise from explicit parameters and loads metadata from info.json in fs.
 // language must be a key in runners.Available. customInput overrides the default input file
 // when non-empty.
@@ -35,11 +45,7 @@ func Load(exercisePath, language, customInput string, fs afero.Fs, logger *slog.
 	}
 
 	if _, ok := runners.Available[language]; !ok {
-		return nil, fmt.Errorf(
-			"no runner configured for %q: run 'elf runners install' to install built-in runner templates, then add [[runner]] blocks to your elf.toml: %w",
-			language,
-			ErrNoRunner,
-		)
+		return nil, errNoRunner(language)
 	}
 
 	if exercisePath == "" {
