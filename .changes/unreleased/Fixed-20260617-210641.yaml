@@ -1,0 +1,5 @@
+kind: Fixed
+body: Cleanup phase removes wrapper directory if it's empty
+time: 2026-06-17T21:06:41.751115867-04:00
+custom:
+    Issue: ""

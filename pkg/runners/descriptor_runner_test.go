@@ -96,6 +96,97 @@ func TestDescriptorRunner_Prepare_TemplateVarsSubstituted(t *testing.T) {
 	assert.Equal(t, "import github.com/me/aoc/2015/01-foo/go", string(content))
 }
 
+func TestDescriptorRunner_Cleanup_RemovesEmptySubdir(t *testing.T) {
+	templateContent := "hello"
+	templateFile := filepath.Join(t.TempDir(), "test.go.tmpl")
+	require.NoError(t, os.WriteFile(templateFile, []byte(templateContent), 0o600))
+
+	exerciseDir := t.TempDir()
+
+	desc := RunnerDescriptor{
+		Key:  "go",
+		Name: "Go",
+		Prepare: PrepareSpec{
+			TemplatePath:  templateFile,
+			WrapperExt:    ".go",
+			WrapperSubdir: "cmd",
+		},
+		Open: OpenSpec{Binary: "{binary_file}"},
+	}
+
+	meta := ExerciseMeta{Year: 2015, Day: 1, Title: "foo", Dir: exerciseDir, Key: "go"}
+	runner := &descriptorRunner{desc: desc, meta: meta}
+	require.NoError(t, runner.Prepare(context.Background()))
+
+	subdir := filepath.Join(exerciseDir, "go", "cmd")
+	require.DirExists(t, subdir)
+
+	require.NoError(t, runner.Cleanup())
+	assert.NoDirExists(t, subdir)
+}
+
+func TestDescriptorRunner_Cleanup_LeavesNonEmptySubdir(t *testing.T) {
+	templateContent := "hello"
+	templateFile := filepath.Join(t.TempDir(), "test.go.tmpl")
+	require.NoError(t, os.WriteFile(templateFile, []byte(templateContent), 0o600))
+
+	exerciseDir := t.TempDir()
+
+	desc := RunnerDescriptor{
+		Key:  "go",
+		Name: "Go",
+		Prepare: PrepareSpec{
+			TemplatePath:  templateFile,
+			WrapperExt:    ".go",
+			WrapperSubdir: "cmd",
+		},
+		Open: OpenSpec{Binary: "{binary_file}"},
+	}
+
+	meta := ExerciseMeta{Year: 2015, Day: 1, Title: "foo", Dir: exerciseDir, Key: "go"}
+	runner := &descriptorRunner{desc: desc, meta: meta}
+	require.NoError(t, runner.Prepare(context.Background()))
+
+	subdir := filepath.Join(exerciseDir, "go", "cmd")
+	userFile := filepath.Join(subdir, "user.go")
+	require.NoError(t, os.WriteFile(userFile, []byte("package main"), 0o600))
+
+	require.NoError(t, runner.Cleanup())
+	assert.DirExists(t, subdir)
+	assert.FileExists(t, userFile)
+}
+
+func TestDescriptorRunner_Cleanup_FileErrorIncludesSubdirPath(t *testing.T) {
+	exerciseDir := t.TempDir()
+	langDir := filepath.Join(exerciseDir, "go")
+	subdir := filepath.Join(langDir, "cmd")
+	require.NoError(t, os.MkdirAll(subdir, 0o755))
+
+	wrapperFile := filepath.Join(subdir, "runtime-wrapper.go")
+	require.NoError(t, os.WriteFile(wrapperFile, []byte("hello"), 0o600))
+
+	// Make the subdir unwritable so os.Remove on the wrapper file fails with EPERM.
+	require.NoError(t, os.Chmod(subdir, 0o555))
+	t.Cleanup(func() { _ = os.Chmod(subdir, 0o755) })
+
+	desc := RunnerDescriptor{
+		Key:  "go",
+		Name: "Go",
+		Prepare: PrepareSpec{
+			WrapperSubdir: "cmd",
+		},
+		Open: OpenSpec{Binary: "{binary_file}"},
+	}
+
+	meta := ExerciseMeta{Year: 2015, Day: 1, Title: "foo", Dir: exerciseDir, Key: "go"}
+	runner := &descriptorRunner{desc: desc, meta: meta, wrapperFile: wrapperFile}
+
+	err := runner.Cleanup()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), subdir)
+	assert.Contains(t, err.Error(), "manually")
+}
+
 func TestDescriptorRunner_Open_Interpreter(t *testing.T) {
 	// Use a real interpreter that just echoes JSON back — "cat" reads stdin and writes stdout
 	// We simulate the runner protocol with a shell script

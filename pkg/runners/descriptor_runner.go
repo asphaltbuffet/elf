@@ -213,7 +213,9 @@ func (r *descriptorRunner) Run(_ context.Context, task *protocol.Task) (*protoco
 	return result, nil
 }
 
-// Cleanup removes the wrapper file and binary file (if they were created during Prepare).
+// Cleanup removes the wrapper file, binary file, and (if empty) the wrapper subdirectory
+// created during Prepare. The subdirectory is only removed if it is empty after file removal;
+// a non-empty directory is left in place without error.
 func (r *descriptorRunner) Cleanup() error {
 	var wErr, bErr error
 
@@ -231,5 +233,22 @@ func (r *descriptorRunner) Cleanup() error {
 		}
 	}
 
-	return errors.Join(wErr, bErr)
+	if wErr != nil || bErr != nil {
+		if r.desc.Prepare.WrapperSubdir != "" {
+			return fmt.Errorf("%w: files not removed, %s must be cleaned up manually",
+				errors.Join(wErr, bErr),
+				filepath.Join(r.meta.LangDir(), r.desc.Prepare.WrapperSubdir))
+		}
+
+		return errors.Join(wErr, bErr)
+	}
+
+	if r.desc.Prepare.WrapperSubdir != "" {
+		dErr := os.Remove(filepath.Join(r.meta.LangDir(), r.desc.Prepare.WrapperSubdir))
+		if dErr != nil && !errors.Is(dErr, os.ErrNotExist) && !errors.Is(dErr, syscall.ENOTEMPTY) {
+			return dErr
+		}
+	}
+
+	return nil
 }
