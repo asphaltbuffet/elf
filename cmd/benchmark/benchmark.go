@@ -53,6 +53,8 @@ func runBenchmarkCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	appPkg.RegisterRunners(cfg)
+
 	dir, err := filepath.Abs(args[0])
 	if err != nil {
 		return err

@@ -2,6 +2,7 @@ package runners
 
 import (
 	"context"
+	"path/filepath"
 
 	"github.com/asphaltbuffet/elf/pkg/protocol"
 )
@@ -34,13 +35,31 @@ type ResultOrError struct {
 	Error  error
 }
 
-// RunnerCreator is a function type that takes a directory string
-// as input and returns a Runner.
-type RunnerCreator func(dir string) Runner
+// ExerciseMeta carries the identity fields of an Exercise to a RunnerCreator.
+type ExerciseMeta struct {
+	Year  int
+	Day   int
+	Title string
+	Dir   string // exercise root path (e.g. "exercises/2015/01-foo")
+	Key   string // language key / subdirectory name (e.g. "py")
+}
 
-// Available maps runner type strings (like "go" or "py") to their respective
-// RunnerCreator functions.
-var Available = map[string]RunnerCreator{
-	"go": newGolangRunner,
-	"py": newPythonRunner,
+// LangDir returns the language subdirectory path: Dir/Key.
+func (m ExerciseMeta) LangDir() string {
+	return filepath.Join(m.Dir, m.Key)
+}
+
+// RunnerCreator constructs a Runner for a given exercise.
+type RunnerCreator func(meta ExerciseMeta) Runner
+
+// Available is the runtime runner registry, populated at startup from config.
+var Available = map[string]RunnerCreator{}
+
+// RegisterFromDescriptors populates Available from a slice of RunnerDescriptors.
+// Existing entries are overwritten.
+func RegisterFromDescriptors(descs []RunnerDescriptor) {
+	for _, d := range descs {
+		desc := d // capture loop variable
+		Available[desc.Key] = desc.ToCreator()
+	}
 }

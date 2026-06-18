@@ -59,6 +59,17 @@ func TestLoad(t *testing.T) {
 		require.Error(t, err)
 	})
 
+	t.Run("no runner error message", func(t *testing.T) {
+		teardownSubTest := setupSubTest(t)
+		defer teardownSubTest(t)
+
+		_, err := Load("exercises/2017/01-fakeFullDay", "xyz", "", testFs, logger)
+
+		require.Error(t, err)
+		require.ErrorIs(t, err, ErrNoRunner)
+		require.Contains(t, err.Error(), "elf runners install")
+	})
+
 	t.Run("missing exercise directory", func(t *testing.T) {
 		teardownSubTest := setupSubTest(t)
 		defer teardownSubTest(t)

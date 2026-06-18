@@ -35,6 +35,11 @@ func (e *Exercise) Solve(
 
 	e.Data.InputData = input
 
+	defer func() {
+		_ = runner.Close(ctx)
+		_ = runner.Cleanup()
+	}()
+
 	if err = runner.Prepare(ctx); err != nil {
 		logger.ErrorContext(ctx, "preparing runner", tint.Err(err))
 		return nil, err
@@ -44,11 +49,6 @@ func (e *Exercise) Solve(
 		logger.ErrorContext(ctx, "opening runner", tint.Err(err))
 		return nil, err
 	}
-
-	defer func() {
-		_ = runner.Close(ctx)
-		_ = runner.Cleanup()
-	}()
 
 	results := []tasks.Result{}
 

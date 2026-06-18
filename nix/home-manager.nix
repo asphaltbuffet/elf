@@ -22,6 +22,26 @@
         {}
         // lib.optionalAttrs (cfg.settings.advent.token != "") {token = cfg.settings.advent.token;}
         // lib.optionalAttrs (cfg.settings.advent.dir != null) {dir = cfg.settings.advent.dir;};
+    }
+    // lib.optionalAttrs (cfg.settings.runners != []) {
+      runner = map (r:
+        {inherit (r) key name;}
+        // lib.optionalAttrs (r.prepare.template_path != null || r.prepare.template_vars != {} || r.prepare.build_commands != []) {
+          prepare =
+            {}
+            // lib.optionalAttrs (r.prepare.template_path != null) {template_path = r.prepare.template_path;}
+            // lib.optionalAttrs (r.prepare.template_vars != {}) {template_vars = r.prepare.template_vars;}
+            // lib.optionalAttrs (r.prepare.build_commands != []) {build_commands = r.prepare.build_commands;};
+        }
+        // lib.optionalAttrs (r.open.interpreter != null || r.open.args != [] || r.open.env != [] || r.open.binary != null) {
+          open =
+            {}
+            // lib.optionalAttrs (r.open.interpreter != null) {interpreter = r.open.interpreter;}
+            // lib.optionalAttrs (r.open.args != []) {args = r.open.args;}
+            // lib.optionalAttrs (r.open.env != []) {env = r.open.env;}
+            // lib.optionalAttrs (r.open.binary != null) {binary = r.open.binary;};
+        }
+      ) cfg.settings.runners;
     };
 in {
   options.programs.elf = {
@@ -81,6 +101,74 @@ in {
           default = "exercises";
           description = "Directory for Advent of Code exercises.";
         };
+      };
+
+      runners = lib.mkOption {
+        type = lib.types.listOf (lib.types.submodule {
+          options = {
+            key = lib.mkOption {
+              type = lib.types.str;
+              description = "Registry key and exercise subdirectory name (e.g. \"py\").";
+            };
+            name = lib.mkOption {
+              type = lib.types.str;
+              description = "Display name (e.g. \"Python\").";
+            };
+            prepare = lib.mkOption {
+              type = lib.types.submodule {
+                options = {
+                  template_path = lib.mkOption {
+                    type = lib.types.nullOr lib.types.str;
+                    default = null;
+                    description = "Path to wrapper template file. Null means no template.";
+                  };
+                  template_vars = lib.mkOption {
+                    type = lib.types.attrsOf lib.types.str;
+                    default = {};
+                    description = "Static variables substituted into the template.";
+                  };
+                  build_commands = lib.mkOption {
+                    type = lib.types.listOf (lib.types.listOf lib.types.str);
+                    default = [];
+                    description = "Ordered build commands. Tokens substituted at Prepare time.";
+                  };
+                };
+              };
+              default = {};
+              description = "Prepare phase specification.";
+            };
+            open = lib.mkOption {
+              type = lib.types.submodule {
+                options = {
+                  interpreter = lib.mkOption {
+                    type = lib.types.nullOr lib.types.str;
+                    default = null;
+                    description = "Interpreter binary name looked up via PATH (e.g. \"python3\").";
+                  };
+                  args = lib.mkOption {
+                    type = lib.types.listOf lib.types.str;
+                    default = [];
+                    description = "Arguments passed to interpreter. Tokens substituted at Open time.";
+                  };
+                  env = lib.mkOption {
+                    type = lib.types.listOf lib.types.str;
+                    default = [];
+                    description = "Additional env vars in KEY=VALUE form. Tokens substituted at Open time.";
+                  };
+                  binary = lib.mkOption {
+                    type = lib.types.nullOr lib.types.str;
+                    default = null;
+                    description = "Path to compiled binary. Tokens substituted at Open time. Used instead of interpreter for compiled runners.";
+                  };
+                };
+              };
+              default = {};
+              description = "Open phase specification.";
+            };
+          };
+        });
+        default = [];
+        description = "List of runner plugin descriptors. Each entry becomes a [[runner]] block in elf.toml.";
       };
     };
 

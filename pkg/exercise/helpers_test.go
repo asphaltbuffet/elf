@@ -14,6 +14,8 @@ import (
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/asphaltbuffet/elf/pkg/runners"
 )
 
 var (
@@ -48,10 +50,18 @@ func setupTestCase(t *testing.T) func(t *testing.T) {
 	base := afero.NewBasePathFs(afero.NewOsFs(), "testdata")
 	roBase = afero.NewReadOnlyFs(base)
 
+	// Seed the runner registry with stub entries so registry-based checks
+	// ("is this language supported?") pass without the real runner binaries.
+	restore := runners.ResetRegistry(map[string]runners.RunnerCreator{
+		"go": func(_ runners.ExerciseMeta) runners.Runner { return nil },
+		"py": func(_ runners.ExerciseMeta) runners.Runner { return nil },
+	})
+
 	return func(t *testing.T) {
 		t.Helper()
 
 		httpmock.DeactivateAndReset()
+		restore()
 	}
 }
 

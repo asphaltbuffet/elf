@@ -4,6 +4,7 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log/slog"
 
@@ -21,6 +22,12 @@ type App struct {
 	Logger   *slog.Logger
 	language string
 	baseDir  string
+}
+
+// RegisterRunners populates runners.Available from the given config.
+// Must be called before any exercise operation.
+func RegisterRunners(cfg config.Config) {
+	runners.RegisterFromDescriptors(cfg.GetRunners())
 }
 
 // New constructs an App from a config.Config, extracting FS, Logger, and display values.
@@ -56,7 +63,11 @@ func (a *App) Solve(
 ) ([]tasks.Result, error) {
 	rc, ok := runners.Available[language]
 	if !ok {
-		return nil, exercise.ErrNoRunner
+		return nil, fmt.Errorf(
+			"no runner configured for %q: run 'elf runners install' to install built-in runner templates, then add [[runner]] blocks to your elf.toml: %w",
+			language,
+			exercise.ErrNoRunner,
+		)
 	}
 
 	ex, err := exercise.Load(path, language, customInput, a.FS, a.Logger)
@@ -64,7 +75,15 @@ func (a *App) Solve(
 		return nil, err
 	}
 
-	return ex.Solve(ctx, a.FS, a.Logger, rc(path), w, cb, skipTests)
+	return ex.Solve(
+		ctx,
+		a.FS,
+		a.Logger,
+		rc(runners.ExerciseMeta{Year: ex.Year, Day: ex.Day, Title: ex.Title, Dir: path, Key: language}),
+		w,
+		cb,
+		skipTests,
+	)
 }
 
 // Test loads the exercise at path and runs its test suite.
@@ -76,7 +95,11 @@ func (a *App) Test(
 ) ([]tasks.Result, error) {
 	rc, ok := runners.Available[language]
 	if !ok {
-		return nil, exercise.ErrNoRunner
+		return nil, fmt.Errorf(
+			"no runner configured for %q: run 'elf runners install' to install built-in runner templates, then add [[runner]] blocks to your elf.toml: %w",
+			language,
+			exercise.ErrNoRunner,
+		)
 	}
 
 	ex, err := exercise.Load(path, language, customInput, a.FS, a.Logger)
@@ -84,7 +107,13 @@ func (a *App) Test(
 		return nil, err
 	}
 
-	return ex.Test(ctx, a.Logger, rc(path), w, cb)
+	return ex.Test(
+		ctx,
+		a.Logger,
+		rc(runners.ExerciseMeta{Year: ex.Year, Day: ex.Day, Title: ex.Title, Dir: path, Key: language}),
+		w,
+		cb,
+	)
 }
 
 // Benchmark loads the exercise at path and benchmarks all available

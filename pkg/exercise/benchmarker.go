@@ -65,11 +65,21 @@ func (b *Benchmarker) Benchmark(
 
 		implRunner, ok := runners.Available[impl]
 		if !ok {
-			return nil, fmt.Errorf("%w: %s", ErrNoRunner, impl)
+			return nil, fmt.Errorf(
+				"no runner configured for %q: run 'elf runners install' to install built-in runner templates, then add [[runner]] blocks to your elf.toml: %w",
+				impl,
+				ErrNoRunner,
+			)
 		}
 
 		b.Language = impl
-		runner := implRunner(b.Path)
+		runner := implRunner(runners.ExerciseMeta{
+			Year:  b.Year,
+			Day:   b.Day,
+			Title: b.Title,
+			Dir:   b.Path,
+			Key:   impl,
+		})
 
 		var implData *ImplementationData
 
@@ -168,6 +178,11 @@ func (b *Benchmarker) runBenchmark(
 		progressbar.OptionSetWriter(w),
 	)
 
+	defer func() {
+		_ = runner.Close(ctx)
+		_ = runner.Cleanup()
+	}()
+
 	if err := runner.Prepare(ctx); err != nil {
 		logger.ErrorContext(ctx, "prepare runner", tint.Err(err))
 		return nil, nil, err
@@ -177,11 +192,6 @@ func (b *Benchmarker) runBenchmark(
 		logger.ErrorContext(ctx, "open runner", tint.Err(err))
 		return nil, nil, err
 	}
-
-	defer func() {
-		_ = runner.Close(ctx)
-		_ = runner.Cleanup()
-	}()
 
 	for _, t := range benchmarkTasks {
 		benchResult, err := runner.Run(ctx, t)
