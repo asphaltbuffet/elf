@@ -9,11 +9,33 @@ Runner, writer, result callback — are explicit method parameters, not fields o
 
 ## Exercise
 
-A puzzle — its identity, input data, and test cases. A value type loaded from disk.
+A puzzle — its identity, input data, and test cases. A value type *produced from a source*:
+either read from disk (an existing `info.json`) or assembled from a download. Either way it is a
+finished value before anything writes it to disk — it is never built up in place across stages.
 
 **Fields:** year, day, title, URL, input data, test cases, expected answers, filesystem path.
 
-**Not** a session or runner context. An Exercise has no opinion about how it is executed.
+**Not** a session or runner context. An Exercise has no opinion about how it is executed, fetched,
+or scaffolded.
+
+## Page Fetcher
+
+Fetches puzzle page HTML and puzzle input from Advent of Code, with on-disk caching. Owns the HTTP
+client, the session token, and the cache directory. Surface: `fetchPage(year, day) → bytes`,
+`fetchInput(year, day) → bytes` — a cache check followed by an HTTP request on miss. Knows the AoC
+URL shape and the `cacheDir/pages` + `cacheDir/inputs` cache layout, and nothing about the exercise
+directory on disk.
+
+_Avoid_: HTTP client, downloader, page loader
+
+## Exercise Scaffold
+
+Lays a finished Exercise out on disk: creates the implementation directory, writes `input.txt` and
+`info.json`, and renders the language template files. Owns the filesystem, the input file name, and
+the overwrite policy. Surface: `write(exercise) → error`. Reads the Exercise; never mutates it.
+Knows the exercise directory layout and nothing about HTTP or the cache.
+
+_Avoid_: file writer, template renderer, downloader
 
 
 ## Runner

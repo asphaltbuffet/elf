@@ -97,9 +97,9 @@ func TestDownload(t *testing.T) {
 				`=~input$`,
 				tt.inputResponder)
 
-			mockDlr.Language = tt.args.lang
-			mockDlr.URL = tt.args.url
-			mockDlr.inputFileName = "input.txt"
+			mockDlr.language = tt.args.lang
+			mockDlr.url = tt.args.url
+			mockDlr.scaffold.inputFileName = "input.txt"
 			mockDlr.logger = slog.New(slog.NewTextHandler(io.Discard, nil))
 
 			// execute function under test
@@ -108,7 +108,7 @@ func TestDownload(t *testing.T) {
 			// assert results
 			require.ErrorIs(t, err, tt.wantErr)
 			if err == nil {
-				FileExists(t, testFs, filepath.Join(mockDlr.Path, "input.txt"))
+				FileExists(t, testFs, filepath.Join(mockDlr.FilePath(), "input.txt"))
 			}
 		})
 	}
@@ -348,16 +348,12 @@ func TestNewDownloader(t *testing.T) {
 				inFile:  "input.txt",
 			},
 			want: &Downloader{
-				Exercise: &Exercise{
-					Language: "go",
-				},
+				language:        "go",
 				exerciseBaseDir: "TEST_exercises",
-				cacheDir:        "TEST_cache",
 				cfgDir:          "TEST_cfgdir",
-				inputFileName:   "input.txt",
-				token:           "TEST_token",
-				overwrites:      &Overwrites{},
 				skipImpl:        false,
+				fetcher:         &pageFetcher{cacheDir: "TEST_cache", token: "TEST_token"},
+				scaffold:        &exerciseScaffold{inputFileName: "input.txt"},
 			},
 			assertion: assert.NoError,
 		},
@@ -373,20 +369,12 @@ func TestNewDownloader(t *testing.T) {
 				inFile: "fakeInput.fake",
 			},
 			want: &Downloader{
-				Exercise: &Exercise{
-					Language: "py",
-					URL:      "https://fake.url",
-					Data: &Data{
-						InputFileName: "fakeInput.fake",
-					},
-				},
+				language:        "py",
 				exerciseBaseDir: "TEST_exercises",
-				cacheDir:        "TEST_cache",
 				cfgDir:          "TEST_cfgdir",
-				inputFileName:   "fakeInput.fake",
-				token:           "TEST_token",
-				overwrites:      &Overwrites{},
 				skipImpl:        true,
+				fetcher:         &pageFetcher{cacheDir: "TEST_cache", token: "TEST_token"},
+				scaffold:        &exerciseScaffold{inputFileName: "fakeInput.fake"},
 			},
 			assertion: assert.NoError,
 		},
@@ -417,10 +405,10 @@ func TestNewDownloader(t *testing.T) {
 			got, err := NewDownloader(cfg, tt.args.options...)
 
 			tt.assertion(t, err)
-			assert.Equal(t, tt.want.cacheDir, got.cacheDir)
-			assert.Equal(t, tt.want.Language, got.Language)
-			assert.Equal(t, tt.want.inputFileName, got.inputFileName)
-			assert.Equal(t, tt.want.token, got.token)
+			assert.Equal(t, tt.want.fetcher.cacheDir, got.fetcher.cacheDir)
+			assert.Equal(t, tt.want.language, got.language)
+			assert.Equal(t, tt.want.scaffold.inputFileName, got.scaffold.inputFileName)
+			assert.Equal(t, tt.want.fetcher.token, got.fetcher.token)
 			assert.Equal(t, tt.want.exerciseBaseDir, got.exerciseBaseDir)
 			assert.Equal(t, tt.want.cfgDir, got.cfgDir)
 			assert.Equal(t, tt.want.skipImpl, got.skipImpl)
@@ -436,27 +424,31 @@ func TestDownloader_validate(t *testing.T) {
 		wantErr error
 	}{
 		{"all required fields set", func(*Downloader) {}, nil},
-		{"language not set", func(d *Downloader) { d.Language = "" }, ErrNotConfigured},
-		{"client not set", func(d *Downloader) { d.rClient = nil }, ErrNotConfigured},
+		{"language not set", func(d *Downloader) { d.language = "" }, ErrNotConfigured},
+		{"client not set", func(d *Downloader) { d.fetcher.rClient = nil }, ErrNotConfigured},
 		{"fs not set", func(d *Downloader) { d.appFs = nil }, ErrNotConfigured},
 		{"cfg dir not set", func(d *Downloader) { d.cfgDir = "" }, ErrNotConfigured},
-		{"cache dir not set", func(d *Downloader) { d.cacheDir = "" }, ErrNotConfigured},
+		{"cache dir not set", func(d *Downloader) { d.fetcher.cacheDir = "" }, ErrNotConfigured},
 		{"base dir not set", func(d *Downloader) { d.exerciseBaseDir = "" }, ErrNotConfigured},
-		{"token not set", func(d *Downloader) { d.token = "" }, ErrNotConfigured},
+		{"token not set", func(d *Downloader) { d.fetcher.token = "" }, ErrNotConfigured},
 	}
 
 	for _, tt := range tests {
 		d := &Downloader{
-			Exercise:        &Exercise{Language: "fake"},
+			language:        "fake",
 			exerciseBaseDir: "testExercise",
 			appFs:           afero.NewMemMapFs(),
-			cacheDir:        "TEST_cacheDir",
 			cfgDir:          "TEST_cfgDir",
-			inputFileName:   "tt.fields.inputFileName",
-			rClient:         resty.New(),
-			token:           "tt.fields.token",
-			overwrites:      &Overwrites{},
 			skipImpl:        false,
+			fetcher: &pageFetcher{
+				rClient:  resty.New(),
+				token:    "tt.fields.token",
+				cacheDir: "TEST_cacheDir",
+			},
+			scaffold: &exerciseScaffold{
+				inputFileName: "tt.fields.inputFileName",
+				overwrites:    &Overwrites{},
+			},
 		}
 
 		t.Run(tt.name, func(t *testing.T) {

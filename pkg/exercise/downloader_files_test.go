@@ -3,68 +3,98 @@ package exercise
 import (
 	"io"
 	"log/slog"
+	"path/filepath"
 	"testing"
 
+	"github.com/spf13/afero"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestDownloader_writeInputFile(t *testing.T) {
-	type fields struct {
-		Exercise   *Exercise
-		overwrites *Overwrites
-	}
+// TestExerciseScaffold_write verifies the scaffold lays a finished Exercise out on disk: the input
+// file, info.json, and the language template files. The Exercise arrives fully assembled — the
+// scaffold invents no data and performs no fetch.
+func TestExerciseScaffold_write(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
 
 	tests := []struct {
 		name      string
-		fields    fields
+		ex        *Exercise
 		assertion require.ErrorAssertionFunc
+		wantFiles []string
 	}{
 		{
-			name: "file exists",
-			fields: fields{
-				Exercise: &Exercise{
-					ID:       "",
-					Title:    "",
-					Language: "",
-					Year:     0,
-					Day:      0,
-					URL:      "",
-					Data: &Data{
-						InputData:     "",
-						InputFileName: "fakeInput.txt",
-						TestCases:     TestCase{},
-						Answers:       Answer{},
-					},
-					Path: "",
-				},
-				overwrites: &Overwrites{
-					Input: false,
-				},
+			name: "writes input, info, and go template",
+			ex: &Exercise{
+				ID:       "2015-01",
+				Title:    "Not Quite Lisp",
+				Language: "go",
+				Year:     2015,
+				Day:      1,
+				Path:     filepath.Join("exercises", "2015", "01-notQuiteLisp"),
+				Data:     &Data{InputData: "((()))", InputFileName: "input.txt"},
 			},
 			assertion: require.NoError,
+			wantFiles: []string{"input.txt", "info.json", filepath.Join("go", "exercise.go"), "README.md"},
+		},
+		{
+			name: "unknown language errors",
+			ex: &Exercise{
+				Language: "ruby",
+				Path:     filepath.Join("exercises", "2015", "02-other"),
+				Data:     &Data{InputData: "x", InputFileName: "input.txt"},
+			},
+			assertion: require.Error,
 		},
 	}
-
-	teardownTestCase := setupTestCase(t)
-	defer teardownTestCase(t)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			teardownSubTest := setupSubTest(t)
 			defer teardownSubTest(t)
 
-			mockDownloader := new(Downloader)
-			mockDownloader.Exercise = tt.fields.Exercise
-			mockDownloader.exerciseBaseDir = "test_exercises"
-			mockDownloader.cacheDir = "testCacheDir"
-			mockDownloader.cfgDir = "testCfgDir"
-			mockDownloader.rClient = nil
-			mockDownloader.token = "fakeToken"
-			mockDownloader.overwrites = tt.fields.overwrites
-			mockDownloader.appFs = testFs
-			mockDownloader.logger = slog.New(slog.NewTextHandler(io.Discard, nil))
+			s := &exerciseScaffold{
+				fs:            testFs,
+				inputFileName: "input.txt",
+				overwrites:    &Overwrites{},
+				logger:        slog.New(slog.NewTextHandler(io.Discard, nil)),
+			}
 
-			tt.assertion(t, mockDownloader.writeInputFile())
+			tt.assertion(t, s.write(tt.ex))
+
+			for _, f := range tt.wantFiles {
+				FileExists(t, testFs, filepath.Join(tt.ex.Path, f))
+			}
 		})
 	}
+}
+
+// TestExerciseScaffold_writeInputFile_respectsOverwrite verifies the overwrite guard: an existing
+// input file is left untouched unless overwrites.Input is set.
+func TestExerciseScaffold_writeInputFile_respectsOverwrite(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+
+	exPath := filepath.Join("exercises", "2015", "01-existing")
+	require.NoError(t, testFs.MkdirAll(exPath, 0o750))
+	fp := filepath.Join(exPath, "input.txt")
+	require.NoError(t, afero.WriteFile(testFs, fp, []byte("original"), 0o600))
+
+	ex := &Exercise{Path: exPath, Data: &Data{InputData: "replacement"}}
+
+	s := &exerciseScaffold{
+		fs:            testFs,
+		inputFileName: "input.txt",
+		overwrites:    &Overwrites{Input: false},
+		logger:        slog.New(slog.NewTextHandler(io.Discard, nil)),
+	}
+
+	require.NoError(t, s.writeInputFile(ex))
+
+	got, err := afero.ReadFile(testFs, fp)
+	require.NoError(t, err)
+	assert.Equal(t, "original", string(got), "existing input must be preserved when overwrite is off")
 }

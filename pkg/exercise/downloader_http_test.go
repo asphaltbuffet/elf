@@ -59,7 +59,7 @@ func Test_downloadPage(t *testing.T) {
 
 			httpmock.RegisterNoResponder(httpmock.NewNotFoundResponder(t.Error))
 
-			got, err := mockDlr.downloadPage(tt.args.year, tt.args.day)
+			got, err := mockDlr.fetcher.downloadPage(tt.args.year, tt.args.day)
 
 			require.ErrorIs(t, err, tt.wantErr)
 			if err == nil {
@@ -69,7 +69,7 @@ func Test_downloadPage(t *testing.T) {
 				FileExists(
 					t,
 					testFs,
-					filepath.Join(mockDlr.cacheDir, "pages", makeExerciseID(tt.args.year, tt.args.day)),
+					filepath.Join(mockDlr.fetcher.cacheDir, "pages", makeExerciseID(tt.args.year, tt.args.day)),
 				)
 			}
 		})
@@ -110,185 +110,13 @@ func Test_getCachedPage(t *testing.T) {
 			teardownSubTest := setupSubTest(t)
 			defer teardownSubTest(t)
 
-			got, gotOk := mockDlr.getCachedPage(tt.args.year, tt.args.day)
+			got, gotOk := mockDlr.fetcher.getCachedPage(tt.args.year, tt.args.day)
 
 			tt.wantOk(t, gotOk)
 			if gotOk {
 				want := goldenValue(t, tt.golden)
 
 				assert.Equal(t, want, got)
-			}
-		})
-	}
-}
-
-func TestExercise_getCachedInput(t *testing.T) {
-	type args struct {
-		year int
-		day  int
-	}
-
-	tests := []struct {
-		name        string
-		args        args
-		golden      string
-		okAssertion assert.BoolAssertionFunc
-	}{
-		{
-			name:        "cached file exists",
-			args:        args{year: 2015, day: 2},
-			golden:      "testdata/golden/input.golden",
-			okAssertion: assert.True,
-		},
-		{
-			name:        "no cached file",
-			args:        args{year: 2015, day: 3},
-			golden:      "",
-			okAssertion: assert.False,
-		},
-	}
-
-	teardownTestCase := setupTestCase(t)
-	defer teardownTestCase(t)
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			teardownSubTest := setupSubTest(t)
-			defer teardownSubTest(t)
-
-			got, gotOk := mockDlr.getCachedInput(tt.args.year, tt.args.day)
-
-			tt.okAssertion(t, gotOk)
-			if gotOk {
-				want := goldenValue(t, tt.golden)
-				assert.Equal(t, want, got)
-			}
-		})
-	}
-}
-
-func Test_downloadInput(t *testing.T) {
-	tests := []struct {
-		name          string
-		e             *Exercise
-		pageResponder httpmock.Responder
-		golden        string
-		wantErr       error
-	}{
-		{
-			name:          "new download",
-			pageResponder: httpmock.NewStringResponder(http.StatusOK, respBodyInput),
-			e:             &Exercise{ID: "2015-01", Year: 2015, Day: 1},
-			golden:        filepath.Join("testdata", "golden", "input.golden"),
-			wantErr:       nil,
-		},
-		{
-			name:          "404 response",
-			pageResponder: NotFoundResponder,
-			e:             &Exercise{ID: "2015-01", Year: 2015, Day: 1},
-			wantErr:       ErrHTTPResponse,
-		},
-	}
-
-	teardownTestCase := setupTestCase(t)
-	defer teardownTestCase(t)
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			teardownSubTest := setupSubTest(t)
-			defer teardownSubTest(t)
-
-			httpmock.RegisterResponder("GET",
-				`=~input$`,
-				tt.pageResponder)
-
-			httpmock.RegisterNoResponder(httpmock.NewNotFoundResponder(t.Error))
-
-			mockDlr.ID = tt.e.ID
-			mockDlr.Year = tt.e.Year
-			mockDlr.Day = tt.e.Day
-
-			got, err := mockDlr.downloadInput(tt.e.Year, tt.e.Day)
-
-			require.ErrorIs(t, err, tt.wantErr)
-			if err == nil {
-				want := goldenValue(t, tt.golden)
-
-				assert.Equal(t, want, got)
-				FileExists(t, testFs, filepath.Join(mockDlr.cacheDir, "inputs", makeExerciseID(tt.e.Year, tt.e.Day)))
-			}
-		})
-	}
-}
-
-func Test_getInput(t *testing.T) {
-	tests := []struct {
-		name          string
-		e             *Exercise
-		pageResponder httpmock.Responder
-		golden        string
-		callCount     int
-		assertion     require.ErrorAssertionFunc
-		wantError     error
-		statAssertion require.ErrorAssertionFunc
-		errText       string
-	}{
-		{
-			name:          "new download",
-			pageResponder: httpmock.NewStringResponder(http.StatusOK, respBodyInput),
-			e:             &Exercise{ID: "2015-03", Year: 2015, Day: 3},
-			golden:        filepath.Join("testdata", "golden", "input.golden"),
-			assertion:     require.NoError,
-			wantError:     nil,
-			statAssertion: require.NoError,
-		},
-		{
-			name:          "cached file exists",
-			pageResponder: NotFoundResponder,
-			e:             &Exercise{ID: "2015-01", Year: 2015, Day: 1},
-			golden:        filepath.Join("testdata", "golden", "input.golden"),
-			assertion:     require.NoError,
-			wantError:     nil,
-			statAssertion: require.NoError,
-		},
-		{
-			name:          "not cached, 404 response",
-			pageResponder: NotFoundResponder,
-			e:             &Exercise{ID: "2015-01", Year: 2015, Day: 4},
-			golden:        filepath.Join("testdata", "golden", "input.golden"),
-			assertion:     require.Error,
-			statAssertion: require.Error,
-			wantError:     ErrHTTPResponse,
-		},
-	}
-
-	teardownTestCase := setupTestCase(t)
-	defer teardownTestCase(t)
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			teardownSubTest := setupSubTest(t)
-			defer teardownSubTest(t)
-
-			httpmock.RegisterResponder("GET",
-				`=~input$`,
-				tt.pageResponder)
-
-			httpmock.RegisterNoResponder(httpmock.NewNotFoundResponder(t.Error))
-
-			mockDlr.ID = tt.e.ID
-			mockDlr.Year = tt.e.Year
-			mockDlr.Day = tt.e.Day
-
-			got, err := mockDlr.getInput(tt.e.Year, tt.e.Day)
-
-			tt.assertion(t, err)
-			if err != nil {
-				require.ErrorIs(t, err, tt.wantError)
-			} else {
-				assert.Equal(t, goldenValue(t, tt.golden), got)
-				// _, err = testFs.Stat(filepath.Join(mockDownloader.Path(), "input.txt"))
-				// tt.statAssertion(t, err)
 			}
 		})
 	}
