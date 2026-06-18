@@ -60,3 +60,15 @@ func TestApp_Solve_ErrInvalidLanguage(t *testing.T) {
 	require.Error(t, err)
 	assert.ErrorIs(t, err, exercise.ErrNoRunner)
 }
+
+// TestApp_Solve_ErrEmptyLanguage verifies that an empty language is reported as
+// ErrEmptyLanguage (via exercise.Load) rather than ErrNoRunner. App no longer
+// pre-checks the registry; Load owns both guards and reports the empty-language
+// case first.
+func TestApp_Solve_ErrEmptyLanguage(t *testing.T) {
+	a := testApp(t)
+
+	_, err := a.Solve(context.Background(), "exercises/2015/01-hello", "", "", io.Discard, nil, false)
+	require.Error(t, err)
+	assert.ErrorIs(t, err, exercise.ErrEmptyLanguage)
+}

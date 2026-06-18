@@ -65,11 +65,7 @@ func (b *Benchmarker) Benchmark(
 
 		implRunner, ok := runners.Available[impl]
 		if !ok {
-			return nil, fmt.Errorf(
-				"no runner configured for %q: run 'elf runners install' to install built-in runner templates, then add [[runner]] blocks to your elf.toml: %w",
-				impl,
-				ErrNoRunner,
-			)
+			return nil, errNoRunner(impl)
 		}
 
 		b.Language = impl

@@ -70,9 +70,6 @@ func substituteTokens(s string, meta ExerciseMeta, wrapperExt, wrapperSubdir str
 }
 
 // substituteSlice applies substituteTokens to every element of a string slice.
-// Used by descriptorRunner lifecycle methods added in Task 4.
-//
-
 func substituteSlice(ss []string, meta ExerciseMeta, wrapperExt, wrapperSubdir string) []string {
 	out := make([]string, len(ss))
 	for i, s := range ss {
