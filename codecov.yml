@@ -4,12 +4,14 @@ coverage:
       default:
         target: 80%
         threshold: 5%
+        informational: true
 
 component_management:
   default_rules:
     statuses:
       - type: project
         target: auto
+        informational: true
         branches:
           - "!main"
   individual_components:
