@@ -119,9 +119,11 @@ Renders run-time graphs from persisted benchmark data. One operation with two sc
 from the shape of the target directory — no mode flag:
 
 - **Exercise scope** — the target *is* an Exercise (has `info.json`). Compares language against
-  language for that one puzzle, across both Parts. Rendered as a box plot grouped by language,
-  using the raw timing samples so the distribution (median, quartiles, outliers) is visible — not
-  just the mean.
+  language for that one puzzle, across both Parts. Rendered as a box plot grouped by Part, one box
+  per language, plotting *relative runtime* (each language's samples divided by that part's fastest
+  mean) on a log axis with a reference line at 1×. The box still shows the sample distribution
+  (median, quartiles, outliers), but in ratio terms — so "how far behind the leader, and how
+  consistently" is legible where absolute log-scale timing was not. See *Comparison vocabulary*.
 - **Year scope** — the target *contains* Exercise subdirectories (is a year). Compares day against
   day across the year, with languages overlaid. Rendered as a line graph of running time vs. day,
   one line per language.
@@ -134,6 +136,32 @@ legend, background) is applied uniformly to every plot rather than tuned per sco
 and a line graph read as siblings from the same tool.
 
 Reads `benchmark.json` files produced by benchmarking; never produces benchmark data itself.
+
+### Comparison vocabulary
+
+These terms are distinct and must not be conflated — in particular, two different
+"normalizations" exist:
+
+- **Normalization factor** — a *machine-speed calibration* value persisted with each
+  benchmark (the time to run a fixed synthetic workload on the benchmarking machine).
+  It makes durations from different machines comparable. It is about the *machine*, not
+  about languages, and it cancels out of any same-machine, same-day language comparison.
+- **Reference language** — for cross-language comparison, the one language chosen as the
+  anchor (its time is defined as 1.0 on every day). About the *languages*, on one machine.
+  By default the reference is the *fastest* language for that exercise/day, so relative
+  runtime reads as "how far behind the leader." (Anchoring instead to the user's configured
+  `language` is a possible future override, not the default.)
+- **Relative runtime** — a language's running time expressed as a dimensionless multiple of
+  the reference language on the same day and part (e.g. "210× the reference"). Because it is
+  a same-day ratio, it is inherently machine-independent and does not need the normalization
+  factor applied. This is the comparison primitive for finding where a language is unusually
+  strong or weak relative to the others, which absolute (log-scale) timing obscures. The
+  baseline is computed *per part*: every sample in a part-group is divided by that part's
+  fastest mean, so the reference language (the one sitting at 1×) may differ between the
+  Part One and Part Two groups — that change is itself a visible strength signal.
+- **Consistency** — how tightly a language's repeated samples for one (day, part) cluster
+  (spread/variance of its raw run samples). A separate axis of "strength" from speed: a
+  language can be slower on average yet far more predictable.
 
 Scope is detected by looking at the target and at most one level below it: an `info.json` in the
 target means Exercise scope; otherwise an `info.json` in an immediate child means Year scope;
