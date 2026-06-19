@@ -153,7 +153,6 @@ func generateLineGraph(benchData []*exercise.BenchmarkData, outfile string) erro
 // NewBenchmarkPlots creates a grid of plots for each exercise day in the given year.
 func NewBenchmarkPlots(year int) ([][]*plot.Plot, error) {
 	const rows, cols = 1, 2
-	const yPosRedline = 15
 	const redlineDashPattern = 2
 
 	plots := make([][]*plot.Plot, rows)
@@ -190,8 +189,8 @@ func NewBenchmarkPlots(year int) ([][]*plot.Plot, error) {
 	part1Plot.Add(g)
 	part2Plot.Add(g)
 
-	redline := plotter.NewFunction(func(_ float64) float64 { return yPosRedline })
-	redline.Color = color.RGBA{R: 255, G: 0, B: 0, A: 255} //nolint:mnd // color definition
+	redline := plotter.NewFunction(func(_ float64) float64 { return referenceLineSeconds })
+	redline.Color = redlineColor()
 	redline.Dashes = plotutil.Dashes(redlineDashPattern)
 	part1Plot.Add(redline)
 	part2Plot.Add(redline)
