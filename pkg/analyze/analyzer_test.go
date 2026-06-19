@@ -7,8 +7,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/asphaltbuffet/elf/pkg/exercise"
 )
 
 func Test_NewAnalyzer(t *testing.T) {
@@ -37,12 +35,8 @@ func Test_NewAnalyzer(t *testing.T) {
 					WithDirectory("foo/bar"),
 				},
 			},
-			want: &Analyzer{
-				Data:   []*exercise.BenchmarkData{},
-				Dir:    "foo/bar",
-				Output: "",
-			},
-			assertion: require.NoError,
+			want:      nil,
+			assertion: require.Error,
 		},
 		{
 			name: "with output",
@@ -52,12 +46,8 @@ func Test_NewAnalyzer(t *testing.T) {
 					WithOutput("fakeOutput.png"),
 				},
 			},
-			want: &Analyzer{
-				Data:   []*exercise.BenchmarkData{},
-				Dir:    "foo/bar",
-				Output: "fakeOutput.png",
-			},
-			assertion: require.NoError,
+			want:      nil,
+			assertion: require.Error,
 		},
 	}
 
@@ -133,21 +123,34 @@ func Test_getBenchmarkFiles(t *testing.T) {
 }
 
 func Test_Load(t *testing.T) {
-	t.Run("empty dir", func(t *testing.T) {
+	t.Run("empty dir errors (no scope, no data)", func(t *testing.T) {
 		a := &Analyzer{
 			Dir:    t.TempDir(),
 			logger: testLogger(),
 		}
 
 		err := a.Load()
-		require.NoError(t, err)
-		assert.Empty(t, a.Data)
+		require.Error(t, err)
 	})
 
-	t.Run("dir with valid benchmark", func(t *testing.T) {
+	t.Run("exercise dir with no benchmark errors naming elf benchmark", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "info.json"))
+
+		a := &Analyzer{
+			Dir:    dir,
+			logger: testLogger(),
+		}
+
+		err := a.Load()
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "elf benchmark")
+	})
+
+	t.Run("year dir with valid benchmark loads data", func(t *testing.T) {
 		dir := t.TempDir()
 		sub := filepath.Join(dir, "day01")
-		require.NoError(t, os.MkdirAll(sub, 0o755))
+		writeFile(t, filepath.Join(sub, "info.json"))
 
 		src, err := os.ReadFile("testdata/valid_benchmark.json")
 		require.NoError(t, err)
@@ -161,10 +164,12 @@ func Test_Load(t *testing.T) {
 		err = a.Load()
 		require.NoError(t, err)
 		assert.NotEmpty(t, a.Data)
+		assert.Equal(t, ScopeYear, a.Scope)
 	})
 
-	t.Run("dir with invalid benchmark", func(t *testing.T) {
+	t.Run("dir with invalid benchmark errors", func(t *testing.T) {
 		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "info.json"))
 		require.NoError(t, os.WriteFile(filepath.Join(dir, "benchmark.json"), []byte("{bad"), 0o644))
 
 		a := &Analyzer{
@@ -174,5 +179,57 @@ func Test_Load(t *testing.T) {
 
 		err := a.Load()
 		require.Error(t, err)
+	})
+}
+
+func Test_Analyzer_DispatchAndDefaultOutput(t *testing.T) {
+	t.Run("exercise scope writes default run-times.png in target", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "info.json"))
+		// benchmark.json with one impl so Load finds data
+		bd := makeBenchmarkData(2015, 1)
+		writeBenchmarkJSON(t, filepath.Join(dir, "benchmark.json"), bd)
+
+		a, err := NewAnalyzer(testLogger(), WithDirectory(dir))
+		require.NoError(t, err)
+		assert.Equal(t, ScopeExercise, a.Scope)
+		assert.Equal(t, filepath.Join(dir, "run-times.png"), a.Output)
+
+		require.NoError(t, a.Graph())
+		_, statErr := os.Stat(a.Output)
+		require.NoError(t, statErr)
+	})
+
+	t.Run("year scope writes default run-times.png in target", func(t *testing.T) {
+		dir := t.TempDir()
+		day := filepath.Join(dir, "01-puzzle")
+		writeFile(t, filepath.Join(day, "info.json"))
+		writeBenchmarkJSON(t, filepath.Join(day, "benchmark.json"), makeBenchmarkData(2015, 1))
+
+		a, err := NewAnalyzer(testLogger(), WithDirectory(dir))
+		require.NoError(t, err)
+		assert.Equal(t, ScopeYear, a.Scope)
+		assert.Equal(t, filepath.Join(dir, "run-times.png"), a.Output)
+		require.NoError(t, a.Graph())
+	})
+
+	t.Run("explicit output overrides the default", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "info.json"))
+		writeBenchmarkJSON(t, filepath.Join(dir, "benchmark.json"), makeBenchmarkData(2015, 1))
+		custom := filepath.Join(t.TempDir(), "custom.png")
+
+		a, err := NewAnalyzer(testLogger(), WithDirectory(dir), WithOutput(custom))
+		require.NoError(t, err)
+		assert.Equal(t, custom, a.Output)
+	})
+
+	t.Run("no benchmark data errors naming the benchmark command", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "info.json")) // exercise dir, but no benchmark.json
+
+		_, err := NewAnalyzer(testLogger(), WithDirectory(dir))
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "elf benchmark")
 	})
 }

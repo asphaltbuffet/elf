@@ -1,11 +1,26 @@
 package analyze
 
 import (
+	"encoding/json"
 	"io"
 	"log/slog"
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/asphaltbuffet/elf/pkg/exercise"
 )
+
+// writeBenchmarkJSON marshals data to a benchmark.json at path.
+func writeBenchmarkJSON(t *testing.T, path string, data []*exercise.BenchmarkData) {
+	t.Helper()
+	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o750))
+	b, err := json.MarshalIndent(data, "", "  ")
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(path, b, 0o600))
+}
 
 // testLogger returns a logger that discards output.
 func testLogger() *slog.Logger {

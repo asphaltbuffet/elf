@@ -19,12 +19,6 @@ import (
 	"github.com/asphaltbuffet/elf/pkg/exercise"
 )
 
-
-// Graph generates a line graph of benchmark run times and writes it to the configured output file.
-func (a *Analyzer) Graph() error {
-	return generateLineGraph(a.Data, a.Output)
-}
-
 func benchmarkToPlotterXYs(benchmarks []*exercise.BenchmarkData) map[string][]plotter.XYs {
 	dataMap := make(map[string][]plotter.XYs)
 
