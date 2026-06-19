@@ -30,6 +30,7 @@ var (
 	ErrNotConfigured   = errors.New("not configured")
 	ErrHTTPRequest     = errors.New("http request")
 	ErrHTTPResponse    = errors.New("http response")
+	ErrEmptyInput      = errors.New("empty puzzle input")
 	ErrInvalidURL      = errors.New("invalid URL")
 	ErrInvalidLanguage = errors.New("invalid language")
 )
@@ -185,7 +186,14 @@ func (d *Downloader) Download() error {
 
 	if exPath, ok := d.getExercisePath(year, day); ok {
 		ex = &Exercise{Path: exPath, Language: d.language}
-		err = ex.loadInfo(d.appFs, d.logger)
+		if err = ex.loadInfo(d.appFs, d.logger); err == nil {
+			// loadInfo populates metadata from info.json but not the puzzle input; fetch it so the
+			// scaffold writes real input instead of an empty input.txt.
+			var input []byte
+			if input, err = d.fetcher.fetchInput(year, day); err == nil {
+				ex.Data.InputData = string(input)
+			}
+		}
 	} else {
 		ex, err = d.assemble(year, day)
 	}

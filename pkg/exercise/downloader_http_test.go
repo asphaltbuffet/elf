@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/jarcoal/httpmock"
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -70,6 +71,137 @@ func Test_downloadPage(t *testing.T) {
 					t,
 					testFs,
 					filepath.Join(mockDlr.fetcher.cacheDir, "pages", makeExerciseID(tt.args.year, tt.args.day)),
+				)
+			}
+		})
+	}
+}
+
+func Test_getCachedInput(t *testing.T) {
+	type args struct {
+		year int
+		day  int
+	}
+
+	tests := []struct {
+		name   string
+		args   args
+		seed   []byte // file contents to seed at the cache path; nil = no file
+		wantOk assert.BoolAssertionFunc
+	}{
+		{
+			name:   "cached input exists",
+			args:   args{2015, 1},
+			seed:   []byte("(())"),
+			wantOk: assert.True,
+		},
+		{
+			name:   "no cached file",
+			args:   args{2015, 3},
+			seed:   nil,
+			wantOk: assert.False,
+		},
+		{
+			name:   "empty cached file is a miss",
+			args:   args{2015, 2},
+			seed:   []byte{},
+			wantOk: assert.False,
+		},
+	}
+
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			teardownSubTest := setupSubTest(t)
+			defer teardownSubTest(t)
+
+			if tt.seed != nil {
+				inputsDir := filepath.Join(mockDlr.fetcher.cacheDir, "inputs")
+				require.NoError(t, testFs.MkdirAll(inputsDir, 0o755))
+				require.NoError(t, afero.WriteFile(
+					testFs,
+					filepath.Join(inputsDir, makeExerciseID(tt.args.year, tt.args.day)),
+					tt.seed,
+					0o600,
+				))
+			}
+
+			got, gotOk := mockDlr.fetcher.getCachedInput(tt.args.year, tt.args.day)
+
+			tt.wantOk(t, gotOk)
+			if gotOk {
+				assert.Equal(t, tt.seed, got)
+			}
+		})
+	}
+}
+
+func Test_downloadInput(t *testing.T) {
+	type args struct {
+		year int
+		day  int
+	}
+
+	tests := []struct {
+		name      string
+		responder httpmock.Responder
+		args      args
+		want      []byte
+		assertion assert.ErrorAssertionFunc
+		wantErr   error
+	}{
+		{
+			name:      "good request for 2015-1",
+			responder: httpmock.NewStringResponder(http.StatusOK, "(())\n"),
+			args:      args{year: 2015, day: 1},
+			want:      []byte("(())"),
+			assertion: assert.NoError,
+			wantErr:   nil,
+		},
+		{
+			name:      "empty body is rejected",
+			responder: httpmock.NewStringResponder(http.StatusOK, "\n"),
+			args:      args{year: 2015, day: 1},
+			want:      nil,
+			assertion: assert.Error,
+			wantErr:   ErrEmptyInput,
+		},
+		{
+			name:      "404 response",
+			responder: NotFoundResponder,
+			args:      args{year: 2015, day: 1},
+			want:      nil,
+			assertion: assert.Error,
+			wantErr:   ErrHTTPResponse,
+		},
+	}
+
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			teardownSubTest := setupSubTest(t)
+			defer teardownSubTest(t)
+
+			httpmock.RegisterResponder("GET",
+				`=~^/(201[5-9]|202[012])/day/([1-9]|1[0-9]|2[0-5])/input$`,
+				tt.responder)
+
+			httpmock.RegisterNoResponder(httpmock.NewNotFoundResponder(t.Error))
+
+			got, err := mockDlr.fetcher.downloadInput(tt.args.year, tt.args.day)
+
+			require.ErrorIs(t, err, tt.wantErr)
+			assert.Equal(t, tt.want, got)
+
+			if err == nil {
+				FileExists(
+					t,
+					testFs,
+					filepath.Join(mockDlr.fetcher.cacheDir, "inputs", makeExerciseID(tt.args.year, tt.args.day)),
 				)
 			}
 		})

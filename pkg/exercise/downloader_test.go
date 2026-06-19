@@ -114,6 +114,39 @@ func TestDownload(t *testing.T) {
 	}
 }
 
+// TestDownload_existingExercise covers re-downloading an exercise whose directory already exists.
+// This path loads info.json instead of assembling a fresh exercise, and must still fetch and write
+// the puzzle input rather than writing an empty input.txt.
+func TestDownload_existingExercise(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+
+	httpmock.RegisterNoResponder(httpmock.NewNotFoundResponder(t.Error))
+	httpmock.RegisterResponder("GET",
+		`=~^/(201[5-9]|202[012])/day/([1-9]|1[0-9]|2[0-5])$`,
+		httpmock.NewStringResponder(http.StatusOK, respBody2015d1))
+	httpmock.RegisterResponder("GET",
+		`=~input$`,
+		httpmock.NewStringResponder(http.StatusOK, respBodyInput))
+
+	// 2017-01 exists as a fixture directory with info.json, so Download takes the loadInfo branch.
+	mockDlr.language = "go"
+	mockDlr.url = "https://adventofcode.com/2017/day/1"
+	mockDlr.scaffold.inputFileName = "input.txt"
+	mockDlr.scaffold.overwrites = &Overwrites{Input: true}
+	mockDlr.logger = slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	err := mockDlr.Download()
+	require.NoError(t, err)
+
+	got, err := afero.ReadFile(testFs, filepath.Join(mockDlr.FilePath(), "input.txt"))
+	require.NoError(t, err)
+	assert.Equal(t, respBodyInput, string(got), "input.txt must contain the fetched puzzle input, not be empty")
+}
+
 func TestExtractTitle(t *testing.T) {
 	type args struct {
 		page []byte

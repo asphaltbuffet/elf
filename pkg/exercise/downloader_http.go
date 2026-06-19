@@ -51,7 +51,9 @@ func (f *pageFetcher) getCachedInput(year, day int) ([]byte, bool) {
 	fp := filepath.Join(f.cacheDir, "inputs", makeExerciseID(year, day))
 	data, err := afero.ReadFile(f.fs, fp)
 
-	return data, err == nil
+	// A 0-byte cache file is not a usable hit — treat it as a miss so the input
+	// is re-fetched rather than silently producing an empty puzzle input.
+	return data, err == nil && len(data) > 0
 }
 
 func (f *pageFetcher) downloadPage(year, day int) ([]byte, error) {
@@ -146,6 +148,12 @@ func (f *pageFetcher) downloadInput(year, day int) ([]byte, error) {
 	}
 
 	data := bytes.TrimSpace(resp.Body())
+
+	// A 200 with an empty body means the request was unauthenticated (e.g. a
+	// missing or expired token); fail loudly instead of caching an empty input.
+	if len(data) == 0 {
+		return nil, fmt.Errorf("%w: %d-%02d", ErrEmptyInput, year, day)
+	}
 
 	// write response to disk
 	err = afero.WriteFile(f.fs, filepath.Join(f.cacheDir, "inputs", makeExerciseID(year, day)), data, 0o600)
