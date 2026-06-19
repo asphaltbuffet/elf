@@ -29,6 +29,13 @@ type descriptorRunner struct {
 	stdin       io.WriteCloser
 	wrapperFile string // absolute path to written wrapper; empty if no template
 	binaryFile  string // absolute path to compiled binary; empty if not compiled
+
+	// waitErr receives the result of the single cmd.Wait() call, owned by the
+	// reaper goroutine started in Open. exited is closed once the process has
+	// been reaped (ProcessState populated), letting Run detect a crashed
+	// subprocess instead of blocking on its stdout forever.
+	waitErr chan error
+	exited  chan struct{}
 }
 
 func (r *descriptorRunner) String() string { return r.desc.Name }
@@ -156,7 +163,23 @@ func (r *descriptorRunner) Open(ctx context.Context) error {
 
 	r.cmd = cmd
 
-	return cmd.Start()
+	if startErr := cmd.Start(); startErr != nil {
+		return startErr
+	}
+
+	// Single reaper: cmd.Wait() is called exactly once here. Both Run (via
+	// checkWait) and Close observe the result through these channels, avoiding
+	// the "no child processes" error that double-reaping causes.
+	r.waitErr = make(chan error, 1)
+	r.exited = make(chan struct{})
+
+	go func() {
+		err := cmd.Wait()
+		r.waitErr <- err
+		close(r.exited) // ProcessState is set by the time Wait returns
+	}()
+
+	return nil
 }
 
 // Close sends SIGTERM to the subprocess and waits for it to exit,
@@ -166,6 +189,15 @@ func (r *descriptorRunner) Close(ctx context.Context) error {
 		return nil
 	}
 
+	// If the process already exited (e.g. a crash detected during Run), the
+	// reaper has populated waitErr and closed exited; nothing more to stop.
+	select {
+	case <-r.exited:
+		<-r.waitErr // drain so the buffered send is consumed
+		return nil
+	default:
+	}
+
 	// Close stdin so the subprocess receives EOF and can exit cleanly.
 	_ = r.stdin.Close()
 
@@ -173,19 +205,16 @@ func (r *descriptorRunner) Close(ctx context.Context) error {
 		return fmt.Errorf("failed to send SIGTERM to %s process: %w", r.desc.Name, err)
 	}
 
-	done := make(chan error, 1)
-	go func() {
-		done <- r.cmd.Wait()
-	}()
-
+	// The reaper goroutine started in Open owns cmd.Wait(); observe its result
+	// through waitErr rather than calling Wait() again (which would double-reap).
 	select {
 	case <-ctx.Done():
 		killErr := r.cmd.Process.Kill()
-		<-done // drain goroutine regardless of kill outcome
+		<-r.waitErr // drain reaper regardless of kill outcome
 		if killErr != nil {
 			return fmt.Errorf("failed to kill %s process: %w", r.desc.Name, killErr)
 		}
-	case err := <-done:
+	case err := <-r.waitErr:
 		if err != nil {
 			return fmt.Errorf("failed to stop %s process: %w", r.desc.Name, err)
 		}
@@ -206,7 +235,7 @@ func (r *descriptorRunner) Run(_ context.Context, task *protocol.Task) (*protoco
 	}
 
 	result := new(protocol.Result)
-	if readErr := readJSONFromCommand(result, r.cmd); readErr != nil {
+	if readErr := readJSONFromCommand(result, r.cmd, r.exited); readErr != nil {
 		return nil, readErr
 	}
 

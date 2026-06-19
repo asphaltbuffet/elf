@@ -80,7 +80,11 @@ template_path = %q
 [runner.open]
 interpreter = "python3"
 args = ["-B", "{wrapper_file}"]
-env = ["PYTHONPATH={lang_dir}/../../../lib:{lang_dir}"]
+# PYTHONPATH entries: the exercise dir ({lang_dir}/..) so the wrapper's
+# "from py import Exercise" resolves, plus a shared library dir. The lib path
+# below assumes a lib/ at the project root (exercises/<year>/<day>/py -> four
+# levels up); adjust if your shared package lives elsewhere.
+env = ["PYTHONPATH={lang_dir}/..:{lang_dir}/../../../../lib"]
 
 [[runner]]
 key = "go"
