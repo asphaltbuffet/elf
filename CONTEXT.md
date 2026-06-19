@@ -128,7 +128,10 @@ from the shape of the target directory — no mode flag:
 
 In both scopes, **color always encodes language**, and a given language maps to the same color in
 every graph (derived from the language key, not from its position in the data). The exercise box
-plot groups by Part, with one box per language inside each Part group.
+plot groups by Part, with one box per language inside each Part group. Because the two scopes are
+one operation, they share a single visual identity: non-color styling (fonts, grid, axis weight,
+legend, background) is applied uniformly to every plot rather than tuned per scope, so a box plot
+and a line graph read as siblings from the same tool.
 
 Reads `benchmark.json` files produced by benchmarking; never produces benchmark data itself.
 
