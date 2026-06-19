@@ -84,3 +84,15 @@ func makeBenchmarkDataNilPartTwo(year int, days ...int) []*exercise.BenchmarkDat
 
 	return data
 }
+
+// makeBenchmarkDataNilPartOne is like makeBenchmarkData but sets PartOne = nil
+// on the first implementation of each day. This mirrors saved benchmark data
+// where an implementation only ran part two (e.g. AoC day 25).
+func makeBenchmarkDataNilPartOne(year int, days ...int) []*exercise.BenchmarkData {
+	data := makeBenchmarkData(year, days...)
+	for _, bd := range data {
+		bd.Implementations[0].PartOne = nil
+	}
+
+	return data
+}

@@ -30,10 +30,12 @@ func benchmarkToPlotterXYs(benchmarks []*exercise.BenchmarkData) map[string][]pl
 				dataMap[impl.Name] = make([]plotter.XYs, 2) //nolint:mnd // 2 parts per day
 			}
 
-			dataMap[impl.Name][0] = append(dataMap[impl.Name][0], plotter.XY{
-				X: day,
-				Y: impl.PartOne.Mean,
-			})
+			if impl.PartOne != nil {
+				dataMap[impl.Name][0] = append(dataMap[impl.Name][0], plotter.XY{
+					X: day,
+					Y: impl.PartOne.Mean,
+				})
+			}
 
 			if impl.PartTwo == nil {
 				continue

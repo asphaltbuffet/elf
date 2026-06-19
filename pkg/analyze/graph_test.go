@@ -53,6 +53,19 @@ func Test_benchmarkToPlotterXYs(t *testing.T) {
 		// Python still has PartTwo
 		assert.Len(t, got["Python"][1], 1)
 	})
+
+	t.Run("nil PartOne", func(t *testing.T) {
+		data := makeBenchmarkDataNilPartOne(2024, 1)
+
+		assert.NotPanics(t, func() {
+			got := benchmarkToPlotterXYs(data)
+
+			// Golang has nil PartOne → part one slice should be empty
+			assert.Empty(t, got["Golang"][0])
+			// Python still has PartOne
+			assert.Len(t, got["Python"][0], 1)
+		})
+	})
 }
 
 func Test_NewBenchmarkPlots(t *testing.T) {
