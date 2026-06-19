@@ -43,6 +43,30 @@ interpreter = "ruby"
 args = ["{wrapper_file}"]
 ```
 
+The shipped **Bash** runner is a concrete interpreted example — `wrapper_ext = ".sh"`, no
+`build_commands`:
+
+```toml
+[[runner]]
+key = "bash"
+name = "Bash"
+
+[runner.prepare]
+template_path = "~/.config/elf/runners/bash.tmpl"
+wrapper_ext = ".sh"
+
+[runner.open]
+interpreter = "bash"
+args = ["{wrapper_file}"]
+```
+
+Its wrapper renders to `{lang_dir}/runtime-wrapper.sh` and **sources the sibling solution file**
+`{lang_dir}/exercise.sh` (the file the scaffold writes), then dispatches `part` to the user's
+`part_one`/`part_two` shell functions — each reads the puzzle input on stdin and echoes the answer.
+This sibling-source idiom is the interpreted analogue of Python's `from py import Exercise`; it works
+because the wrapper and solution share `{lang_dir}`. The wrapper requires **`jq`** for robust
+JSON parse/encode (pure-bash JSON parsing breaks on escaped newlines in puzzle input).
+
 **Compiled** (Rust, Go, C): `[runner.prepare] build_commands = [...]` produces a binary, and
 `[runner.open] binary = "{binary_file}"` launches it.
 

@@ -22,6 +22,9 @@ var goTemplate []byte
 //go:embed templates/py.tmpl
 var pyTemplate []byte
 
+//go:embed templates/bash.tmpl
+var bashTemplate []byte
+
 type tmplFile struct {
 	Name     string
 	Path     string
@@ -98,6 +101,15 @@ func (s *exerciseScaffold) write(ex *Exercise) error {
 			Path:     "py",
 			Data:     pyTemplate,
 			FileName: "__init__.py",
+			Replace:  false,
+		})
+
+	case "bash":
+		tmpls = append(tmpls, tmplFile{
+			Name:     "bash",
+			Path:     "bash",
+			Data:     bashTemplate,
+			FileName: "exercise.sh",
 			Replace:  false,
 		})
 

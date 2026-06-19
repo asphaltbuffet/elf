@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+# elf bash runner wrapper harness.
+#
+# Speaks elf's line-delimited JSON wire protocol (ADR-0002) over stdin/stdout:
+#   - reads one Task per line from stdin: {"task_id","part","input","output_dir"}
+#   - dispatches `part` to the user's part_one / part_two function
+#   - writes one Result per line to stdout: {"task_id","ok","output","duration"}
+#
+# The user's solution is sourced from the sibling exercise.sh and must define
+# shell functions `part_one` and `part_two`, each reading the puzzle input on
+# stdin and echoing the answer on stdout.
+#
+# Requires `jq` for JSON parsing/encoding.
+set -uo pipefail
+
+# Locate and source the user's solution (sibling file in the same dir).
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=/dev/null
+source "${script_dir}/exercise.sh"
+
+err_file="$(mktemp "${TMPDIR:-/tmp}/elf_bash_err.XXXXXX")"
+trap 'rm -f "$err_file"' EXIT
+
+send_result() {
+  # args: task_id ok output duration
+  jq -cn \
+    --arg task_id "$1" \
+    --argjson ok "$2" \
+    --arg output "$3" \
+    --argjson duration "$4" \
+    '{task_id: $task_id, ok: $ok, output: $output, duration: $duration}'
+}
+
+# Read tasks until EOF.
+while IFS= read -r line; do
+  [ -z "$line" ] && continue
+
+  task_id="$(jq -r '.task_id' <<<"$line")"
+  part="$(jq -r '.part' <<<"$line")"
+  input="$(jq -r '.input' <<<"$line")"
+
+  case "$part" in
+    1) fn="part_one" ;;
+    2) fn="part_two" ;;
+    *)
+      send_result "$task_id" true "unknown task part" 0
+      continue
+      ;;
+  esac
+
+  if ! declare -F "$fn" >/dev/null 2>&1; then
+    send_result "$task_id" false "$fn not implemented" 0
+    continue
+  fi
+
+  start="$(date +%s.%N)"
+  # Run the solution in a subshell so a `set -e`/exit in the user function
+  # cannot kill the harness; capture stdout, and any error message via stderr.
+  if output="$(printf '%s' "$input" | "$fn" 2>"$err_file")"; then
+    ok=true
+  else
+    ok=false
+    output="$(cat "$err_file")"
+  fi
+  end="$(date +%s.%N)"
+  duration="$(jq -cn --arg s "$start" --arg e "$end" '($e | tonumber) - ($s | tonumber)')"
+
+  send_result "$task_id" "$ok" "$output" "$duration"
+done

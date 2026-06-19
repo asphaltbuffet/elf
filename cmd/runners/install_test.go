@@ -58,6 +58,7 @@ func TestRunInstallCmd_WritesFiles(t *testing.T) {
 	runnersDir := filepath.Join(tmpDir, "elf", "runners")
 	assert.FileExists(t, filepath.Join(runnersDir, "python.templ"))
 	assert.FileExists(t, filepath.Join(runnersDir, "go.tmpl"))
+	assert.FileExists(t, filepath.Join(runnersDir, "bash.tmpl"))
 	assert.Contains(t, out.String(), "[[runner]]")
 	assert.Contains(t, out.String(), "YOUR_MODULE")
 }
