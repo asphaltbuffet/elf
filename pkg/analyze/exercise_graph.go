@@ -34,35 +34,54 @@ func (t colorThumb) Thumbnail(c *draw.Canvas) {
 // reference line on every analyze graph.
 const referenceLineSeconds = 15
 
-// generateBoxPlot renders one exercise's per-language timing distributions,
-// grouped by Part (Part One, then Part Two), one box per language per group.
+// referenceMultiple is the relative-runtime baseline: the fastest language for
+// each part sits at 1×. It is both the reference line value and the Y-axis
+// floor for the relative box plot.
+const referenceMultiple = 1.0
+
+// generateBoxPlot renders one exercise's per-language relative-runtime
+// distributions, grouped by Part (Part One, then Part Two), one box per language.
 func generateBoxPlot(benchData []*exercise.BenchmarkData, outfile string) error {
 	const (
 		plotWidthInches  = 9 * vg.Inch
 		plotHeightInches = 5 * vg.Inch
 		plotDPI          = 300
-		redlineDashes    = 2
 	)
 
+	p, err := buildBoxPlot(benchData)
+	if err != nil {
+		return err
+	}
+
+	return savePlotPNG(p, outfile, plotWidthInches, plotHeightInches, plotDPI)
+}
+
+// buildBoxPlot constructs the relative-runtime box plot for one exercise: each
+// language's samples are divided by that part's fastest mean, so the fastest
+// language sits at 1× and slower languages appear as multiples above it.
+func buildBoxPlot(benchData []*exercise.BenchmarkData) (*plot.Plot, error) {
+	const redlineDashes = 2
+
 	if len(benchData) == 0 {
-		return errors.New("no benchmark data to graph")
+		return nil, errors.New("no benchmark data to graph")
 	}
 
 	samples, langs := collectBoxSamples(benchData)
+	samples = relativeSamples(samples, fastestMeans(benchData))
 
 	p := plot.New()
 	p.Title.Text = fmt.Sprintf("Advent of Code %d/%02d: %s",
 		benchData[0].Year, benchData[0].Day, benchData[0].Title)
-	p.Y.Label.Text = "Running time"
+	p.Y.Label.Text = "Relative running time"
 	p.Y.Scale = plot.LogScale{}
-	p.Y.Tick.Marker = HumanizedLogTicks{}
-	p.Y.Min = 0.000001
+	p.Y.Tick.Marker = RelativeLogTicks{}
+	p.Y.Min = referenceMultiple
 	applyTheme(p)
 
 	nominal := []string{"Part One", "Part Two"}
 
 	if err := addBoxGroups(p, samples, langs, nominal); err != nil {
-		return err
+		return nil, err
 	}
 
 	// X tick at the centre of each part group.
@@ -72,13 +91,14 @@ func generateBoxPlot(benchData []*exercise.BenchmarkData, outfile string) error 
 		{Value: float64(len(langs)+1) + center, Label: nominal[1]},
 	})
 
-	redline := plotter.NewFunction(func(_ float64) float64 { return referenceLineSeconds })
-	redline.Color = redlineColor()
-	redline.Width = vg.Points(redlineWidthPt)
-	redline.Dashes = plotutil.Dashes(redlineDashes)
-	p.Add(redline)
+	// Reference line at 1× — the fastest language for each part.
+	refline := plotter.NewFunction(func(_ float64) float64 { return referenceMultiple })
+	refline.Color = redlineColor()
+	refline.Width = vg.Points(redlineWidthPt)
+	refline.Dashes = plotutil.Dashes(redlineDashes)
+	p.Add(refline)
 
-	return savePlotPNG(p, outfile, plotWidthInches, plotHeightInches, plotDPI)
+	return p, nil
 }
 
 // collectBoxSamples aggregates timing data from benchData into per-language,

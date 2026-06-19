@@ -30,6 +30,17 @@ func Test_styleBox(t *testing.T) {
 	assert.Less(t, fill.A, uint8(255), "fill is translucent")
 }
 
+func Test_buildBoxPlot_isRelative(t *testing.T) {
+	data := makeBenchmarkData(2015, 1) // Golang + Python, both parts; Golang faster
+
+	p, err := buildBoxPlot(data)
+	require.NoError(t, err)
+
+	// Relative axis: marker is RelativeLogTicks and label names "Relative".
+	assert.IsType(t, RelativeLogTicks{}, p.Y.Tick.Marker, "Y axis must use relative ticks")
+	assert.Contains(t, p.Y.Label.Text, "Relative", "Y label names the relative view")
+}
+
 func Test_generateBoxPlot(t *testing.T) {
 	t.Run("writes a png for a single exercise", func(t *testing.T) {
 		out := filepath.Join(t.TempDir(), "run-times.png")
