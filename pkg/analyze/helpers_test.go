@@ -1,11 +1,26 @@
 package analyze
 
 import (
+	"encoding/json"
 	"io"
 	"log/slog"
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/asphaltbuffet/elf/pkg/exercise"
 )
+
+// writeBenchmarkJSON marshals data to a benchmark.json at path.
+func writeBenchmarkJSON(t *testing.T, path string, data []*exercise.BenchmarkData) {
+	t.Helper()
+	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o750))
+	b, err := json.MarshalIndent(data, "", "  ")
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(path, b, 0o600))
+}
 
 // testLogger returns a logger that discards output.
 func testLogger() *slog.Logger {
@@ -65,6 +80,18 @@ func makeBenchmarkDataNilPartTwo(year int, days ...int) []*exercise.BenchmarkDat
 	data := makeBenchmarkData(year, days...)
 	for _, bd := range data {
 		bd.Implementations[0].PartTwo = nil
+	}
+
+	return data
+}
+
+// makeBenchmarkDataNilPartOne is like makeBenchmarkData but sets PartOne = nil
+// on the first implementation of each day. This mirrors saved benchmark data
+// where an implementation only ran part two (e.g. AoC day 25).
+func makeBenchmarkDataNilPartOne(year int, days ...int) []*exercise.BenchmarkData {
+	data := makeBenchmarkData(year, days...)
+	for _, bd := range data {
+		bd.Implementations[0].PartOne = nil
 	}
 
 	return data

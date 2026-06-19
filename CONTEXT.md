@@ -112,3 +112,39 @@ One of: PartOne, PartTwo, Visualize. Identifies which sub-problem of a puzzle a 
 ## Result
 
 The outcome of a Task: TaskID, success flag, output string, duration.
+
+## Analysis
+
+Renders run-time graphs from persisted benchmark data. One operation with two scopes, inferred
+from the shape of the target directory — no mode flag:
+
+- **Exercise scope** — the target *is* an Exercise (has `info.json`). Compares language against
+  language for that one puzzle, across both Parts. Rendered as a box plot grouped by language,
+  using the raw timing samples so the distribution (median, quartiles, outliers) is visible — not
+  just the mean.
+- **Year scope** — the target *contains* Exercise subdirectories (is a year). Compares day against
+  day across the year, with languages overlaid. Rendered as a line graph of running time vs. day,
+  one line per language.
+
+In both scopes, **color always encodes language**, and a given language maps to the same color in
+every graph (derived from the language key, not from its position in the data). The exercise box
+plot groups by Part, with one box per language inside each Part group. Because the two scopes are
+one operation, they share a single visual identity: non-color styling (fonts, grid, axis weight,
+legend, background) is applied uniformly to every plot rather than tuned per scope, so a box plot
+and a line graph read as siblings from the same tool.
+
+Reads `benchmark.json` files produced by benchmarking; never produces benchmark data itself.
+
+Scope is detected by looking at the target and at most one level below it: an `info.json` in the
+target means Exercise scope; otherwise an `info.json` in an immediate child means Year scope;
+anything else (e.g. a base directory of year directories) is an error rather than a silent
+multi-year merge. Detection never recurses across years.
+
+Missing data is tolerated, absent data is not: a scope with *some* benchmark data renders whatever
+exists (a year with 3 of 25 days benchmarked yields a 3-point graph). A scope with *no* benchmark
+data is an error that names the benchmark command as the fix, rather than producing an empty graph.
+
+The graph is written into the target directory by default (next to the data it describes): the
+exercise folder for Exercise scope, the year folder for Year scope. Year scope produces exactly
+one year-level graph — it does not descend into day folders. An explicit override may redirect the
+output elsewhere.

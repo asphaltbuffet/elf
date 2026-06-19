@@ -46,8 +46,16 @@ func (b *BenchmarkData) String() string {
 }
 
 func (i *ImplementationData) String() string {
-	return fmt.Sprintf("%s{%d PartOne, %d PartTwo}",
-		i.Name, len(i.PartOne.Data), len(i.PartTwo.Data))
+	var partOneLen, partTwoLen int
+	if i.PartOne != nil {
+		partOneLen = len(i.PartOne.Data)
+	}
+
+	if i.PartTwo != nil {
+		partTwoLen = len(i.PartTwo.Data)
+	}
+
+	return fmt.Sprintf("%s{%d PartOne, %d PartTwo}", i.Name, partOneLen, partTwoLen)
 }
 
 func calculateMetrics(results map[protocol.Part][]float64) (map[protocol.Part]*PartData, error) {

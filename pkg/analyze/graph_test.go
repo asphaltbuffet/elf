@@ -1,12 +1,14 @@
 package analyze
 
 import (
+	"image/color"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	xfont "golang.org/x/image/font"
 	"gonum.org/v1/plot"
 
 	"github.com/asphaltbuffet/elf/pkg/exercise"
@@ -53,6 +55,19 @@ func Test_benchmarkToPlotterXYs(t *testing.T) {
 		// Python still has PartTwo
 		assert.Len(t, got["Python"][1], 1)
 	})
+
+	t.Run("nil PartOne", func(t *testing.T) {
+		data := makeBenchmarkDataNilPartOne(2024, 1)
+
+		assert.NotPanics(t, func() {
+			got := benchmarkToPlotterXYs(data)
+
+			// Golang has nil PartOne → part one slice should be empty
+			assert.Empty(t, got["Golang"][0])
+			// Python still has PartOne
+			assert.Len(t, got["Python"][0], 1)
+		})
+	})
 }
 
 func Test_NewBenchmarkPlots(t *testing.T) {
@@ -90,6 +105,15 @@ func Test_generateLineGraph(t *testing.T) {
 		require.NoError(t, err)
 		assert.Positive(t, info.Size())
 	})
+}
+
+func Test_NewBenchmarkPlots_themed(t *testing.T) {
+	plots, err := NewBenchmarkPlots(2024)
+	require.NoError(t, err)
+
+	// applyTheme ran: white background + bold title.
+	assert.Equal(t, color.White, plots[0][0].BackgroundColor)
+	assert.Equal(t, xfont.WeightBold, plots[0][0].Title.TextStyle.Font.Weight)
 }
 
 func Test_Graph(t *testing.T) {

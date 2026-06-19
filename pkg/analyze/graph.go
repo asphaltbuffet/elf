@@ -19,17 +19,6 @@ import (
 	"github.com/asphaltbuffet/elf/pkg/exercise"
 )
 
-//nolint:mnd // color definition
-var langColor = map[string]color.Color{
-	"Golang": color.RGBA{R: 0, G: 173, B: 216, A: 255},
-	"Python": color.RGBA{R: 55, G: 118, B: 171, A: 255},
-}
-
-// Graph generates a line graph of benchmark run times and writes it to the configured output file.
-func (a *Analyzer) Graph() error {
-	return generateLineGraph(a.Data, a.Output)
-}
-
 func benchmarkToPlotterXYs(benchmarks []*exercise.BenchmarkData) map[string][]plotter.XYs {
 	dataMap := make(map[string][]plotter.XYs)
 
@@ -41,10 +30,12 @@ func benchmarkToPlotterXYs(benchmarks []*exercise.BenchmarkData) map[string][]pl
 				dataMap[impl.Name] = make([]plotter.XYs, 2) //nolint:mnd // 2 parts per day
 			}
 
-			dataMap[impl.Name][0] = append(dataMap[impl.Name][0], plotter.XY{
-				X: day,
-				Y: impl.PartOne.Mean,
-			})
+			if impl.PartOne != nil {
+				dataMap[impl.Name][0] = append(dataMap[impl.Name][0], plotter.XY{
+					X: day,
+					Y: impl.PartOne.Mean,
+				})
+			}
 
 			if impl.PartTwo == nil {
 				continue
@@ -90,9 +81,10 @@ func generateLineGraph(benchData []*exercise.BenchmarkData, outfile string) erro
 				return fmt.Errorf("filling %s part %d plot: %w", lang, part, err)
 			}
 
-			ln.Color = langColor[lang]
+			ln.Color = colorForLang(lang)
+			ln.Width = vg.Points(seriesLineWidthPt)
 			pt.Shape = draw.CircleGlyph{}
-			pt.Color = langColor[lang]
+			pt.Color = colorForLang(lang)
 
 			plots[0][part].Add(ln, pt)
 			plots[0][part].Legend.Add(lang, ln, pt)
@@ -158,7 +150,6 @@ func generateLineGraph(benchData []*exercise.BenchmarkData, outfile string) erro
 // NewBenchmarkPlots creates a grid of plots for each exercise day in the given year.
 func NewBenchmarkPlots(year int) ([][]*plot.Plot, error) {
 	const rows, cols = 1, 2
-	const yPosRedline = 15
 	const redlineDashPattern = 2
 
 	plots := make([][]*plot.Plot, rows)
@@ -190,16 +181,26 @@ func NewBenchmarkPlots(year int) ([][]*plot.Plot, error) {
 		"Average Exercise Running Time\nAdvent of Code %d: Part Two",
 		year)
 
-	g := plotter.NewGrid()
-	g.Vertical.Color = color.Transparent
-	part1Plot.Add(g)
-	part2Plot.Add(g)
+	applyTheme(part1Plot)
+	applyTheme(part2Plot)
 
-	redline := plotter.NewFunction(func(_ float64) float64 { return yPosRedline })
-	redline.Color = color.RGBA{R: 255, G: 0, B: 0, A: 255} //nolint:mnd // color definition
-	redline.Dashes = plotutil.Dashes(redlineDashPattern)
-	part1Plot.Add(redline)
-	part2Plot.Add(redline)
+	softGrid := color.RGBA{R: gridGrayLevel, G: gridGrayLevel, B: gridGrayLevel, A: 255} //nolint:mnd // light gray grid
+
+	for _, gp := range []*plot.Plot{part1Plot, part2Plot} {
+		g := plotter.NewGrid()
+		g.Vertical.Color = color.Transparent
+		g.Horizontal.Color = softGrid
+		g.Horizontal.Width = vg.Points(axisLineWidthPt)
+		gp.Add(g)
+	}
+
+	for _, gp := range []*plot.Plot{part1Plot, part2Plot} {
+		redline := plotter.NewFunction(func(_ float64) float64 { return referenceLineSeconds })
+		redline.Color = redlineColor()
+		redline.Width = vg.Points(redlineWidthPt)
+		redline.Dashes = plotutil.Dashes(redlineDashPattern)
+		gp.Add(redline)
+	}
 
 	return plots, nil
 }

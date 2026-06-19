@@ -18,6 +18,7 @@ type Analyzer struct {
 	Data   []*exercise.BenchmarkData
 	Dir    string
 	Output string
+	Scope  Scope
 
 	logger *slog.Logger
 }
@@ -60,12 +61,21 @@ func WithOutput(name string) func(*Analyzer) {
 
 // Load reads all benchmark JSON files from the configured directory into Data.
 func (a *Analyzer) Load() error {
+	scope, err := detectScope(a.Dir)
+	if err != nil {
+		return err
+	}
+	a.Scope = scope
+
+	if a.Output == "" {
+		a.Output = filepath.Join(a.Dir, "run-times.png")
+	}
+
 	files, err := getBenchmarkFiles(a.Dir)
 	if err != nil {
 		return fmt.Errorf("getting benchmark files: %w", err)
 	}
 
-	// load benchmark data from files
 	a.logger.Debug("found benchmark files", "count", len(files))
 	benchData := make([]*exercise.BenchmarkData, 0, len(files))
 
@@ -80,9 +90,25 @@ func (a *Analyzer) Load() error {
 		benchData = append(benchData, data...)
 	}
 
+	if len(benchData) == 0 {
+		return fmt.Errorf("no benchmark data found in %s; run `elf benchmark %s` first", a.Dir, a.Dir)
+	}
+
 	a.Data = benchData
 
 	return nil
+}
+
+// Graph renders the appropriate graph for the resolved scope.
+func (a *Analyzer) Graph() error {
+	switch a.Scope {
+	case ScopeExercise:
+		return generateBoxPlot(a.Data, a.Output)
+	case ScopeYear:
+		return generateLineGraph(a.Data, a.Output)
+	default:
+		return fmt.Errorf("unknown scope: %d", a.Scope)
+	}
 }
 
 func getBenchmarkFiles(dir string) ([]string, error) { //nolint:unparam // expected behavior when walking directories
