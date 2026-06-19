@@ -152,4 +152,30 @@ func Test_runAnalyzeCmd(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "/tmp/custom-graph.png", gotOut)
 	})
+
+	t.Run("no graph flag passes empty output to analyzer", func(t *testing.T) {
+		resetState(t, origMakeConfig, origMakeAnalyzer)
+
+		makeConfig = func(_ string) (config.Config, error) {
+			return config.NewConfig()
+		}
+
+		var gotOut string
+
+		mockAn := mocks.NewMockAnalyzer(t)
+		mockAn.EXPECT().Graph().Return(nil)
+
+		makeAnalyzer = func(_ *slog.Logger, _, out string) (Analyzer, error) {
+			gotOut = out
+			return mockAn, nil
+		}
+
+		cmd := GetAnalyzeCmd()
+		cmd.SetOut(&bytes.Buffer{})
+		cmd.SetErr(&bytes.Buffer{})
+
+		err := runAnalyzeCmd(cmd, []string{"."})
+		require.NoError(t, err)
+		assert.Empty(t, gotOut)
+	})
 }

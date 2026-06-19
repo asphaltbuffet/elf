@@ -39,12 +39,17 @@ func GetAnalyzeCmd() *cobra.Command {
 			Use:     "analyze",
 			Aliases: []string{"a", "analyse"},
 			Args:    cobra.ExactArgs(1),
-			Short:   "analysis of run-time metrics",
+			Short:   "graph run-time benchmark data",
+			Long: "Graph benchmark data for a target directory. If the target is a single " +
+				"exercise, languages are compared in a box plot; if it is a year, days are " +
+				"compared in a line graph. The graph is written to <target>/run-times.png " +
+				"unless -g is given.",
 			RunE:    runAnalyzeCmd,
-			Example: "elf analyze ~/advent/2015/01-exercise/",
+			Example: "elf analyze ~/advent/2015/01-exercise/\nelf analyze ~/advent/2015/",
 		}
 
-		analyzeCmd.Flags().StringVarP(&outFile, "graph", "g", "./run-times.png", "graph output file")
+		analyzeCmd.Flags().StringVarP(&outFile, "graph", "g", "",
+			"graph output path (default: <target>/run-times.png)")
 	}
 
 	return analyzeCmd
@@ -65,9 +70,12 @@ func runAnalyzeCmd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("analysis dir: %w", err)
 	}
 
-	out, err := filepath.Abs(outFile)
-	if err != nil {
-		return fmt.Errorf("output file: %w", err)
+	out := ""
+	if outFile != "" {
+		out, err = filepath.Abs(outFile)
+		if err != nil {
+			return fmt.Errorf("output file: %w", err)
+		}
 	}
 
 	aa, err := makeAnalyzer(cfg.GetLogger(), dir, out)
