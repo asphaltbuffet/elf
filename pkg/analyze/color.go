@@ -9,16 +9,21 @@ import (
 // hashing the language key into this slice, so a given language is the same
 // color in every graph. Collisions past len(langPalette) are accepted.
 //
+// These are the chromatic colors of the Okabe-Ito palette, chosen because they
+// remain distinguishable under all common forms of color-vision deficiency
+// (deuteranopia, protanopia, tritanopia). Okabe-Ito's eighth color (black) is
+// omitted: it would be indistinguishable from the graph axes and reference line.
+// Reference: https://jfly.uni-koeln.de/color/
+//
 //nolint:mnd // palette color definitions
 var langPalette = []color.RGBA{
-	{R: 0, G: 173, B: 216, A: 255},
-	{R: 55, G: 118, B: 171, A: 255},
-	{R: 214, G: 39, B: 40, A: 255},
-	{R: 44, G: 160, B: 44, A: 255},
-	{R: 148, G: 103, B: 189, A: 255},
-	{R: 255, G: 127, B: 14, A: 255},
-	{R: 227, G: 119, B: 194, A: 255},
-	{R: 188, G: 189, B: 34, A: 255},
+	{R: 230, G: 159, B: 0, A: 255},   // orange
+	{R: 86, G: 180, B: 233, A: 255},  // sky blue
+	{R: 0, G: 158, B: 115, A: 255},   // bluish green
+	{R: 240, G: 228, B: 66, A: 255},  // yellow
+	{R: 0, G: 114, B: 178, A: 255},   // blue
+	{R: 213, G: 94, B: 0, A: 255},    // vermillion
+	{R: 204, G: 121, B: 167, A: 255}, // reddish purple
 }
 
 // colorForLang returns a deterministic, opaque color for a language key.
