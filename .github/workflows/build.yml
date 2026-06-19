@@ -12,9 +12,6 @@ permissions:
   contents: read
 
 jobs:
-  govulncheck:
-    uses: asphaltbuffet/.github/.github/workflows/vulncheck.yml@main
-
   generate:
     name: Generate
     runs-on: ubuntu-latest
@@ -42,6 +39,33 @@ jobs:
           path: |
             **/*_string.go
             **/mocks/mock_*.go
+
+  govulncheck:
+    name: govulncheck
+    needs: generate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone Repository
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Set up mise
+        uses: jdx/mise-action@v4
+
+      - name: Download generated files
+        uses: actions/download-artifact@v8
+        with:
+          name: generated
+
+      - name: Mod tidy
+        run: mise run mod-tidy
+
+      - name: Run govulncheck
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 
   test:
     name: Build and Test
