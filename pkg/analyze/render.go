@@ -15,7 +15,7 @@ import (
 
 // redlineColor is the color of the running-time reference line.
 func redlineColor() color.Color {
-	return color.RGBA{R: 255, G: 0, B: 0, A: 255} //nolint:mnd // color definition
+	return color.RGBA{R: 213, G: 94, B: 0, A: 255} //nolint:mnd // palette vermillion
 }
 
 // savePlotPNG draws a single plot to a PNG file at the given dimensions.
