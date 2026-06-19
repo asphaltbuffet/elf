@@ -32,10 +32,25 @@ _Avoid_: HTTP client, downloader, page loader
 
 Lays a finished Exercise out on disk: creates the implementation directory, writes `input.txt` and
 `info.json`, and renders the language template files. Owns the filesystem, the input file name, and
-the overwrite policy. Surface: `write(exercise) → error`. Reads the Exercise; never mutates it.
+the overwrite policy. Surface: `write(exercise) → (report, error)`, where the report records the
+[[Scaffold Outcome]] of each file laid out. Reads the Exercise; never mutates it.
 Knows the exercise directory layout and nothing about HTTP or the cache.
 
 _Avoid_: file writer, template renderer, downloader
+
+## Scaffold Outcome
+
+What the Exercise Scaffold did with one file. Exactly one of:
+
+- **Added** — the file did not exist; elf wrote it.
+- **Skipped** — the file already existed and the overwrite policy left it untouched.
+- **Replaced** — the file already existed and the overwrite policy replaced it.
+
+These describe the *action elf took*, not the file's prior state. Template files (README, the
+language solution stub) are never replaced under the current policy, so they only ever report Added
+or Skipped.
+
+_Avoid_: status, already-existed, overwritten, created
 
 
 ## Runner

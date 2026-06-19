@@ -61,7 +61,8 @@ func TestExerciseScaffold_write(t *testing.T) {
 				logger:        slog.New(slog.NewTextHandler(io.Discard, nil)),
 			}
 
-			tt.assertion(t, s.write(tt.ex))
+			_, err := s.write(tt.ex)
+			tt.assertion(t, err)
 
 			for _, f := range tt.wantFiles {
 				FileExists(t, testFs, filepath.Join(tt.ex.Path, f))
@@ -92,7 +93,9 @@ func TestExerciseScaffold_writeInputFile_respectsOverwrite(t *testing.T) {
 		logger:        slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
 
-	require.NoError(t, s.writeInputFile(ex))
+	outcome, err := s.writeInputFile(ex)
+	require.NoError(t, err)
+	assert.Equal(t, Skipped, outcome, "existing input with overwrite off must report Skipped")
 
 	got, err := afero.ReadFile(testFs, fp)
 	require.NoError(t, err)

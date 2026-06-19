@@ -52,6 +52,9 @@ type Downloader struct {
 
 	// path is the resolved exercise directory, set once Download assembles or loads the Exercise.
 	path string
+
+	// report is the per-file scaffold outcome, set once Download lays the Exercise out on disk.
+	report Report
 }
 
 // Overwrites controls which existing exercise files are overwritten during download.
@@ -205,10 +208,12 @@ func (d *Downloader) Download() error {
 	d.path = ex.Path
 
 	// the exercise is fully assembled; lay it out on disk
-	if err = d.scaffold.write(ex); err != nil {
+	report, err := d.scaffold.write(ex)
+	if err != nil {
 		d.logger.Error("add missing files", slog.Int("year", year), slog.Int("day", day), tint.Err(err))
 		return err
 	}
+	d.report = report
 
 	d.logger.Debug("exercise added", slog.String("dir", ex.Path))
 
@@ -372,4 +377,10 @@ func makeExercisePath(baseDir string, year, day int, title string) string {
 // FilePath returns the local filesystem path where the downloaded exercise will be stored.
 func (d *Downloader) FilePath() string {
 	return d.path
+}
+
+// Report returns the per-file scaffold outcome from the most recent Download.
+// It is nil until Download succeeds.
+func (d *Downloader) Report() Report {
+	return d.report
 }

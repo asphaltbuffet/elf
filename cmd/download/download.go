@@ -15,6 +15,7 @@ import (
 type Downloader interface {
 	Download() error
 	FilePath() string
+	Report() exercise.Report
 }
 
 var (
@@ -83,7 +84,9 @@ func runDownloadCmd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("downloading challenge: %w", err)
 	}
 
-	_, _ = fmt.Fprintln(cmd.OutOrStdout(), chdl.FilePath())
+	out := cmd.OutOrStdout()
+	_, _ = fmt.Fprintln(out, chdl.FilePath())
+	exercise.RenderReport(out, chdl.Report())
 
 	return nil
 }

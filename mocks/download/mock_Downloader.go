@@ -5,6 +5,7 @@
 package mocks
 
 import (
+	"github.com/asphaltbuffet/elf/pkg/exercise"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -119,6 +120,52 @@ func (_c *MockDownloader_FilePath_Call) Return(s string) *MockDownloader_FilePat
 }
 
 func (_c *MockDownloader_FilePath_Call) RunAndReturn(run func() string) *MockDownloader_FilePath_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Report provides a mock function for the type MockDownloader
+func (_mock *MockDownloader) Report() exercise.Report {
+	ret := _mock.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for Report")
+	}
+
+	var r0 exercise.Report
+	if returnFunc, ok := ret.Get(0).(func() exercise.Report); ok {
+		r0 = returnFunc()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(exercise.Report)
+		}
+	}
+	return r0
+}
+
+// MockDownloader_Report_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Report'
+type MockDownloader_Report_Call struct {
+	*mock.Call
+}
+
+// Report is a helper method to define mock.On call
+func (_e *MockDownloader_Expecter) Report() *MockDownloader_Report_Call {
+	return &MockDownloader_Report_Call{Call: _e.mock.On("Report")}
+}
+
+func (_c *MockDownloader_Report_Call) Run(run func()) *MockDownloader_Report_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockDownloader_Report_Call) Return(report exercise.Report) *MockDownloader_Report_Call {
+	_c.Call.Return(report)
+	return _c
+}
+
+func (_c *MockDownloader_Report_Call) RunAndReturn(run func() exercise.Report) *MockDownloader_Report_Call {
 	_c.Call.Return(run)
 	return _c
 }
