@@ -57,6 +57,7 @@ func generateBoxPlot(benchData []*exercise.BenchmarkData, outfile string) error 
 	p.Y.Scale = plot.LogScale{}
 	p.Y.Tick.Marker = HumanizedLogTicks{}
 	p.Y.Min = 0.000001
+	applyTheme(p)
 
 	nominal := []string{"Part One", "Part Two"}
 
@@ -73,6 +74,7 @@ func generateBoxPlot(benchData []*exercise.BenchmarkData, outfile string) error 
 
 	redline := plotter.NewFunction(func(_ float64) float64 { return referenceLineSeconds })
 	redline.Color = redlineColor()
+	redline.Width = vg.Points(redlineWidthPt)
 	redline.Dashes = plotutil.Dashes(redlineDashes)
 	p.Add(redline)
 
@@ -107,6 +109,22 @@ func collectBoxSamples(benchData []*exercise.BenchmarkData) (map[string]map[int]
 	return samples, langs
 }
 
+// styleBox applies the minimal box-plot styling: a language-colored outline
+// (box, median, whiskers, outlier glyphs) over a translucent fill of the same
+// color, so the distribution marks stay legible while color still encodes
+// language.
+func styleBox(bp *plotter.BoxPlot, lang string) {
+	lc := colorForLang(lang)
+	bp.FillColor = lighten(lc)
+	bp.BoxStyle.Color = lc
+	bp.BoxStyle.Width = vg.Points(boxOutlineWidthPt)
+	bp.MedianStyle.Color = lc
+	bp.MedianStyle.Width = vg.Points(boxOutlineWidthPt)
+	bp.WhiskerStyle.Color = lc
+	bp.WhiskerStyle.Width = vg.Points(boxOutlineWidthPt)
+	bp.GlyphStyle.Color = lc
+}
+
 // addBoxGroups adds one BoxPlot per language per part-group to p, coloring each
 // box by language. Legend entries are added for Part One only (one entry per lang).
 func addBoxGroups(p *plot.Plot, samples map[string]map[int]plotter.Values, langs, nominal []string) error {
@@ -129,7 +147,7 @@ func addBoxGroups(p *plot.Plot, samples map[string]map[int]plotter.Values, langs
 				return fmt.Errorf("box plot for %s %s: %w", lang, nominal[partIdx], err)
 			}
 
-			bp.FillColor = colorForLang(lang)
+			styleBox(bp, lang)
 			p.Add(bp)
 
 			if partIdx == 0 {
