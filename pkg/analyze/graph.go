@@ -19,11 +19,6 @@ import (
 	"github.com/asphaltbuffet/elf/pkg/exercise"
 )
 
-//nolint:mnd // color definition
-var langColor = map[string]color.Color{
-	"Golang": color.RGBA{R: 0, G: 173, B: 216, A: 255},
-	"Python": color.RGBA{R: 55, G: 118, B: 171, A: 255},
-}
 
 // Graph generates a line graph of benchmark run times and writes it to the configured output file.
 func (a *Analyzer) Graph() error {
@@ -90,9 +85,9 @@ func generateLineGraph(benchData []*exercise.BenchmarkData, outfile string) erro
 				return fmt.Errorf("filling %s part %d plot: %w", lang, part, err)
 			}
 
-			ln.Color = langColor[lang]
+			ln.Color = colorForLang(lang)
 			pt.Shape = draw.CircleGlyph{}
-			pt.Color = langColor[lang]
+			pt.Color = colorForLang(lang)
 
 			plots[0][part].Add(ln, pt)
 			plots[0][part].Legend.Add(lang, ln, pt)
