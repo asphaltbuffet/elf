@@ -30,3 +30,27 @@ func Test_colorForLang(t *testing.T) {
 		}
 	})
 }
+
+func Test_lighten(t *testing.T) {
+	t.Run("preserves RGB and reduces alpha", func(t *testing.T) {
+		// vermillion from the palette, opaque
+		in := color.RGBA{R: 213, G: 94, B: 0, A: 255}
+		got := lighten(in)
+
+		assert.Equal(t, uint8(213), got.R, "R preserved")
+		assert.Equal(t, uint8(94), got.G, "G preserved")
+		assert.Equal(t, uint8(0), got.B, "B preserved")
+		assert.Less(t, got.A, uint8(255), "alpha reduced for translucency")
+		assert.Positive(t, got.A, "alpha not fully transparent")
+	})
+
+	t.Run("works on a colorForLang result", func(t *testing.T) {
+		c := colorForLang("Golang")
+		r, g, b, _ := c.RGBA()
+		got := lighten(c)
+		assert.Equal(t, uint8(r>>8), got.R)
+		assert.Equal(t, uint8(g>>8), got.G)
+		assert.Equal(t, uint8(b>>8), got.B)
+		assert.Less(t, got.A, uint8(255))
+	})
+}

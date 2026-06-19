@@ -35,3 +35,22 @@ func colorForLang(name string) color.Color {
 	// len(langPalette) is a small fixed constant, so the conversion cannot overflow.
 	return langPalette[h.Sum32()%uint32(len(langPalette))] //nolint:gosec // bounded by fixed palette length
 }
+
+// boxFillAlpha is the alpha applied to box-plot fills so the language color
+// reads as a light tint over the white background while the box outline,
+// median, and whiskers stay crisp. Non-premultiplied ([color.NRGBA]).
+const boxFillAlpha uint8 = 90 // visual alpha constant
+
+// lighten returns c as a translucent [color.NRGBA], preserving its R/G/B so the
+// hue (and thus the language it encodes) is unchanged; only alpha is reduced.
+// Using NRGBA (non-premultiplied) keeps the visible R/G/B equal to the palette
+// color when composited over white.
+func lighten(c color.Color) color.NRGBA {
+	r, g, b, _ := c.RGBA() // 16-bit, premultiplied; palette colors are opaque
+	return color.NRGBA{
+		R: uint8(r >> 8), //nolint:mnd,gosec // 16-bit channel shifted to 8-bit
+		G: uint8(g >> 8), //nolint:mnd,gosec // 16-bit channel shifted to 8-bit
+		B: uint8(b >> 8), //nolint:mnd,gosec // 16-bit channel shifted to 8-bit
+		A: boxFillAlpha,
+	}
+}
