@@ -82,6 +82,7 @@ func generateLineGraph(benchData []*exercise.BenchmarkData, outfile string) erro
 			}
 
 			ln.Color = colorForLang(lang)
+			ln.Width = vg.Points(seriesLineWidthPt)
 			pt.Shape = draw.CircleGlyph{}
 			pt.Color = colorForLang(lang)
 
@@ -180,16 +181,26 @@ func NewBenchmarkPlots(year int) ([][]*plot.Plot, error) {
 		"Average Exercise Running Time\nAdvent of Code %d: Part Two",
 		year)
 
-	g := plotter.NewGrid()
-	g.Vertical.Color = color.Transparent
-	part1Plot.Add(g)
-	part2Plot.Add(g)
+	applyTheme(part1Plot)
+	applyTheme(part2Plot)
 
-	redline := plotter.NewFunction(func(_ float64) float64 { return referenceLineSeconds })
-	redline.Color = redlineColor()
-	redline.Dashes = plotutil.Dashes(redlineDashPattern)
-	part1Plot.Add(redline)
-	part2Plot.Add(redline)
+	softGrid := color.RGBA{R: gridGrayLevel, G: gridGrayLevel, B: gridGrayLevel, A: 255} //nolint:mnd // light gray grid
+
+	for _, gp := range []*plot.Plot{part1Plot, part2Plot} {
+		g := plotter.NewGrid()
+		g.Vertical.Color = color.Transparent
+		g.Horizontal.Color = softGrid
+		g.Horizontal.Width = vg.Points(axisLineWidthPt)
+		gp.Add(g)
+	}
+
+	for _, gp := range []*plot.Plot{part1Plot, part2Plot} {
+		redline := plotter.NewFunction(func(_ float64) float64 { return referenceLineSeconds })
+		redline.Color = redlineColor()
+		redline.Width = vg.Points(redlineWidthPt)
+		redline.Dashes = plotutil.Dashes(redlineDashPattern)
+		gp.Add(redline)
+	}
 
 	return plots, nil
 }

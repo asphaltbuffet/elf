@@ -1,12 +1,14 @@
 package analyze
 
 import (
+	"image/color"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	xfont "golang.org/x/image/font"
 	"gonum.org/v1/plot"
 
 	"github.com/asphaltbuffet/elf/pkg/exercise"
@@ -103,6 +105,15 @@ func Test_generateLineGraph(t *testing.T) {
 		require.NoError(t, err)
 		assert.Positive(t, info.Size())
 	})
+}
+
+func Test_NewBenchmarkPlots_themed(t *testing.T) {
+	plots, err := NewBenchmarkPlots(2024)
+	require.NoError(t, err)
+
+	// applyTheme ran: white background + bold title.
+	assert.Equal(t, color.White, plots[0][0].BackgroundColor)
+	assert.Equal(t, xfont.WeightBold, plots[0][0].Title.TextStyle.Font.Weight)
 }
 
 func Test_Graph(t *testing.T) {

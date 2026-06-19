@@ -20,8 +20,8 @@ const (
 	axisLineWidthPt = 0.75
 	gridGrayLevel   = 0xDD
 
-	seriesLineWidthPt = 2.0 //nolint:unused // visual style constant; consumed by later tasks
-	redlineWidthPt    = 2.5 //nolint:unused // visual style constant; consumed by later tasks
+	seriesLineWidthPt = 2.0
+	redlineWidthPt    = 2.5
 
 	boxOutlineWidthPt = 1.25
 	legendPaddingPt   = 4
