@@ -17,6 +17,7 @@ Issues live in GitHub Issues at `github.com/asphaltbuffet/elf`. Use the `gh` CLI
 - This project uses **jj** (Jujutsu) for version control, not git. Use `jj file track` instead of `git add`.
 - Nix flakes only see VCS-tracked files. New files must be tracked with `jj file track` before `nix build` can use them.
 - Use `mise exec --` to run mise-managed tools (e.g. `mise exec -- gomod2nix generate`) from non-activated shells.
+- `gomod2nix` is a mise `go:` tool (built from source — it ships no prebuilt binaries, so no aqua/ubi backend). On NixOS the built binary hardcodes a `/nix/store` glibc interpreter that breaks after `nix-collect-garbage` (`cannot execute: required file not found`); fix by reinstalling: `mise install "go:github.com/nix-community/gomod2nix"`. The flake devShell also provides gomod2nix as a GC-safe fallback.
 
 ## Build and Development Commands
 

@@ -10,14 +10,26 @@ import (
 	"regexp"
 	"strconv"
 
+	"github.com/go-resty/resty/v2"
 	"github.com/lmittmann/tint"
 	"github.com/spf13/afero"
 )
 
-func (d *Downloader) getPage(year, day int) ([]byte, error) {
-	logger := d.logger.With(slog.Int("year", year), slog.Int("day", day), slog.String("fn", "getPage"))
+// pageFetcher fetches puzzle page HTML and puzzle input from Advent of Code, caching both on disk.
+// It owns the HTTP client, the session token, and the cache directory. It knows the AoC URL shape
+// and the cacheDir/pages + cacheDir/inputs layout, and nothing about the exercise directory.
+type pageFetcher struct {
+	rClient  *resty.Client
+	token    string
+	cacheDir string
+	fs       afero.Fs
+	logger   *slog.Logger
+}
 
-	pageData, ok := d.getCachedPage(year, day)
+func (f *pageFetcher) fetchPage(year, day int) ([]byte, error) {
+	logger := f.logger.With(slog.Int("year", year), slog.Int("day", day), slog.String("fn", "getPage"))
+
+	pageData, ok := f.getCachedPage(year, day)
 	if ok {
 		logger.Debug("using cached puzzle page", slog.Int("size", len(pageData)))
 		return pageData, nil
@@ -25,26 +37,28 @@ func (d *Downloader) getPage(year, day int) ([]byte, error) {
 
 	logger.Info("no cached page")
 
-	return d.downloadPage(year, day)
+	return f.downloadPage(year, day)
 }
 
-func (d *Downloader) getCachedPage(year, day int) ([]byte, bool) {
-	fp := filepath.Join(d.cacheDir, "pages", makeExerciseID(year, day))
-	data, err := afero.ReadFile(d.appFs, fp)
+func (f *pageFetcher) getCachedPage(year, day int) ([]byte, bool) {
+	fp := filepath.Join(f.cacheDir, "pages", makeExerciseID(year, day))
+	data, err := afero.ReadFile(f.fs, fp)
 
 	return data, err == nil
 }
 
-func (d *Downloader) getCachedInput(year, day int) ([]byte, bool) {
-	fp := filepath.Join(d.cacheDir, "inputs", makeExerciseID(year, day))
-	data, err := afero.ReadFile(d.appFs, fp)
+func (f *pageFetcher) getCachedInput(year, day int) ([]byte, bool) {
+	fp := filepath.Join(f.cacheDir, "inputs", makeExerciseID(year, day))
+	data, err := afero.ReadFile(f.fs, fp)
 
-	return data, err == nil
+	// A 0-byte cache file is not a usable hit — treat it as a miss so the input
+	// is re-fetched rather than silently producing an empty puzzle input.
+	return data, err == nil && len(data) > 0
 }
 
-func (d *Downloader) downloadPage(year, day int) ([]byte, error) {
-	pageCacheDir := filepath.Join(d.cacheDir, "pages")
-	logger := d.logger.With(
+func (f *pageFetcher) downloadPage(year, day int) ([]byte, error) {
+	pageCacheDir := filepath.Join(f.cacheDir, "pages")
+	logger := f.logger.With(
 		slog.String("fn", "downloadPage"),
 		slog.Int("year", year),
 		slog.Int("day", day),
@@ -52,11 +66,11 @@ func (d *Downloader) downloadPage(year, day int) ([]byte, error) {
 	)
 
 	// make sure we can write the cached file before we download it
-	if err := d.appFs.MkdirAll(pageCacheDir, dirPerm); err != nil {
+	if err := f.fs.MkdirAll(pageCacheDir, dirPerm); err != nil {
 		return nil, fmt.Errorf("create %q: %w", pageCacheDir, err)
 	}
 
-	req := d.rClient.R().SetPathParams(map[string]string{
+	req := f.rClient.R().SetPathParams(map[string]string{
 		"year": strconv.Itoa(year),
 		"day":  strconv.Itoa(day),
 	})
@@ -88,7 +102,7 @@ func (d *Downloader) downloadPage(year, day int) ([]byte, error) {
 	pd := bytes.TrimSpace(matches[1])
 
 	// write response to disk
-	err = afero.WriteFile(d.appFs, filepath.Join(pageCacheDir, makeExerciseID(year, day)), pd, 0o600)
+	err = afero.WriteFile(f.fs, filepath.Join(pageCacheDir, makeExerciseID(year, day)), pd, 0o600)
 	if err != nil {
 		logger.Debug("writing page to cache", slog.String("url", resp.Request.URL), tint.Err(err))
 
@@ -98,22 +112,22 @@ func (d *Downloader) downloadPage(year, day int) ([]byte, error) {
 	return pd, nil
 }
 
-func (d *Downloader) downloadInput(year, day int) ([]byte, error) {
-	logger := d.logger.With(slog.Int("year", year), slog.Int("day", day), slog.String("fn", "downloadInput"))
+func (f *pageFetcher) downloadInput(year, day int) ([]byte, error) {
+	logger := f.logger.With(slog.Int("year", year), slog.Int("day", day), slog.String("fn", "downloadInput"))
 
-	err := d.appFs.MkdirAll(filepath.Join(d.cacheDir, "inputs"), dirPerm)
+	err := f.fs.MkdirAll(filepath.Join(f.cacheDir, "inputs"), dirPerm)
 	if err != nil {
 		return nil, fmt.Errorf("creating inputs directory: %w", err)
 	}
 
-	resp, err := d.rClient.R().
+	resp, err := f.rClient.R().
 		SetPathParams(map[string]string{
 			"year": strconv.Itoa(year),
 			"day":  strconv.Itoa(day),
 		}).
 		SetCookie(&http.Cookie{
 			Name:   "session",
-			Value:  d.token,
+			Value:  f.token,
 			Domain: ".adventofcode.com",
 		}).
 		Get("/{year}/day/{day}/input")
@@ -135,8 +149,14 @@ func (d *Downloader) downloadInput(year, day int) ([]byte, error) {
 
 	data := bytes.TrimSpace(resp.Body())
 
+	// A 200 with an empty body means the request was unauthenticated (e.g. a
+	// missing or expired token); fail loudly instead of caching an empty input.
+	if len(data) == 0 {
+		return nil, fmt.Errorf("%w: %d-%02d", ErrEmptyInput, year, day)
+	}
+
 	// write response to disk
-	err = afero.WriteFile(d.appFs, filepath.Join(d.cacheDir, "inputs", makeExerciseID(year, day)), data, 0o600)
+	err = afero.WriteFile(f.fs, filepath.Join(f.cacheDir, "inputs", makeExerciseID(year, day)), data, 0o600)
 	if err != nil {
 		return nil, err
 	}
@@ -144,15 +164,15 @@ func (d *Downloader) downloadInput(year, day int) ([]byte, error) {
 	return data, nil
 }
 
-func (d *Downloader) getInput(year, day int) ([]byte, error) {
-	logger := d.logger.With(slog.Int("year", year), slog.Int("day", day), slog.String("fn", "getInput"))
+func (f *pageFetcher) fetchInput(year, day int) ([]byte, error) {
+	logger := f.logger.With(slog.Int("year", year), slog.Int("day", day), slog.String("fn", "getInput"))
 
-	data, ok := d.getCachedInput(year, day)
+	data, ok := f.getCachedInput(year, day)
 	if ok {
 		return data, nil
 	}
 
 	logger.Info("no cached input")
 
-	return d.downloadInput(year, day)
+	return f.downloadInput(year, day)
 }

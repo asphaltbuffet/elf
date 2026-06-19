@@ -17,7 +17,7 @@ func getInstallCmd() *cobra.Command {
 		installCmd = &cobra.Command{
 			Use:               "install",
 			Short:             "Install built-in runner template files",
-			Long:              "Writes the built-in Go and Python runner wrapper templates to ~/.config/elf/runners/ and prints the [[runner]] config blocks to add to elf.toml.",
+			Long:              "Writes the built-in runner wrapper templates to ~/.config/elf/runners/ and prints the [[runner]] config blocks to add to elf.toml.",
 			Args:              cobra.NoArgs,
 			ValidArgsFunction: cobra.NoFileCompletions,
 			RunE:              runInstallCmd,
@@ -49,6 +49,7 @@ func runInstallCmd(cmd *cobra.Command, _ []string) error {
 	}{
 		{"python.templ", elfrunners.PythonTemplate},
 		{"go.tmpl", elfrunners.GoTemplate},
+		{"bash.tmpl", elfrunners.BashTemplate},
 	}
 
 	for _, tmpl := range templates {
@@ -95,9 +96,22 @@ build_commands = [
 
 [runner.open]
 binary = "{binary_file}"
+
+[[runner]]
+key = "bash"
+name = "Bash"
+
+[runner.prepare]
+template_path = %q
+wrapper_ext = ".sh"
+
+[runner.open]
+interpreter = "bash"
+args = ["{wrapper_file}"]
 `,
 		filepath.Join(runnersDir, "python.templ"),
 		filepath.Join(runnersDir, "go.tmpl"),
+		filepath.Join(runnersDir, "bash.tmpl"),
 	)
 
 	cmd.Println("Replace YOUR_MODULE with your Go module name (from go.mod, e.g. github.com/you/advent-of-code).")

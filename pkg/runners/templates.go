@@ -11,3 +11,8 @@ var GoTemplate []byte
 //
 //go:embed interface/python.templ
 var PythonTemplate []byte
+
+// BashTemplate is the built-in Bash runner wrapper template.
+//
+//go:embed interface/bash.tmpl
+var BashTemplate []byte

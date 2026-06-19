@@ -30,24 +30,31 @@ var (
 	ErrNotConfigured   = errors.New("not configured")
 	ErrHTTPRequest     = errors.New("http request")
 	ErrHTTPResponse    = errors.New("http response")
+	ErrEmptyInput      = errors.New("empty puzzle input")
 	ErrInvalidURL      = errors.New("invalid URL")
 	ErrInvalidLanguage = errors.New("invalid language")
 )
 
-// Downloader fetches challenge metadata, input, and implementation templates from the AoC website.
+// Downloader coordinates fetching a challenge from the AoC website and laying it out on disk. It
+// assembles a finished Exercise value (via the page fetcher or an existing info.json) and hands it
+// to the scaffold to write — it never builds an Exercise up in place.
 type Downloader struct {
-	*Exercise
-
 	exerciseBaseDir string
-	cacheDir        string
 	cfgDir          string
-	inputFileName   string
-	rClient         *resty.Client
-	token           string
-	overwrites      *Overwrites
+	language        string
+	url             string
 	skipImpl        bool
 	appFs           afero.Fs
 	logger          *slog.Logger
+
+	fetcher  *pageFetcher
+	scaffold *exerciseScaffold
+
+	// path is the resolved exercise directory, set once Download assembles or loads the Exercise.
+	path string
+
+	// report is the per-file scaffold outcome, set once Download lays the Exercise out on disk.
+	report Report
 }
 
 // Overwrites controls which existing exercise files are overwritten during download.
@@ -58,17 +65,23 @@ type Overwrites struct {
 // NewDownloader creates a Downloader, applies options, and validates the configuration.
 func NewDownloader(cfg config.Config, options ...func(*Downloader)) (*Downloader, error) {
 	d := &Downloader{
-		Exercise: &Exercise{
-			Language: cfg.GetLanguage(),
-		},
-		cacheDir:        cfg.GetCacheDir(),
+		language:        cfg.GetLanguage(),
 		cfgDir:          cfg.GetConfigDir(),
 		exerciseBaseDir: cfg.GetBaseDir(),
-		rClient:         resty.New().SetBaseURL("https://adventofcode.com"),
-		token:           cfg.GetToken(),
-		inputFileName:   cfg.GetInputFilename(),
 		appFs:           cfg.GetFs(),
 		logger:          cfg.GetLogger(),
+		fetcher: &pageFetcher{
+			rClient:  resty.New().SetBaseURL("https://adventofcode.com"),
+			token:    cfg.GetToken(),
+			cacheDir: cfg.GetCacheDir(),
+			fs:       cfg.GetFs(),
+			logger:   cfg.GetLogger(),
+		},
+		scaffold: &exerciseScaffold{
+			fs:            cfg.GetFs(),
+			inputFileName: cfg.GetInputFilename(),
+			logger:        cfg.GetLogger(),
+		},
 	}
 
 	for _, option := range options {
@@ -88,7 +101,7 @@ func WithDownloadLanguage(lang string) func(*Downloader) {
 	return func(d *Downloader) {
 		if lang != "" {
 			// expect to check for valid language later
-			d.Language = lang
+			d.language = lang
 		}
 	}
 }
@@ -96,7 +109,7 @@ func WithDownloadLanguage(lang string) func(*Downloader) {
 // WithURL sets the exercise URL to download.
 func WithURL(url string) func(*Downloader) {
 	return func(d *Downloader) {
-		d.URL = url
+		d.url = url
 	}
 }
 
@@ -104,9 +117,9 @@ func WithURL(url string) func(*Downloader) {
 func WithOverwrites(o *Overwrites) func(*Downloader) {
 	return func(d *Downloader) {
 		if o == nil {
-			d.overwrites = &Overwrites{}
+			d.scaffold.overwrites = &Overwrites{}
 		} else {
-			d.overwrites = o
+			d.scaffold.overwrites = o
 		}
 	}
 }
@@ -121,7 +134,7 @@ func WithSkipImpl(skip bool) func(*Downloader) {
 func (d *Downloader) validate() error {
 	var err []error
 
-	if d.rClient == nil {
+	if d.fetcher.rClient == nil {
 		err = append(err, fmt.Errorf("http client: %w", ErrNotConfigured))
 	}
 
@@ -130,11 +143,11 @@ func (d *Downloader) validate() error {
 	}
 
 	// the token cannot be empty if we're downloading the input
-	if d.token == "" {
+	if d.fetcher.token == "" {
 		err = append(err, fmt.Errorf("advent user token: %w", ErrNotConfigured))
 	}
 
-	if !d.skipImpl && d.Language == "" {
+	if !d.skipImpl && d.language == "" {
 		err = append(err, fmt.Errorf("implementation language: %w", ErrNotConfigured))
 	}
 
@@ -142,7 +155,7 @@ func (d *Downloader) validate() error {
 		err = append(err, fmt.Errorf("user config directory: %w", ErrNotConfigured))
 	}
 
-	if d.cacheDir == "" {
+	if d.fetcher.cacheDir == "" {
 		err = append(err, fmt.Errorf("cache directory: %w", ErrNotConfigured))
 	}
 
@@ -159,73 +172,99 @@ func (d *Downloader) validate() error {
 
 // Download fetches challenge metadata, puzzle input, and implementation templates from the AoC website.
 func (d *Downloader) Download() error {
-	year, day, err := ParseURL(d.URL)
+	year, day, err := ParseURL(d.url)
 	if err != nil {
 		return err
 	}
 
 	// update client with year and day
-	d.rClient.
+	d.fetcher.rClient.
 		SetHeader("User-Agent", "github.com/asphaltbuffet/elf").
 		SetPathParams(map[string]string{
 			"year": strconv.Itoa(year),
 			"day":  strconv.Itoa(day),
 		})
 
-	exPath, ok := d.getExercisePath(year, day)
-	if ok {
-		d.Exercise.Path = exPath
-		err = d.loadInfo(d.appFs, d.logger)
+	var ex *Exercise
+
+	if exPath, ok := d.getExercisePath(year, day); ok {
+		ex = &Exercise{Path: exPath, Language: d.language}
+		if err = ex.loadInfo(d.appFs, d.logger); err == nil {
+			// loadInfo populates metadata from info.json but not the puzzle input; fetch it so the
+			// scaffold writes real input instead of an empty input.txt.
+			var input []byte
+			if input, err = d.fetcher.fetchInput(year, day); err == nil {
+				ex.Data.InputData = string(input)
+			}
+		}
 	} else {
-		err = d.loadFromURL(year, day)
+		ex, err = d.assemble(year, day)
 	}
 	if err != nil {
 		d.logger.Error("loading exercise", tint.Err(err))
 		return err
 	}
 
-	// the basic exercise information is here; add missing elements
-	if err = d.addMissingFiles(); err != nil {
+	d.path = ex.Path
+
+	// the exercise is fully assembled; lay it out on disk
+	report, err := d.scaffold.write(ex)
+	if err != nil {
 		d.logger.Error("add missing files", slog.Int("year", year), slog.Int("day", day), tint.Err(err))
 		return err
 	}
+	d.report = report
 
-	d.logger.Debug("exercise added", slog.String("dir", d.Path))
+	d.logger.Debug("exercise added", slog.String("dir", ex.Path))
 
 	return nil
 }
 
-func (d *Downloader) loadFromURL(year, day int) error {
-	logger := d.logger.With(slog.Int("year", year), slog.Int("day", day), slog.String("fn", "loadFromURL"))
+// assemble fetches the puzzle page and input and returns a finished Exercise value. It never
+// mutates the Downloader — the result is a fresh value ready for the scaffold.
+func (d *Downloader) assemble(year, day int) (*Exercise, error) {
+	logger := d.logger.With(slog.Int("year", year), slog.Int("day", day), slog.String("fn", "assemble"))
 	logger.Debug("loading exercise")
 
-	var (
-		page  []byte
-		title string
-		err   error
-	)
-
-	page, err = d.getPage(year, day)
+	page, err := d.fetcher.fetchPage(year, day)
 	if err != nil {
-		logger.Debug("getting page data", slog.String("url", d.URL), tint.Err(err))
-		return fmt.Errorf("get page data %d-%02d: %w", year, day, err)
+		logger.Debug("getting page data", slog.String("url", d.url), tint.Err(err))
+		return nil, fmt.Errorf("get page data %d-%02d: %w", year, day, err)
 	}
 
-	title, err = extractTitle(page)
+	title, err := extractTitle(page)
 	if err != nil {
 		logger.Debug("extracting title", slog.Int("page-size", len(page)), tint.Err(err))
-		return fmt.Errorf("extract %d-%02d title: %w", year, day, err)
+		return nil, fmt.Errorf("extract %d-%02d title: %w", year, day, err)
 	}
 
-	d.Exercise.ID = makeExerciseID(year, day)
-	d.Exercise.Title = title
-	d.Exercise.Year = year
-	d.Exercise.Day = day
-	d.Exercise.Path = makeExercisePath(d.exerciseBaseDir, year, day, title)
+	input, err := d.fetcher.fetchInput(year, day)
+	if err != nil {
+		return nil, fmt.Errorf("loading input: %w", err)
+	}
 
-	logger.Debug("loaded exercise", slog.Any("exercise", d.LogValue()))
+	ex := &Exercise{
+		ID:       makeExerciseID(year, day),
+		Title:    title,
+		Language: d.language,
+		Year:     year,
+		Day:      day,
+		URL:      d.url,
+		Path:     makeExercisePath(d.exerciseBaseDir, year, day, title),
+		Data: &Data{
+			InputData:     string(input),
+			InputFileName: d.scaffold.inputFileName,
+			TestCases: TestCase{
+				One: []*Test{{Input: "", Expected: ""}},
+				Two: []*Test{{Input: "", Expected: ""}},
+			},
+			Answers: Answer{One: "", Two: ""},
+		},
+	}
 
-	return nil
+	logger.Debug("loaded exercise", slog.Any("exercise", ex.LogValue()))
+
+	return ex, nil
 }
 
 func (d *Downloader) getExercisePath(year, day int) (string, bool) {
@@ -337,5 +376,11 @@ func makeExercisePath(baseDir string, year, day int, title string) string {
 
 // FilePath returns the local filesystem path where the downloaded exercise will be stored.
 func (d *Downloader) FilePath() string {
-	return d.Path
+	return d.path
+}
+
+// Report returns the per-file scaffold outcome from the most recent Download.
+// It is nil until Download succeeds.
+func (d *Downloader) Report() Report {
+	return d.report
 }

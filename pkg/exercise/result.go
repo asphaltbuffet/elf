@@ -121,6 +121,17 @@ func renderResult(w io.Writer, result tasks.Result) {
 	}
 }
 
+// RenderReport writes a scaffold Report to w: one indented row per file, showing the relative path
+// followed by a colorized outcome (green added, yellow replaced, faint skipped). The exercise
+// directory itself is not printed here — the caller prints it as a header.
+func RenderReport(w io.Writer, r Report) {
+	pathStyle := lipgloss.NewStyle().PaddingLeft(ReportIndent).Width(ReportPathWidth)
+
+	for _, e := range r {
+		fmt.Fprintln(w, pathStyle.Render(e.Path), scaffoldOutcomeStyle(e.Outcome))
+	}
+}
+
 func handleTaskResult(w io.Writer, r *protocol.Result, expected string) tasks.Result {
 	result := buildResult(r, expected)
 	renderResult(w, result)

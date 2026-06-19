@@ -71,20 +71,30 @@ func setupSubTest(t *testing.T) func(t *testing.T) {
 	testFs = afero.NewCopyOnWriteFs(roBase, afero.NewMemMapFs())
 	require.NoError(t, testFs.MkdirAll("testCache", 0o755))
 
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	rClient := resty.New().SetBaseURL("https://test.fake")
+
 	mockDlr = &Downloader{
-		Exercise: &Exercise{
-			Data: &Data{},
-		},
-		cacheDir:        "testCache",
 		cfgDir:          "./",
 		exerciseBaseDir: "exercises",
-		rClient:         resty.New().SetBaseURL("https://test.fake"),
-		token:           "fakeToken",
 		appFs:           testFs,
-		logger:          slog.New(slog.NewTextHandler(io.Discard, nil)),
+		logger:          logger,
+		fetcher: &pageFetcher{
+			rClient:  rClient,
+			token:    "fakeToken",
+			cacheDir: "testCache",
+			fs:       testFs,
+			logger:   logger,
+		},
+		scaffold: &exerciseScaffold{
+			fs:            testFs,
+			inputFileName: "input.txt",
+			overwrites:    &Overwrites{},
+			logger:        logger,
+		},
 	}
 
-	httpmock.ActivateNonDefault(mockDlr.rClient.GetClient())
+	httpmock.ActivateNonDefault(mockDlr.fetcher.rClient.GetClient())
 
 	httpmock.Reset()
 

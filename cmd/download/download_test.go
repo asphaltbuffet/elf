@@ -114,6 +114,10 @@ func Test_runDownloadCmd(t *testing.T) {
 		mockDl := mocks.NewMockDownloader(t)
 		mockDl.EXPECT().Download().Return(nil)
 		mockDl.EXPECT().FilePath().Return("/exercises/2023/01-trebuchet")
+		mockDl.EXPECT().Report().Return(exercise.Report{
+			{Path: "input.txt", Outcome: exercise.Added},
+			{Path: "info.json", Outcome: exercise.Skipped},
+		})
 
 		makeDownloader = func(_ config.Config, _, _ string, _ *exercise.Overwrites) (Downloader, error) {
 			return mockDl, nil
@@ -126,7 +130,12 @@ func Test_runDownloadCmd(t *testing.T) {
 
 		err := runDownloadCmd(cmd, []string{"https://adventofcode.com/2023/day/1"})
 		require.NoError(t, err)
-		assert.Contains(t, outBuf.String(), "/exercises/2023/01-trebuchet")
+		out := outBuf.String()
+		assert.Contains(t, out, "/exercises/2023/01-trebuchet")
+		assert.Contains(t, out, "input.txt")
+		assert.Contains(t, out, "added")
+		assert.Contains(t, out, "info.json")
+		assert.Contains(t, out, "skipped")
 	})
 
 	t.Run("language flag passed to downloader", func(t *testing.T) {
@@ -141,6 +150,7 @@ func Test_runDownloadCmd(t *testing.T) {
 		mockDl := mocks.NewMockDownloader(t)
 		mockDl.EXPECT().Download().Return(nil)
 		mockDl.EXPECT().FilePath().Return("/some/path")
+		mockDl.EXPECT().Report().Return(nil)
 
 		makeDownloader = func(_ config.Config, _, lang string, _ *exercise.Overwrites) (Downloader, error) {
 			gotLang = lang
@@ -171,6 +181,7 @@ func Test_runDownloadCmd(t *testing.T) {
 		mockDl := mocks.NewMockDownloader(t)
 		mockDl.EXPECT().Download().Return(nil)
 		mockDl.EXPECT().FilePath().Return("/some/path")
+		mockDl.EXPECT().Report().Return(nil)
 
 		makeDownloader = func(_ config.Config, _, _ string, forced *exercise.Overwrites) (Downloader, error) {
 			gotForced = forced
