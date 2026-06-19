@@ -67,7 +67,12 @@ func setupBuffers(cmd *exec.Cmd) (io.WriteCloser, error) {
 	return cmd.StdinPipe()
 }
 
-func checkWait(cmd *exec.Cmd) ([]byte, error) {
+// checkWait returns the next stdout entry from the command, blocking until one
+// is available. The exited channel must be closed by the sole owner of
+// cmd.Wait() once the process terminates; checkWait uses it to detect a
+// subprocess that died without producing output (e.g. a startup crash) and
+// returns its exit code and stderr rather than spinning forever.
+func checkWait(cmd *exec.Cmd, exited <-chan struct{}) ([]byte, error) {
 	const checkWaitDelay time.Duration = 10 * time.Millisecond
 
 	c := cmd.Stdout.(*customWriter) //nolint:errcheck // we will handle errors in the loop
@@ -78,21 +83,28 @@ func checkWait(cmd *exec.Cmd) ([]byte, error) {
 			return e, nil
 		}
 
-		if cmd.ProcessState != nil {
+		select {
+		case <-exited:
+			// Re-check for a final entry that may have landed alongside exit, so
+			// a process that wrote its result and then exited still succeeds.
+			if finalEntry, getErr := c.GetEntry(); getErr == nil {
+				return finalEntry, nil
+			}
+
 			stderrBuf, _ := cmd.Stderr.(*bytes.Buffer)
 			return nil, fmt.Errorf(
 				"run failed with exit code %d: %s",
 				cmd.ProcessState.ExitCode(),
 				stderrBuf.String())
+		default:
+			time.Sleep(checkWaitDelay)
 		}
-
-		time.Sleep(checkWaitDelay)
 	}
 }
 
-func readJSONFromCommand(res any, cmd *exec.Cmd) error {
+func readJSONFromCommand(res any, cmd *exec.Cmd, exited <-chan struct{}) error {
 	for {
-		inp, err := checkWait(cmd)
+		inp, err := checkWait(cmd, exited)
 		if err != nil {
 			return err
 		}

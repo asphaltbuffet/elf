@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os/exec"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -189,6 +190,17 @@ func TestSetupBuffers(t *testing.T) {
 	}
 }
 
+// reaped runs cmd to completion (populating ProcessState) and returns a closed
+// channel, modelling the post-Wait state the reaper goroutine signals via the
+// runner's exited channel.
+func reaped(cmd *exec.Cmd) <-chan struct{} {
+	_ = cmd.Run()
+	ch := make(chan struct{})
+	close(ch)
+
+	return ch
+}
+
 func Test_checkWait(t *testing.T) {
 	t.Run("returns entry when available", func(t *testing.T) {
 		cw := &customWriter{
@@ -198,7 +210,8 @@ func Test_checkWait(t *testing.T) {
 		cmd.Stdout = cw
 		cmd.Stderr = new(bytes.Buffer)
 
-		got, err := checkWait(cmd)
+		// Process still running: an open channel never fires the exit path.
+		got, err := checkWait(cmd, make(chan struct{}))
 
 		require.NoError(t, err)
 		assert.JSONEq(t, `{"task_id":"1","ok":true}`, string(got))
@@ -210,9 +223,7 @@ func Test_checkWait(t *testing.T) {
 		cmd.Stdout = cw
 		cmd.Stderr = new(bytes.Buffer)
 
-		_ = cmd.Run() // sets ProcessState
-
-		got, err := checkWait(cmd)
+		got, err := checkWait(cmd, reaped(cmd))
 
 		require.Error(t, err)
 		assert.Nil(t, got)
@@ -226,16 +237,49 @@ func Test_checkWait(t *testing.T) {
 		cmd.Stdout = cw
 		cmd.Stderr = new(bytes.Buffer)
 
-		_ = cmd.Run()
-
-		got, err := checkWait(cmd)
+		got, err := checkWait(cmd, reaped(cmd))
 
 		require.Error(t, err)
 		assert.Nil(t, got)
 		assert.Contains(t, err.Error(), "exit code 1")
 	})
 
-	t.Run("prefers entries over process state", func(t *testing.T) {
+	t.Run("returns error when process dies without producing output", func(t *testing.T) {
+		// Real-world path: the subprocess crashes on startup (writes to stderr,
+		// nothing to stdout). checkWait must detect exit via the closed channel
+		// and return its error rather than spinning forever. The timeout guard
+		// fails loudly if it hangs.
+		cmd := exec.Command("sh", "-c", "echo 'startup crash' >&2; exit 3")
+		cw := &customWriter{}
+		cmd.Stdout = cw
+		cmd.Stderr = new(bytes.Buffer)
+
+		exited := reaped(cmd)
+		done := make(chan struct{})
+
+		var (
+			got []byte
+			err error
+		)
+
+		go func() {
+			got, err = checkWait(cmd, exited)
+			close(done)
+		}()
+
+		select {
+		case <-done:
+		case <-time.After(5 * time.Second):
+			t.Fatal("checkWait hung on a dead subprocess")
+		}
+
+		require.Error(t, err)
+		assert.Nil(t, got)
+		assert.Contains(t, err.Error(), "exit code 3")
+		assert.Contains(t, err.Error(), "startup crash")
+	})
+
+	t.Run("prefers entries over process exit", func(t *testing.T) {
 		// Even if the process has exited, available entries are returned first.
 		cmd := exec.Command("true")
 		cw := &customWriter{
@@ -244,9 +288,7 @@ func Test_checkWait(t *testing.T) {
 		cmd.Stdout = cw
 		cmd.Stderr = new(bytes.Buffer)
 
-		_ = cmd.Run() // ProcessState is set, but entries exist
-
-		got, err := checkWait(cmd)
+		got, err := checkWait(cmd, reaped(cmd))
 
 		require.NoError(t, err)
 		assert.Equal(t, []byte("result data"), got)
@@ -264,10 +306,10 @@ func Test_readJSONFromCommand(t *testing.T) {
 		cmd.Stdout = cw
 		cmd.Stderr = new(bytes.Buffer)
 
-		_ = cmd.Run()
+		exited := reaped(cmd)
 
 		var result protocol.Result
-		err := readJSONFromCommand(&result, cmd)
+		err := readJSONFromCommand(&result, cmd, exited)
 
 		require.NoError(t, err)
 		assert.Equal(t, "abc", result.TaskID)
@@ -288,10 +330,10 @@ func Test_readJSONFromCommand(t *testing.T) {
 		cmd.Stdout = cw
 		cmd.Stderr = new(bytes.Buffer)
 
-		_ = cmd.Run()
+		exited := reaped(cmd)
 
 		var result protocol.Result
-		err := readJSONFromCommand(&result, cmd)
+		err := readJSONFromCommand(&result, cmd, exited)
 
 		require.NoError(t, err)
 		assert.Equal(t, "answer", result.Output)
@@ -307,10 +349,10 @@ func Test_readJSONFromCommand(t *testing.T) {
 		cmd.Stdout = cw
 		cmd.Stderr = new(bytes.Buffer)
 
-		_ = cmd.Run()
+		exited := reaped(cmd)
 
 		var result protocol.Result
-		err := readJSONFromCommand(&result, cmd)
+		err := readJSONFromCommand(&result, cmd, exited)
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "exit code 1")
@@ -326,10 +368,10 @@ func Test_readJSONFromCommand(t *testing.T) {
 		cmd.Stdout = cw
 		cmd.Stderr = new(bytes.Buffer)
 
-		_ = cmd.Run()
+		exited := reaped(cmd)
 
 		var raw map[string]json.RawMessage
-		err := readJSONFromCommand(&raw, cmd)
+		err := readJSONFromCommand(&raw, cmd, exited)
 
 		require.NoError(t, err)
 		assert.Contains(t, raw, "name")
