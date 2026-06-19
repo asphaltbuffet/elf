@@ -106,7 +106,7 @@ type MockRunner_Close_Call struct {
 
 // Close is a helper method to define mock.On call
 //   - ctx context.Context
-func (_e *MockRunner_Expecter) Close(ctx interface{}) *MockRunner_Close_Call {
+func (_e *MockRunner_Expecter) Close(ctx any) *MockRunner_Close_Call {
 	return &MockRunner_Close_Call{Call: _e.mock.On("Close", ctx)}
 }
 
@@ -157,7 +157,7 @@ type MockRunner_Open_Call struct {
 
 // Open is a helper method to define mock.On call
 //   - ctx context.Context
-func (_e *MockRunner_Expecter) Open(ctx interface{}) *MockRunner_Open_Call {
+func (_e *MockRunner_Expecter) Open(ctx any) *MockRunner_Open_Call {
 	return &MockRunner_Open_Call{Call: _e.mock.On("Open", ctx)}
 }
 
@@ -208,7 +208,7 @@ type MockRunner_Prepare_Call struct {
 
 // Prepare is a helper method to define mock.On call
 //   - ctx context.Context
-func (_e *MockRunner_Expecter) Prepare(ctx interface{}) *MockRunner_Prepare_Call {
+func (_e *MockRunner_Expecter) Prepare(ctx any) *MockRunner_Prepare_Call {
 	return &MockRunner_Prepare_Call{Call: _e.mock.On("Prepare", ctx)}
 }
 
@@ -271,7 +271,7 @@ type MockRunner_Run_Call struct {
 // Run is a helper method to define mock.On call
 //   - ctx context.Context
 //   - task *protocol.Task
-func (_e *MockRunner_Expecter) Run(ctx interface{}, task interface{}) *MockRunner_Run_Call {
+func (_e *MockRunner_Expecter) Run(ctx any, task any) *MockRunner_Run_Call {
 	return &MockRunner_Run_Call{Call: _e.mock.On("Run", ctx, task)}
 }
 

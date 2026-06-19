@@ -48,10 +48,15 @@ jobs:
       - name: Clone Repository
         uses: actions/checkout@v6
 
+      # Use the latest stable Go (not go.mod's pinned version) on purpose:
+      # govulncheck reports stdlib vulns based on the toolchain it runs under.
+      # Scanning under the newest patch release clears stdlib advisories that
+      # are already fixed upstream but not yet reflected in go.mod's version,
+      # without changing the project's go.mod language version.
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version-file: 'go.mod'
+          go-version: 'stable'
 
       - name: Set up mise
         uses: jdx/mise-action@v4
