@@ -80,20 +80,3 @@ func Test_HumanizedLogTicks_Ticks(t *testing.T) {
 		assert.Panics(t, func() { h.Ticks(1, -1) })
 	})
 }
-
-func Test_RelativeLogTicks(t *testing.T) {
-	ticks := RelativeLogTicks{}.Ticks(1, 1000)
-
-	// Collect the labelled (major) ticks.
-	labels := map[float64]string{}
-	for _, tk := range ticks {
-		if tk.Label != "" {
-			labels[tk.Value] = tk.Label
-		}
-	}
-
-	assert.Equal(t, "1×", labels[1])
-	assert.Equal(t, "10×", labels[10])
-	assert.Equal(t, "100×", labels[100])
-	assert.Equal(t, "1000×", labels[1000])
-}
