@@ -50,6 +50,7 @@ func runInstallCmd(cmd *cobra.Command, _ []string) error {
 		{"python.templ", elfrunners.PythonTemplate},
 		{"go.tmpl", elfrunners.GoTemplate},
 		{"bash.tmpl", elfrunners.BashTemplate},
+		{"rust.tmpl", elfrunners.RustTemplate},
 	}
 
 	for _, tmpl := range templates {
@@ -67,6 +68,14 @@ func runInstallCmd(cmd *cobra.Command, _ []string) error {
 		cmd.Printf("Wrote %s\n", dest)
 	}
 
+	printRunnerConfig(cmd, runnersDir)
+
+	return nil
+}
+
+// printRunnerConfig prints the paste-able [[runner]] blocks for the built-in
+// runners, with template paths resolved under runnersDir.
+func printRunnerConfig(cmd *cobra.Command, runnersDir string) {
 	cmd.Println()
 	cmd.Println("Add the following to your elf.toml:")
 	cmd.Println()
@@ -112,13 +121,31 @@ wrapper_ext = ".sh"
 [runner.open]
 interpreter = "bash"
 args = ["{wrapper_file}"]
+
+[[runner]]
+key = "rs"
+name = "Rust"
+
+[runner.prepare]
+template_path = %q
+# Wrapper renders to {lang_dir}/src/runtime-wrapper.rs (the bin crate entrypoint;
+# the scaffolded Cargo.toml points [[bin]] path at that file).
+wrapper_subdir = "src"
+wrapper_ext = ".rs"
+build_commands = [
+  ["cargo", "build", "--release", "--manifest-path", "{lang_dir}/Cargo.toml"],
+]
+
+[runner.open]
+# Crate name is pinned to "solution" in the scaffolded Cargo.toml, so the built
+# binary is always at this path regardless of year/day.
+binary = "{lang_dir}/target/release/solution"
 `,
 		filepath.Join(runnersDir, "python.templ"),
 		filepath.Join(runnersDir, "go.tmpl"),
 		filepath.Join(runnersDir, "bash.tmpl"),
+		filepath.Join(runnersDir, "rust.tmpl"),
 	)
 
 	cmd.Println("Replace YOUR_MODULE with your Go module name (from go.mod, e.g. github.com/you/advent-of-code).")
-
-	return nil
 }
