@@ -30,15 +30,42 @@ func Test_styleBox(t *testing.T) {
 	assert.Less(t, fill.A, uint8(255), "fill is translucent")
 }
 
-func Test_buildBoxPlot_isRelative(t *testing.T) {
-	data := makeBenchmarkData(2015, 1) // Golang + Python, both parts; Golang faster
+func Test_buildConsistencyFacets(t *testing.T) {
+	data := makeBenchmarkData(2015, 1) // Golang + Python, both parts, 3 samples each
 
-	p, err := buildBoxPlot(data)
+	grid, err := buildConsistencyFacets(data)
 	require.NoError(t, err)
 
-	// Relative axis: marker is RelativeLogTicks and label names "Relative".
-	assert.IsType(t, RelativeLogTicks{}, p.Y.Tick.Marker, "Y axis must use relative ticks")
-	assert.Contains(t, p.Y.Label.Text, "Relative", "Y label names the relative view")
+	require.Len(t, grid, 2, "two rows = two parts")
+	require.Len(t, grid[0], 2, "two columns = two languages (Golang, Python)")
+
+	// Part One, first language cell exists and is titled with the language name.
+	require.NotNil(t, grid[0][0])
+	assert.Contains(t, grid[0][0].Title.Text, "median", "cell subtitle names the absolute median")
+
+	// Left column carries the Y label; it names percent-of-median.
+	assert.Contains(t, grid[0][0].Y.Label.Text, "%", "left column labels the percent axis")
+}
+
+func Test_buildConsistencyFacets_noData(t *testing.T) {
+	_, err := buildConsistencyFacets(nil)
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "no benchmark data")
+}
+
+func Test_buildConsistencyFacets_missingPartTwo(t *testing.T) {
+	data := makeBenchmarkDataNilPartTwo(2015, 1) // first impl has nil PartTwo
+
+	grid, err := buildConsistencyFacets(data)
+	require.NoError(t, err)
+
+	// languages are sorted; "Golang" < "Python". makeBenchmarkDataNilPartTwo nils
+	// PartTwo on the first implementation of each day (Golang). So Part Two (row 1),
+	// Golang column (0) must be a blank (nil) cell, grid still aligned.
+	require.Len(t, grid, 2)
+	require.Len(t, grid[1], 2)
+	assert.Nil(t, grid[1][0], "Golang Part Two is missing → blank cell")
+	assert.NotNil(t, grid[1][1], "Python Part Two present")
 }
 
 func Test_generateBoxPlot(t *testing.T) {
