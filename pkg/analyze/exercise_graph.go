@@ -3,82 +3,112 @@ package analyze
 import (
 	"errors"
 	"fmt"
-	"image/color"
 	"sort"
 
+	"github.com/dustin/go-humanize"
 	"gonum.org/v1/plot"
+	"gonum.org/v1/plot/font"
 	"gonum.org/v1/plot/plotter"
-	"gonum.org/v1/plot/plotutil"
 	"gonum.org/v1/plot/vg"
-	"gonum.org/v1/plot/vg/draw"
 
 	"github.com/asphaltbuffet/elf/pkg/exercise"
 )
-
-// colorThumb is a Thumbnailer that draws a filled rectangle in a single color,
-// used to add BoxPlot entries to a legend (BoxPlot does not implement Thumbnailer).
-type colorThumb struct{ c color.Color }
-
-func (t colorThumb) Thumbnail(c *draw.Canvas) {
-	pts := []vg.Point{
-		{X: c.Min.X, Y: c.Min.Y},
-		{X: c.Max.X, Y: c.Min.Y},
-		{X: c.Max.X, Y: c.Max.Y},
-		{X: c.Min.X, Y: c.Max.Y},
-	}
-	poly := c.ClipPolygonY(pts)
-	c.FillPolygon(t.c, poly)
-}
 
 // referenceLineSeconds is AoC's soft running-time target, drawn as a dashed
 // reference line on every analyze graph.
 const referenceLineSeconds = 15
 
-// generateBoxPlot renders one exercise's per-language timing distributions,
-// grouped by Part (Part One, then Part Two), one box per language per group.
+// generateBoxPlot renders one exercise's per-language consistency facets: a 2×N
+// grid (rows = Parts, columns = languages) where each cell shows that language's
+// run samples as a percentage of its own median.
 func generateBoxPlot(benchData []*exercise.BenchmarkData, outfile string) error {
 	const (
-		plotWidthInches  = 9 * vg.Inch
-		plotHeightInches = 5 * vg.Inch
-		plotDPI          = 300
-		redlineDashes    = 2
+		facetWidthInches  = 4 * vg.Inch
+		facetHeightInches = 3 * vg.Inch
+		plotDPI           = 150
 	)
 
-	if len(benchData) == 0 {
-		return errors.New("no benchmark data to graph")
-	}
-
-	samples, langs := collectBoxSamples(benchData)
-
-	p := plot.New()
-	p.Title.Text = fmt.Sprintf("Advent of Code %d/%02d: %s",
-		benchData[0].Year, benchData[0].Day, benchData[0].Title)
-	p.Y.Label.Text = "Running time"
-	p.Y.Scale = plot.LogScale{}
-	p.Y.Tick.Marker = HumanizedLogTicks{}
-	p.Y.Min = 0.000001
-	applyTheme(p)
-
-	nominal := []string{"Part One", "Part Two"}
-
-	if err := addBoxGroups(p, samples, langs, nominal); err != nil {
+	grid, err := buildConsistencyFacets(benchData)
+	if err != nil {
 		return err
 	}
 
-	// X tick at the centre of each part group.
-	center := float64(len(langs)-1) / 2 //nolint:mnd // group centre offset
-	p.X.Tick.Marker = plot.ConstantTicks([]plot.Tick{
-		{Value: center, Label: nominal[0]},
-		{Value: float64(len(langs)+1) + center, Label: nominal[1]},
-	})
+	cols := 0
+	if len(grid) > 0 {
+		cols = len(grid[0])
+	}
 
-	redline := plotter.NewFunction(func(_ float64) float64 { return referenceLineSeconds })
-	redline.Color = redlineColor()
-	redline.Width = vg.Points(redlineWidthPt)
-	redline.Dashes = plotutil.Dashes(redlineDashes)
-	p.Add(redline)
+	w := facetWidthInches * vg.Length(cols)
+	h := facetHeightInches * vg.Length(len(grid))
 
-	return savePlotPNG(p, outfile, plotWidthInches, plotHeightInches, plotDPI)
+	return saveGridPNG(grid, outfile, font.Length(w), font.Length(h), plotDPI)
+}
+
+// buildConsistencyFacets builds the 2×N facet grid: rows are Parts (Part One,
+// Part Two), columns are languages (sorted). Each cell is an independently
+// auto-scaled box plot of medianPercents(samples) for that (language, part); a
+// missing (language, part) is a nil cell so columns stay aligned.
+func buildConsistencyFacets(benchData []*exercise.BenchmarkData) ([][]*plot.Plot, error) {
+	const numParts = 2
+
+	if len(benchData) == 0 {
+		return nil, errors.New("no benchmark data to graph")
+	}
+
+	samples, langs := collectBoxSamples(benchData)
+	partNames := []string{"Part One", "Part Two"}
+
+	grid := make([][]*plot.Plot, numParts)
+	for part := range numParts {
+		grid[part] = make([]*plot.Plot, len(langs))
+
+		for col, lang := range langs {
+			cell, err := buildFacetCell(lang, partNames[part], samples[lang][part], col == 0)
+			if err != nil {
+				return nil, err
+			}
+
+			grid[part][col] = cell // nil when no samples
+		}
+	}
+
+	return grid, nil
+}
+
+// buildFacetCell builds one facet: a box plot of the samples as a percentage of
+// their own median, titled with the language and its absolute median. Returns a
+// nil plot (blank cell) when there are no samples. leftCol controls whether the
+// Y axis label is shown (only the leftmost column carries it).
+func buildFacetCell(lang, partName string, samples plotter.Values, leftCol bool) (*plot.Plot, error) {
+	if len(samples) == 0 {
+		return nil, nil //nolint:nilnil // a nil plot is the intended "blank cell" sentinel
+	}
+
+	pct := medianPercents(samples)
+	if len(pct) == 0 {
+		return nil, nil //nolint:nilnil // non-positive median → blank cell
+	}
+
+	p := plot.New()
+	p.Title.Text = fmt.Sprintf("%s — %s\n(median %s)", lang, partName,
+		humanize.SIWithDigits(median(samples), 1, "s"))
+	if leftCol {
+		p.Y.Label.Text = "% of own median"
+	}
+	p.X.Tick.Marker = plot.ConstantTicks([]plot.Tick{}) // suppress X ticks
+	applyTheme(p)
+
+	const boxWidth = 40
+
+	bp, err := plotter.NewBoxPlot(vg.Points(boxWidth), 0, pct)
+	if err != nil {
+		return nil, fmt.Errorf("box plot for %s %s: %w", lang, partName, err)
+	}
+
+	styleBox(bp, lang)
+	p.Add(bp)
+
+	return p, nil
 }
 
 // collectBoxSamples aggregates timing data from benchData into per-language,
@@ -123,38 +153,4 @@ func styleBox(bp *plotter.BoxPlot, lang string) {
 	bp.WhiskerStyle.Color = lc
 	bp.WhiskerStyle.Width = vg.Points(boxOutlineWidthPt)
 	bp.GlyphStyle.Color = lc
-}
-
-// addBoxGroups adds one BoxPlot per language per part-group to p, coloring each
-// box by language. Legend entries are added for Part One only (one entry per lang).
-func addBoxGroups(p *plot.Plot, samples map[string]map[int]plotter.Values, langs, nominal []string) error {
-	const boxWidth = 20
-
-	w := vg.Points(boxWidth)
-
-	for partIdx := range nominal {
-		for langIdx, lang := range langs {
-			vals := samples[lang][partIdx]
-			if len(vals) == 0 {
-				continue
-			}
-
-			// Group base = partIdx * (len(langs)+1); spread languages by langIdx.
-			x := float64(partIdx*(len(langs)+1) + langIdx)
-
-			bp, err := plotter.NewBoxPlot(w, x, vals)
-			if err != nil {
-				return fmt.Errorf("box plot for %s %s: %w", lang, nominal[partIdx], err)
-			}
-
-			styleBox(bp, lang)
-			p.Add(bp)
-
-			if partIdx == 0 {
-				p.Legend.Add(lang, colorThumb{c: colorForLang(lang)})
-			}
-		}
-	}
-
-	return nil
 }
