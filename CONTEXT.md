@@ -119,11 +119,13 @@ Renders run-time graphs from persisted benchmark data. One operation with two sc
 from the shape of the target directory — no mode flag:
 
 - **Exercise scope** — the target *is* an Exercise (has `info.json`). Compares language against
-  language for that one puzzle, across both Parts. Rendered as a box plot grouped by Part, one box
-  per language, plotting *relative runtime* (each language's samples divided by that part's fastest
-  mean) on a log axis with a reference line at 1×. The box still shows the sample distribution
-  (median, quartiles, outliers), but in ratio terms — so "how far behind the leader, and how
-  consistently" is legible where absolute log-scale timing was not. See *Comparison vocabulary*.
+  language for that one puzzle, across both Parts. Rendered as a **2×N grid of per-language
+  consistency facets**: rows are Parts (Part One, Part Two), columns are languages, and each cell
+  is an independently auto-scaled box plot of *consistency* (each sample as a percentage of that
+  language's own median). It deliberately does **not** compare speed — that lives in the year graph
+  — because the cross-language speed gap and each language's own spread cannot share one axis. A
+  missing (language, part) is a blank-but-present cell so the grid stays aligned. See *Comparison
+  vocabulary*.
 - **Year scope** — the target *contains* Exercise subdirectories (is a year). Compares day against
   day across the year, with languages overlaid. Rendered as a line graph of running time vs. day,
   one line per language.
@@ -159,9 +161,15 @@ These terms are distinct and must not be conflated — in particular, two differ
   baseline is computed *per part*: every sample in a part-group is divided by that part's
   fastest mean, so the reference language (the one sitting at 1×) may differ between the
   Part One and Part Two groups — that change is itself a visible strength signal.
-- **Consistency** — how tightly a language's repeated samples for one (day, part) cluster
-  (spread/variance of its raw run samples). A separate axis of "strength" from speed: a
-  language can be slower on average yet far more predictable.
+- **Consistency** — how tightly a language's repeated samples for one (day, part) cluster.
+  A separate axis of "strength" from speed: a language can be slower on average yet far more
+  predictable. Consistency is encoded as each sample's **percentage of that language's own
+  median** (sample ÷ median × 100), so the spread is dimensionless and centred at 100%. The
+  median (robust to outliers) is the normaliser; the absolute median is shown alongside for
+  context but is not the comparison axis. This deliberately discards cross-language *speed*
+  comparison from the axis — speed lives in the relative runtime view and the year graph —
+  because the ~4-orders-of-magnitude speed gap between languages and each language's own
+  modest spread cannot share one axis without crushing the spread to an illegible sliver.
 
 Scope is detected by looking at the target and at most one level below it: an `info.json` in the
 target means Exercise scope; otherwise an `info.json` in an immediate child means Year scope;

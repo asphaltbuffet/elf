@@ -1,5 +1,12 @@
 # Exercise-scope graph compares relative runtime, not absolute
 
+> **Status: Superseded by [ADR 0008](0008-per-language-consistency-facets.md).** The
+> claim below that the relative box plot keeps consistency legible ("median, quartiles,
+> outliers stay visible") was disproven when rendered against real data: a log axis with
+> the ~4-orders-of-magnitude cross-language range crushes each language's own spread to an
+> illegible sliver, so the relative box plot looked essentially identical to the absolute
+> one. ADR 0008 replaces the exercise-scope graph with per-language consistency facets.
+
 The exercise-scope (single-day) analyze graph plots **relative runtime** — each language's
 raw timing samples divided by the fastest language's mean *for that part* — on a log axis
 with a reference line at 1×, instead of absolute durations. The box-plot shape is kept
