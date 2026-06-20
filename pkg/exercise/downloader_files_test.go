@@ -39,6 +39,26 @@ func TestExerciseScaffold_write(t *testing.T) {
 			wantFiles: []string{"input.txt", "info.json", filepath.Join("go", "exercise.go"), "README.md"},
 		},
 		{
+			name: "writes rust crate with nested src dir",
+			ex: &Exercise{
+				ID:       "2015-01",
+				Title:    "Not Quite Lisp",
+				Language: "rs",
+				Year:     2015,
+				Day:      1,
+				Path:     filepath.Join("exercises", "2015", "01-rust"),
+				Data:     &Data{InputData: "((()))", InputFileName: "input.txt"},
+			},
+			assertion: require.NoError,
+			// solution.rs lives two levels deep (rs/src/), exercising the
+			// parent-dir creation in addTemplatedFile.
+			wantFiles: []string{
+				"input.txt", "info.json", "README.md",
+				filepath.Join("rs", "Cargo.toml"),
+				filepath.Join("rs", "src", "solution.rs"),
+			},
+		},
+		{
 			name: "unknown language errors",
 			ex: &Exercise{
 				Language: "ruby",

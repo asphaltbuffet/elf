@@ -25,6 +25,12 @@ var pyTemplate []byte
 //go:embed templates/bash.tmpl
 var bashTemplate []byte
 
+//go:embed templates/rs-cargo.tmpl
+var rsCargoTemplate []byte
+
+//go:embed templates/rs-solution.tmpl
+var rsSolutionTemplate []byte
+
 type tmplFile struct {
 	Name     string
 	Path     string
@@ -118,6 +124,27 @@ func (s *exerciseScaffold) write(ex *Exercise) (Report, error) {
 			FileName: "exercise.sh",
 			Replace:  false,
 		})
+
+	case "rs":
+		// A cargo crate per exercise: Cargo.toml at the crate root and the
+		// solution module under src/. The harness (src/runtime-wrapper.rs) is
+		// rendered by the Rust runner's PrepareSpec, not scaffolded here.
+		tmpls = append(tmpls,
+			tmplFile{
+				Name:     "rs-cargo",
+				Path:     "rs",
+				Data:     rsCargoTemplate,
+				FileName: "Cargo.toml",
+				Replace:  false,
+			},
+			tmplFile{
+				Name:     "rs-solution",
+				Path:     filepath.Join("rs", "src"),
+				Data:     rsSolutionTemplate,
+				FileName: "solution.rs",
+				Replace:  false,
+			},
+		)
 
 	default:
 		return nil, fmt.Errorf("template %s files: %w", ex.Language, ErrInvalidLanguage)
@@ -224,6 +251,13 @@ func (s *exerciseScaffold) addTemplatedFile(ex *Exercise, templateFile tmplFile)
 
 	if err = t.Execute(b, ex); err != nil {
 		return Skipped, fmt.Errorf("template %q: %w", templateFile.Name, err)
+	}
+
+	// Ensure the file's parent directory exists. Most templates live directly in
+	// the language dir (already created), but some layouts nest deeper (e.g. the
+	// Rust crate's src/), so create any intermediate dirs here.
+	if err = s.fs.MkdirAll(filepath.Dir(fp), dirPerm); err != nil {
+		return Skipped, fmt.Errorf("creating directory for %q: %w", fp, err)
 	}
 
 	if err = afero.WriteFile(s.fs, fp, b.Bytes(), 0o600); err != nil {

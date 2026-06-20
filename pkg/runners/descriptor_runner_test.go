@@ -96,6 +96,50 @@ func TestDescriptorRunner_Prepare_TemplateVarsSubstituted(t *testing.T) {
 	assert.Equal(t, "import github.com/me/aoc/2015/01-foo/go", string(content))
 }
 
+// TestDescriptorRunner_Prepare_ShippedGoTemplate guards the contract between the
+// shipped go.tmpl (the GoTemplate embed) and the import_path template var that
+// `elf runners install` documents. The two must agree: go.tmpl must read the var
+// via `index . "import_path"`, because Go's text/template cannot access a
+// snake_case map key with `.Field` syntax (it renders "<no value>" instead).
+// Regression for the import-path mismatch that broke the Go runner after
+// `runners install --force` overwrote a customized template.
+func TestDescriptorRunner_Prepare_ShippedGoTemplate(t *testing.T) {
+	templateFile := filepath.Join(t.TempDir(), "go.tmpl")
+	require.NoError(t, os.WriteFile(templateFile, GoTemplate, 0o600))
+
+	exerciseDir := t.TempDir()
+
+	desc := RunnerDescriptor{
+		Key:  "go",
+		Name: "Go",
+		Prepare: PrepareSpec{
+			TemplatePath:  templateFile,
+			WrapperExt:    ".go",
+			WrapperSubdir: "cmd",
+			// The exact var key documented by `elf runners install`.
+			TemplateVars: map[string]string{
+				"import_path": "github.com/me/aoc/{year}/{day}-{title}/go",
+			},
+		},
+		Open: OpenSpec{Binary: "{binary_file}"},
+	}
+
+	meta := ExerciseMeta{Year: 2015, Day: 1, Title: "foo", Dir: exerciseDir, Key: "go"}
+
+	runner := &descriptorRunner{desc: desc, meta: meta}
+	require.NoError(t, runner.Prepare(context.Background()))
+
+	wrapperPath := filepath.Join(exerciseDir, "go", "cmd", "runtime-wrapper.go")
+	content, err := os.ReadFile(wrapperPath)
+	require.NoError(t, err)
+
+	rendered := string(content)
+	assert.NotContains(t, rendered, "<no value>",
+		"shipped go.tmpl must resolve the import_path var; got <no value>")
+	assert.Contains(t, rendered, `ex "github.com/me/aoc/2015/01-foo/go"`,
+		"shipped go.tmpl should render the resolved import path")
+}
+
 func TestDescriptorRunner_Cleanup_RemovesEmptySubdir(t *testing.T) {
 	templateContent := "hello"
 	templateFile := filepath.Join(t.TempDir(), "test.go.tmpl")

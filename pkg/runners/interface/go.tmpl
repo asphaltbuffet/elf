@@ -10,7 +10,7 @@ import (
 	"os"
 	"time"
 
-	ex "{{ .ImportPath }}"
+	ex "{{ index . "import_path" }}"
 
 	"github.com/asphaltbuffet/elf/pkg/runners"
 )

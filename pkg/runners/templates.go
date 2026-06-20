@@ -16,3 +16,8 @@ var PythonTemplate []byte
 //
 //go:embed interface/bash.tmpl
 var BashTemplate []byte
+
+// RustTemplate is the built-in Rust runner wrapper template (rendered to src/main.rs).
+//
+//go:embed interface/rust.tmpl
+var RustTemplate []byte
