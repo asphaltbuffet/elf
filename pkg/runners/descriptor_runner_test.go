@@ -3,8 +3,10 @@ package runners
 import (
 	"context"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -263,4 +265,78 @@ done
 	require.NotNil(t, runner.stdin)
 
 	_ = runner.Close(ctx)
+}
+
+// startReapedRunner builds a descriptorRunner around a process that has already
+// exited, wiring a reaper goroutine exactly like Open does but leaving the
+// `exited` channel OPEN. This forces Close past its early fast-path so it
+// exercises the SIGTERM-on-dead-process race directly.
+func startReapedRunner(t *testing.T) *descriptorRunner {
+	t.Helper()
+
+	cmd := exec.Command("true") // exits immediately
+	stdin, err := cmd.StdinPipe()
+	require.NoError(t, err)
+	require.NoError(t, cmd.Start())
+
+	waitErr := make(chan error, 1)
+	exited := make(chan struct{})
+
+	go func() {
+		waitErr <- cmd.Wait()
+		// Intentionally do NOT close(exited): we want Close to skip its
+		// fast-path and reach the SIGTERM line while the process is dead.
+	}()
+
+	// Wait for the reaper to observe exit, then put the result back so Close can
+	// drain it. This guarantees SIGTERM lands on an already-finished process
+	// (the benign os.ErrProcessDone race).
+	select {
+	case waited := <-waitErr:
+		waitErr <- waited
+	case <-time.After(2 * time.Second):
+		t.Fatal("reaper did not finish in time")
+	}
+
+	return &descriptorRunner{
+		desc:    RunnerDescriptor{Key: "sh", Name: "Shell"},
+		cmd:     cmd,
+		stdin:   stdin,
+		waitErr: waitErr,
+		exited:  exited,
+	}
+}
+
+func TestDescriptorRunner_Close_SigtermOnDeadProcess(t *testing.T) {
+	runner := startReapedRunner(t)
+
+	// The process is already dead; SIGTERM returns os.ErrProcessDone. Close must
+	// treat that as a successful teardown, not a fatal error.
+	require.NoError(t, runner.Close(context.Background()))
+}
+
+func TestDescriptorRunner_Close_TimeoutKilledProcess(t *testing.T) {
+	scriptFile := filepath.Join(t.TempDir(), "sleep.sh")
+	require.NoError(t, os.WriteFile(scriptFile, []byte("#!/bin/sh\nsleep 60\n"), 0o700))
+
+	exerciseDir := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(exerciseDir, "sh"), 0o755))
+
+	desc := RunnerDescriptor{
+		Key:  "sh",
+		Name: "Shell",
+		Open: OpenSpec{Interpreter: "sh", Args: []string{scriptFile}},
+	}
+	runner := &descriptorRunner{desc: desc, meta: ExerciseMeta{Dir: exerciseDir, Key: "sh"}}
+
+	require.NoError(t, runner.Open(context.Background()))
+
+	// Mimic a fired per-task deadline: the context is already cancelled when
+	// Close runs, driving the ctx.Done() branch that Kills the process. A
+	// timeout-killed process yields a non-nil waitErr (signal: killed), which
+	// Close must treat as a successful teardown.
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	require.NoError(t, runner.Close(ctx))
 }

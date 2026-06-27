@@ -3,6 +3,7 @@ package exercise
 import (
 	"fmt"
 	"log/slog"
+	"time"
 )
 
 // Exercise represents a single programming challenge with its metadata, runner, and I/O configuration.
@@ -16,7 +17,8 @@ type Exercise struct {
 	Data     *Data  `json:"data"`
 	Path     string `json:"-"`
 
-	customInput string `json:"-"`
+	customInput string        `json:"-"`
+	taskTimeout time.Duration `json:"-"`
 }
 
 // Data contains the relative path to exercise input and the specific test case data for an exercise.

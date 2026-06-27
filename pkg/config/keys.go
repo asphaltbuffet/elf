@@ -21,6 +21,10 @@ const (
 	// Runner configuration keys.
 
 	RunnersKey Key = "runner" // Configuration key for the [[runner]] table array.
+
+	// Task configuration keys.
+
+	TaskTimeoutKey Key = "task.timeout" // Configuration key for the per-task execution timeout.
 )
 
 func (k Key) String() string {

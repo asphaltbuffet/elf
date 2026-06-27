@@ -3,6 +3,7 @@ package test
 
 import (
 	"path/filepath"
+	"time"
 
 	"github.com/lmittmann/tint"
 	"github.com/spf13/cobra"
@@ -12,8 +13,9 @@ import (
 )
 
 var (
-	testCmd  *cobra.Command
-	language string
+	testCmd     *cobra.Command
+	language    string
+	timeoutFlag time.Duration
 
 	makeConfig = func(cf string) (config.Config, error) {
 		return config.NewConfig(config.WithFile(cf))
@@ -38,6 +40,8 @@ func GetTestCmd() *cobra.Command {
 
 		testCmd.Flags().StringVarP(&language, "lang", "l", "", "implementation language")
 		testCmd.Flags().StringP("config-file", "c", "", "configuration file")
+		testCmd.Flags().
+			DurationVarP(&timeoutFlag, "timeout", "t", 0, "per-task timeout (0 or negative = no timeout; omit to use config default)")
 	}
 
 	return testCmd
@@ -63,6 +67,10 @@ func runTestCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	a := appPkg.New(cfg)
+
+	if cmd.Flags().Changed("timeout") {
+		a.SetTaskTimeout(timeoutFlag)
+	}
 
 	_, testErr := a.Test(cmd.Context(), dir, language, "", cmd.OutOrStdout(), nil)
 	if testErr != nil {

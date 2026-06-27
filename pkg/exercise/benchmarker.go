@@ -3,6 +3,7 @@ package exercise
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -190,24 +191,11 @@ func (b *Benchmarker) runBenchmark(
 	}
 
 	for _, t := range benchmarkTasks {
-		benchResult, err := runner.Run(ctx, t)
-		if err != nil {
-			logger.ErrorContext(ctx, "running benchmark", tint.Err(err))
+		if err := b.runBenchmarkTask(ctx, logger, runner, w, cb, t, metricsResults, &results); err != nil {
 			return nil, nil, err
 		}
 
-		if benchResult.Ok && benchResult.Output != "" {
-			r := handleTaskResult(w, benchResult, "")
-			if cb != nil {
-				cb(r)
-			}
-
-			results = append(results, r)
-
-			metricsResults[r.Part] = append(metricsResults[r.Part], benchResult.Duration)
-		}
-
-		if err = progBar.Add(1); err != nil {
+		if err := progBar.Add(1); err != nil {
 			logger.ErrorContext(ctx, "updating progress bar", tint.Err(err))
 			return nil, nil, err
 		}
@@ -225,4 +213,49 @@ func (b *Benchmarker) runBenchmark(
 			PartOne: stats[protocol.PartOne],
 			PartTwo: stats[protocol.PartTwo],
 		}, nil
+}
+
+// runBenchmarkTask executes one benchmark task and records its result.
+// Returns a non-nil error only on fatal runner failure; timeout is handled inline.
+func (b *Benchmarker) runBenchmarkTask(
+	ctx context.Context,
+	logger *slog.Logger,
+	runner runners.Runner,
+	w io.Writer,
+	cb func(tasks.Result),
+	t *protocol.Task,
+	metricsResults map[protocol.Part][]float64,
+	results *[]tasks.Result,
+) error {
+	benchResult, runErr := runWithTimeout(ctx, runner, t, b.taskTimeout)
+	if errors.Is(runErr, errTaskTimeout) {
+		r := timeoutResult(w, t.TaskID)
+		if cb != nil {
+			cb(r)
+		}
+
+		*results = append(*results, r)
+
+		if restartErr := restartRunner(ctx, runner); restartErr != nil {
+			return restartErr
+		}
+
+		return nil
+	} else if runErr != nil {
+		logger.ErrorContext(ctx, "running benchmark", tint.Err(runErr))
+		return runErr
+	}
+
+	if benchResult.Ok && benchResult.Output != "" {
+		r := handleTaskResult(w, benchResult, "")
+		if cb != nil {
+			cb(r)
+		}
+
+		*results = append(*results, r)
+
+		metricsResults[r.Part] = append(metricsResults[r.Part], benchResult.Duration)
+	}
+
+	return nil
 }

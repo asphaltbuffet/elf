@@ -2,6 +2,7 @@ package runners
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"os/exec"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
@@ -72,7 +74,7 @@ func setupBuffers(cmd *exec.Cmd) (io.WriteCloser, error) {
 // cmd.Wait() once the process terminates; checkWait uses it to detect a
 // subprocess that died without producing output (e.g. a startup crash) and
 // returns its exit code and stderr rather than spinning forever.
-func checkWait(cmd *exec.Cmd, exited <-chan struct{}) ([]byte, error) {
+func checkWait(ctx context.Context, cmd *exec.Cmd, exited <-chan struct{}) ([]byte, error) {
 	const checkWaitDelay time.Duration = 10 * time.Millisecond
 
 	c := cmd.Stdout.(*customWriter) //nolint:errcheck // we will handle errors in the loop
@@ -84,6 +86,15 @@ func checkWait(cmd *exec.Cmd, exited <-chan struct{}) ([]byte, error) {
 		}
 
 		select {
+		case <-ctx.Done():
+			if cmd.Process != nil {
+				// Kill the whole process group, not just the leader: a wrapper
+				// runner's real work runs in a forked child that would otherwise
+				// survive and keep the stdout pipe open, blocking cmd.Wait().
+				_ = signalGroup(cmd.Process.Pid, syscall.SIGKILL)
+			}
+
+			return nil, fmt.Errorf("task timed out: %w", ctx.Err())
 		case <-exited:
 			// Re-check for a final entry that may have landed alongside exit, so
 			// a process that wrote its result and then exited still succeeds.
@@ -102,9 +113,9 @@ func checkWait(cmd *exec.Cmd, exited <-chan struct{}) ([]byte, error) {
 	}
 }
 
-func readJSONFromCommand(res any, cmd *exec.Cmd, exited <-chan struct{}) error {
+func readJSONFromCommand(ctx context.Context, res any, cmd *exec.Cmd, exited <-chan struct{}) error {
 	for {
-		inp, err := checkWait(cmd, exited)
+		inp, err := checkWait(ctx, cmd, exited)
 		if err != nil {
 			return err
 		}

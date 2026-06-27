@@ -2,6 +2,7 @@ package runners
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"os/exec"
 	"testing"
@@ -211,7 +212,7 @@ func Test_checkWait(t *testing.T) {
 		cmd.Stderr = new(bytes.Buffer)
 
 		// Process still running: an open channel never fires the exit path.
-		got, err := checkWait(cmd, make(chan struct{}))
+		got, err := checkWait(context.Background(), cmd, make(chan struct{}))
 
 		require.NoError(t, err)
 		assert.JSONEq(t, `{"task_id":"1","ok":true}`, string(got))
@@ -223,7 +224,7 @@ func Test_checkWait(t *testing.T) {
 		cmd.Stdout = cw
 		cmd.Stderr = new(bytes.Buffer)
 
-		got, err := checkWait(cmd, reaped(cmd))
+		got, err := checkWait(context.Background(), cmd, reaped(cmd))
 
 		require.Error(t, err)
 		assert.Nil(t, got)
@@ -237,7 +238,7 @@ func Test_checkWait(t *testing.T) {
 		cmd.Stdout = cw
 		cmd.Stderr = new(bytes.Buffer)
 
-		got, err := checkWait(cmd, reaped(cmd))
+		got, err := checkWait(context.Background(), cmd, reaped(cmd))
 
 		require.Error(t, err)
 		assert.Nil(t, got)
@@ -263,7 +264,7 @@ func Test_checkWait(t *testing.T) {
 		)
 
 		go func() {
-			got, err = checkWait(cmd, exited)
+			got, err = checkWait(context.Background(), cmd, exited)
 			close(done)
 		}()
 
@@ -288,11 +289,82 @@ func Test_checkWait(t *testing.T) {
 		cmd.Stdout = cw
 		cmd.Stderr = new(bytes.Buffer)
 
-		got, err := checkWait(cmd, reaped(cmd))
+		got, err := checkWait(context.Background(), cmd, reaped(cmd))
 
 		require.NoError(t, err)
 		assert.Equal(t, []byte("result data"), got)
 	})
+}
+
+func Test_checkWait_contextCancelled(t *testing.T) {
+	const (
+		taskTimeout  = 50 * time.Millisecond
+		guardTimeout = 2 * time.Second
+	)
+
+	// Start a subprocess that never writes output so checkWait blocks.
+	cmd := exec.Command("sleep", "60")
+	cw := &customWriter{}
+	cmd.Stdout = cw
+	cmd.Stderr = new(bytes.Buffer)
+	require.NoError(t, cmd.Start())
+
+	exited := make(chan struct{})
+
+	go func() {
+		_ = cmd.Wait()
+		close(exited)
+	}()
+
+	ctx, cancel := context.WithTimeout(context.Background(), taskTimeout)
+	defer cancel()
+
+	start := time.Now()
+
+	got, err := checkWait(ctx, cmd, exited)
+
+	require.Less(t, time.Since(start), guardTimeout, "checkWait should return promptly on context cancellation")
+	require.Error(t, err)
+	assert.Nil(t, got)
+	assert.ErrorIs(t, err, context.DeadlineExceeded)
+}
+
+func Test_readJSONFromCommand_contextCancelled(t *testing.T) {
+	const (
+		taskTimeout  = 50 * time.Millisecond
+		guardTimeout = 2 * time.Second
+	)
+
+	// Start a subprocess that never writes output so readJSONFromCommand blocks.
+	cmd := exec.Command("sleep", "60")
+	cw := &customWriter{}
+	cmd.Stdout = cw
+	cmd.Stderr = new(bytes.Buffer)
+	require.NoError(t, cmd.Start())
+
+	exited := make(chan struct{})
+
+	go func() {
+		_ = cmd.Wait()
+		close(exited)
+	}()
+
+	ctx, cancel := context.WithTimeout(context.Background(), taskTimeout)
+	defer cancel()
+
+	start := time.Now()
+
+	var result protocol.Result
+	err := readJSONFromCommand(ctx, &result, cmd, exited)
+
+	require.Less(
+		t,
+		time.Since(start),
+		guardTimeout,
+		"readJSONFromCommand should return promptly on context cancellation",
+	)
+	require.Error(t, err)
+	assert.ErrorIs(t, err, context.DeadlineExceeded)
 }
 
 func Test_readJSONFromCommand(t *testing.T) {
@@ -309,7 +381,7 @@ func Test_readJSONFromCommand(t *testing.T) {
 		exited := reaped(cmd)
 
 		var result protocol.Result
-		err := readJSONFromCommand(&result, cmd, exited)
+		err := readJSONFromCommand(context.Background(), &result, cmd, exited)
 
 		require.NoError(t, err)
 		assert.Equal(t, "abc", result.TaskID)
@@ -333,7 +405,7 @@ func Test_readJSONFromCommand(t *testing.T) {
 		exited := reaped(cmd)
 
 		var result protocol.Result
-		err := readJSONFromCommand(&result, cmd, exited)
+		err := readJSONFromCommand(context.Background(), &result, cmd, exited)
 
 		require.NoError(t, err)
 		assert.Equal(t, "answer", result.Output)
@@ -352,7 +424,7 @@ func Test_readJSONFromCommand(t *testing.T) {
 		exited := reaped(cmd)
 
 		var result protocol.Result
-		err := readJSONFromCommand(&result, cmd, exited)
+		err := readJSONFromCommand(context.Background(), &result, cmd, exited)
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "exit code 1")
@@ -371,7 +443,7 @@ func Test_readJSONFromCommand(t *testing.T) {
 		exited := reaped(cmd)
 
 		var raw map[string]json.RawMessage
-		err := readJSONFromCommand(&raw, cmd, exited)
+		err := readJSONFromCommand(context.Background(), &raw, cmd, exited)
 
 		require.NoError(t, err)
 		assert.Contains(t, raw, "name")

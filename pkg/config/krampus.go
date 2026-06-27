@@ -247,6 +247,13 @@ func (c Config) GetInputFilename() string {
 	return c.viper.GetString(string(InputFileKey))
 }
 
+// GetTaskTimeout returns the configured per-task execution timeout.
+//
+// A value of zero or less disables the timeout.
+func (c Config) GetTaskTimeout() time.Duration {
+	return c.viper.GetDuration(string(TaskTimeoutKey))
+}
+
 // Viper returns the underlying viper instance for direct key manipulation.
 // Intended for use in tests only.
 func (c Config) Viper() *viper.Viper {

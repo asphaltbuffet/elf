@@ -130,6 +130,8 @@ func statusBadge(status tasks.TaskStatus) string {
 		return lipgloss.NewStyle().Bold(true).Foreground(colorBlue).Render("NEW")
 	case tasks.StatusInvalid:
 		return lipgloss.NewStyle().Faint(true).Render("???")
+	case tasks.StatusTimeout:
+		return lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("214")).Render("TIMEOUT")
 	}
 
 	return lipgloss.NewStyle().Faint(true).Render("???")
