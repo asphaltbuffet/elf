@@ -1,6 +1,8 @@
 package exercise
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"io"
 	"time"
@@ -8,6 +10,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/asphaltbuffet/elf/pkg/protocol"
+	"github.com/asphaltbuffet/elf/pkg/runners"
 	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
@@ -112,6 +115,9 @@ func renderResult(w io.Writer, result tasks.Result) {
 		output = statusStyle.Foreground(bad).SetString("FAIL")
 		extra = extraStyle.Foreground(bad).SetString(result.Output)
 		printExtra = true
+
+	case tasks.StatusTimeout:
+		output = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("214")).SetString("TIMEOUT")
 	}
 
 	fmt.Fprintln(w, name, output, followUpText)
@@ -137,4 +143,65 @@ func handleTaskResult(w io.Writer, r *protocol.Result, expected string) tasks.Re
 	renderResult(w, result)
 
 	return result
+}
+
+// timeoutResult synthesizes a TIMEOUT result for a task that exceeded its deadline,
+// renders it inline, and returns it so callers can continue to the next task.
+func timeoutResult(w io.Writer, taskID string) tasks.Result {
+	taskType, part, subpart := tasks.ParseTaskID(taskID)
+
+	r := tasks.Result{
+		ID:      taskID,
+		Type:    taskType,
+		Part:    part,
+		SubPart: subpart,
+		Status:  tasks.StatusTimeout,
+	}
+
+	renderResult(w, r)
+
+	return r
+}
+
+// errTaskTimeout is returned by runWithTimeout when the per-task deadline fires.
+var errTaskTimeout = errors.New("task timed out")
+
+// restartRunner closes the killed runner and reopens it so subsequent tasks
+// can run. This is necessary because Kill() terminates the subprocess; the
+// runner's exited channel is closed and its cmd is dead, so the next Run call
+// would fail immediately with exit code -1.
+func restartRunner(ctx context.Context, r runners.Runner) error {
+	if err := r.Close(ctx); err != nil {
+		return fmt.Errorf("closing runner after timeout: %w", err)
+	}
+
+	if err := r.Open(ctx); err != nil {
+		return fmt.Errorf("reopening runner after timeout: %w", err)
+	}
+
+	return nil
+}
+
+// runWithTimeout executes a single task, wrapping it in a deadline context when timeout > 0.
+// If the task exceeds the deadline, errTaskTimeout is returned so callers can render a
+// TIMEOUT result instead of propagating a fatal error.
+func runWithTimeout(
+	ctx context.Context,
+	r runners.Runner,
+	task *protocol.Task,
+	timeout time.Duration,
+) (*protocol.Result, error) {
+	if timeout <= 0 {
+		return r.Run(ctx, task)
+	}
+
+	taskCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	result, err := r.Run(taskCtx, task)
+	if err != nil && errors.Is(taskCtx.Err(), context.DeadlineExceeded) {
+		return nil, errTaskTimeout
+	}
+
+	return result, err
 }

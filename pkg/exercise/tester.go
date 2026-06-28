@@ -78,8 +78,21 @@ func (e *Exercise) runTests(
 	results := make([]tasks.Result, 0, len(testTasks))
 
 	for _, t := range testTasks {
-		result, err := runner.Run(ctx, t.task)
-		if err != nil {
+		result, err := runWithTimeout(ctx, runner, t.task, e.taskTimeout)
+		if errors.Is(err, errTaskTimeout) {
+			r := timeoutResult(w, t.task.TaskID)
+			if cb != nil {
+				cb(r)
+			}
+
+			results = append(results, r)
+
+			if restartErr := restartRunner(ctx, runner); restartErr != nil {
+				return nil, restartErr
+			}
+
+			continue
+		} else if err != nil {
 			return nil, err
 		}
 

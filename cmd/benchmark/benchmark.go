@@ -3,6 +3,7 @@ package benchmark
 
 import (
 	"path/filepath"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -13,6 +14,7 @@ import (
 var (
 	benchmarkCmd *cobra.Command
 	iterations   int
+	timeoutFlag  time.Duration
 
 	makeConfig = func(cf string) (config.Config, error) {
 		return config.NewConfig(config.WithFile(cf))
@@ -40,6 +42,8 @@ func GetBenchmarkCmd() *cobra.Command {
 
 		benchmarkCmd.Flags().IntVarP(&iterations, "num", "n", DefaultIterations, "number of iterations")
 		benchmarkCmd.Flags().StringP("config-file", "c", "", "configuration file")
+		benchmarkCmd.Flags().
+			DurationVarP(&timeoutFlag, "timeout", "t", 0, "per-task timeout (0 or negative = no timeout; omit to use config default)")
 	}
 
 	return benchmarkCmd
@@ -61,6 +65,10 @@ func runBenchmarkCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	a := appPkg.New(cfg)
+
+	if cmd.Flags().Changed("timeout") {
+		a.SetTaskTimeout(timeoutFlag)
+	}
 
 	_, benchErr := a.Benchmark(cmd.Context(), dir, cfg.GetLanguage(), cmd.OutOrStdout(), nil, iterations)
 	if benchErr != nil {

@@ -6,6 +6,7 @@ import (
 	"context"
 	"io"
 	"log/slog"
+	"time"
 
 	"github.com/spf13/afero"
 
@@ -17,10 +18,11 @@ import (
 
 // App holds shared infrastructure used across CLI commands and TUI screens.
 type App struct {
-	FS       afero.Fs
-	Logger   *slog.Logger
-	language string
-	baseDir  string
+	FS          afero.Fs
+	Logger      *slog.Logger
+	language    string
+	baseDir     string
+	taskTimeout time.Duration
 }
 
 // RegisterRunners populates runners.Available from the given config.
@@ -32,11 +34,18 @@ func RegisterRunners(cfg config.Config) {
 // New constructs an App from a config.Config, extracting FS, Logger, and display values.
 func New(cfg config.Config) *App {
 	return &App{
-		FS:       cfg.GetFs(),
-		Logger:   cfg.GetLogger(),
-		language: cfg.GetLanguage(),
-		baseDir:  cfg.GetBaseDir(),
+		FS:          cfg.GetFs(),
+		Logger:      cfg.GetLogger(),
+		language:    cfg.GetLanguage(),
+		baseDir:     cfg.GetBaseDir(),
+		taskTimeout: cfg.GetTaskTimeout(),
 	}
+}
+
+// SetTaskTimeout overrides the per-task timeout after construction.
+// A value <=0 disables the timeout.
+func (a *App) SetTaskTimeout(d time.Duration) {
+	a.taskTimeout = d
 }
 
 // Language returns the configured default language.
@@ -60,7 +69,7 @@ func (a *App) Solve(
 	cb func(tasks.Result),
 	skipTests bool,
 ) ([]tasks.Result, error) {
-	ex, err := exercise.Load(path, language, customInput, a.FS, a.Logger)
+	ex, err := exercise.Load(path, language, customInput, a.FS, a.Logger, exercise.WithTaskTimeout(a.taskTimeout))
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +95,7 @@ func (a *App) Test(
 	w io.Writer,
 	cb func(tasks.Result),
 ) ([]tasks.Result, error) {
-	ex, err := exercise.Load(path, language, customInput, a.FS, a.Logger)
+	ex, err := exercise.Load(path, language, customInput, a.FS, a.Logger, exercise.WithTaskTimeout(a.taskTimeout))
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +121,7 @@ func (a *App) Benchmark(
 	cb func(tasks.Result),
 	iterations int,
 ) ([]tasks.Result, error) {
-	ex, err := exercise.Load(path, language, "", a.FS, a.Logger)
+	ex, err := exercise.Load(path, language, "", a.FS, a.Logger, exercise.WithTaskTimeout(a.taskTimeout))
 	if err != nil {
 		return nil, err
 	}

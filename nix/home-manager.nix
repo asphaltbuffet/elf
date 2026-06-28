@@ -15,6 +15,7 @@
     {}
     // lib.optionalAttrs (cfg.settings.language != null) {language = cfg.settings.language;}
     // lib.optionalAttrs (cfg.settings.input-file != null) {input-file = cfg.settings.input-file;}
+    // lib.optionalAttrs (cfg.settings.task-timeout != null) {task = {timeout = cfg.settings.task-timeout;};}
     // lib.optionalAttrs (cfg.settings.config-dir != null) {config-dir = cfg.settings.config-dir;}
     // lib.optionalAttrs (cfg.settings.cache-dir != null) {cache-dir = cfg.settings.cache-dir;}
     // lib.optionalAttrs (cfg.settings.advent.token != "" || cfg.settings.advent.dir != null) {
@@ -60,6 +61,16 @@ in {
         type = lib.types.nullOr lib.types.str;
         default = "input.txt";
         description = "Default input file name for exercises.";
+      };
+
+      task-timeout = lib.mkOption {
+        type = lib.types.nullOr lib.types.str;
+        default = null;
+        description = ''
+          Per-task execution timeout. Uses Go duration syntax (e.g. "30s", "2m").
+          When null, elf uses its built-in default (2m).
+          Set to "0" to disable the timeout entirely.
+        '';
       };
 
       config-dir = lib.mkOption {

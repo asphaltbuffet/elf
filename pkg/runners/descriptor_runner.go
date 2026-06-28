@@ -155,6 +155,13 @@ func (r *descriptorRunner) Open(ctx context.Context) error {
 	cmd.Dir = r.meta.LangDir()
 	cmd.Env = append(os.Environ(), substituteSlice(r.desc.Open.Env, r.meta, ext, subdir)...)
 
+	// Put the subprocess in its own process group so we can signal the entire
+	// tree on timeout. Wrapper runners (e.g. bash) fork children — a $(...) or
+	// pipeline doing the real work — and killing only the leader orphans those
+	// children, which keep the stdout/stderr pipes open and block cmd.Wait().
+	// No-op on platforms without process groups (see process_other.go).
+	setProcessGroup(cmd)
+
 	var setupErr error
 	r.stdin, setupErr = setupBuffers(cmd)
 	if setupErr != nil {
@@ -182,15 +189,19 @@ func (r *descriptorRunner) Open(ctx context.Context) error {
 	return nil
 }
 
-// Close sends SIGTERM to the subprocess and waits for it to exit,
-// killing it if the context deadline expires first.
+// Close stops the subprocess and waits for it to exit. It is a teardown
+// operation: its postcondition is "the process is no longer running", so a
+// process that has already exited (e.g. killed by a timeout context, or crashed
+// during Run) is treated as success. Only a genuine failure to kill a still-live
+// process is reported as an error.
 func (r *descriptorRunner) Close(ctx context.Context) error {
 	if r.cmd == nil || r.cmd.Process == nil {
 		return nil
 	}
 
-	// If the process already exited (e.g. a crash detected during Run), the
-	// reaper has populated waitErr and closed exited; nothing more to stop.
+	// If the process already exited (e.g. a crash detected during Run, or a
+	// timeout context that killed it), the reaper has populated waitErr and
+	// closed exited; nothing more to stop.
 	select {
 	case <-r.exited:
 		<-r.waitErr // drain so the buffered send is consumed
@@ -201,30 +212,36 @@ func (r *descriptorRunner) Close(ctx context.Context) error {
 	// Close stdin so the subprocess receives EOF and can exit cleanly.
 	_ = r.stdin.Close()
 
-	if err := r.cmd.Process.Signal(syscall.SIGTERM); err != nil {
+	// SIGTERM the whole process group so a wrapper's forked children die too. If
+	// the group was reaped between the select above and here (a benign race),
+	// signalGroup returns os.ErrProcessDone — the process is already stopped, so
+	// fall through to observe the reaper's result rather than treating it as a
+	// failure.
+	if err := signalGroup(r.cmd.Process.Pid, syscall.SIGTERM); err != nil && !errors.Is(err, os.ErrProcessDone) {
 		return fmt.Errorf("failed to send SIGTERM to %s process: %w", r.desc.Name, err)
 	}
 
 	// The reaper goroutine started in Open owns cmd.Wait(); observe its result
 	// through waitErr rather than calling Wait() again (which would double-reap).
+	// A non-nil waitErr here is expected — we are tearing the process down on
+	// purpose, so its exit status (signal: killed, non-zero exit, etc.) is not a
+	// failure of Close. Only a kill that fails for a reason other than "already
+	// done" is a genuine error.
 	select {
 	case <-ctx.Done():
-		killErr := r.cmd.Process.Kill()
+		killErr := signalGroup(r.cmd.Process.Pid, syscall.SIGKILL)
 		<-r.waitErr // drain reaper regardless of kill outcome
-		if killErr != nil {
+		if killErr != nil && !errors.Is(killErr, os.ErrProcessDone) {
 			return fmt.Errorf("failed to kill %s process: %w", r.desc.Name, killErr)
 		}
-	case err := <-r.waitErr:
-		if err != nil {
-			return fmt.Errorf("failed to stop %s process: %w", r.desc.Name, err)
-		}
+	case <-r.waitErr:
 	}
 
 	return nil
 }
 
 // Run sends a task to the subprocess via stdin and reads the JSON result from stdout.
-func (r *descriptorRunner) Run(_ context.Context, task *protocol.Task) (*protocol.Result, error) {
+func (r *descriptorRunner) Run(ctx context.Context, task *protocol.Task) (*protocol.Result, error) {
 	taskJSON, marshalErr := json.Marshal(task)
 	if marshalErr != nil {
 		return nil, fmt.Errorf("marshalling task: %w", marshalErr)
@@ -235,7 +252,7 @@ func (r *descriptorRunner) Run(_ context.Context, task *protocol.Task) (*protoco
 	}
 
 	result := new(protocol.Result)
-	if readErr := readJSONFromCommand(result, r.cmd, r.exited); readErr != nil {
+	if readErr := readJSONFromCommand(ctx, result, r.cmd, r.exited); readErr != nil {
 		return nil, readErr
 	}
 

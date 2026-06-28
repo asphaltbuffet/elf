@@ -14,6 +14,7 @@ const (
 	StatusUnverified                   // Unverified
 	StatusFailed                       // Failed
 	StatusError                        // Error
+	StatusTimeout                      // Timeout
 )
 
 // Result holds the output and metadata from a single task execution.

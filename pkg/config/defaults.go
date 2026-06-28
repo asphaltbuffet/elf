@@ -5,4 +5,5 @@ var defaults = map[Key]string{ //nolint: exhaustive // not all keys have default
 	AdventDirKey:   "exercises",
 	AdventTokenKey: "default-placeholder",
 	LanguageKey:    "go",
+	TaskTimeoutKey: "2m",
 }

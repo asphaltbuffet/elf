@@ -3,6 +3,7 @@ package solve
 
 import (
 	"path/filepath"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -11,10 +12,11 @@ import (
 )
 
 var (
-	solveCmd *cobra.Command
-	language string
-	input    string
-	noTest   bool
+	solveCmd    *cobra.Command
+	language    string
+	input       string
+	noTest      bool
+	timeoutFlag time.Duration
 
 	makeConfig = func(cf string) (config.Config, error) {
 		return config.NewConfig(config.WithFile(cf))
@@ -43,6 +45,8 @@ func GetSolveCmd() *cobra.Command {
 
 		solveCmd.Flags().StringP("config-file", "c", "", "configuration file")
 		solveCmd.Flags().StringVarP(&input, "input-file", "i", "", "override input file")
+		solveCmd.Flags().
+			DurationVarP(&timeoutFlag, "timeout", "t", 0, "per-task timeout (0 or negative = no timeout; omit to use config default)")
 	}
 
 	return solveCmd
@@ -72,6 +76,10 @@ func runSolveCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	a := appPkg.New(cfg)
+
+	if cmd.Flags().Changed("timeout") {
+		a.SetTaskTimeout(timeoutFlag)
+	}
 
 	_, solveErr := a.Solve(cmd.Context(), dir, language, filepath.Clean(input), cmd.OutOrStdout(), nil, noTest)
 	if solveErr != nil {

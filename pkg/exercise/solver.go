@@ -2,6 +2,7 @@ package exercise
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -95,8 +96,21 @@ func (e *Exercise) runMainTasks(
 	results := make([]tasks.Result, 0, len(solveTasks))
 
 	for _, t := range solveTasks {
-		result, err := runner.Run(ctx, t.task)
-		if err != nil {
+		result, err := runWithTimeout(ctx, runner, t.task, e.taskTimeout)
+		if errors.Is(err, errTaskTimeout) {
+			r := timeoutResult(w, t.task.TaskID)
+			if cb != nil {
+				cb(r)
+			}
+
+			results = append(results, r)
+
+			if restartErr := restartRunner(ctx, runner); restartErr != nil {
+				return nil, restartErr
+			}
+
+			continue
+		} else if err != nil {
 			return nil, err
 		}
 

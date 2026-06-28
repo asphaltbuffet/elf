@@ -8,6 +8,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/lmittmann/tint"
 	"github.com/spf13/afero"
@@ -36,10 +37,20 @@ func errNoRunner(language string) error {
 	)
 }
 
+// WithTaskTimeout sets the per-task execution timeout. A value <=0 disables the timeout.
+func WithTaskTimeout(d time.Duration) func(*Exercise) {
+	return func(e *Exercise) { e.taskTimeout = d }
+}
+
 // Load creates an Exercise from explicit parameters and loads metadata from info.json in fs.
 // language must be a key in runners.Available. customInput overrides the default input file
 // when non-empty.
-func Load(exercisePath, language, customInput string, fs afero.Fs, logger *slog.Logger) (*Exercise, error) {
+func Load(
+	exercisePath, language, customInput string,
+	fs afero.Fs,
+	logger *slog.Logger,
+	opts ...func(*Exercise),
+) (*Exercise, error) {
 	if language == "" {
 		return nil, ErrEmptyLanguage
 	}
@@ -60,6 +71,10 @@ func Load(exercisePath, language, customInput string, fs afero.Fs, logger *slog.
 
 	if err := e.loadInfo(fs, logger.With(slog.String("fn", "exercise"))); err != nil {
 		return nil, err
+	}
+
+	for _, opt := range opts {
+		opt(e)
 	}
 
 	return e, nil
