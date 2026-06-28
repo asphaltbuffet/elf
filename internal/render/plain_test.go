@@ -18,7 +18,7 @@ func TestPlainNoANSIOnNonTTY(t *testing.T) {
 	p.Handle(tasks.FinishedEvent(tasks.Result{
 		ID: "Test.1.1", Type: tasks.Test, Part: protocol.PartOne, SubPart: 1,
 		Status: tasks.StatusPassed, Duration: 0.071143,
-	}))
+	}, ""))
 	_ = p.Close()
 
 	out := buf.String()
@@ -55,12 +55,12 @@ func TestPlainRendersHeaderAndPassLine(t *testing.T) {
 	var buf bytes.Buffer
 	p := NewPlain(&buf, Header{Year: 2015, Day: 4, Title: "The Ideal Stocking Stuffer", Language: "Go"})
 
-	p.Handle(tasks.PlannedEvent("Test.1.1", tasks.Test, protocol.PartOne, 1)) // ignored
-	p.Handle(tasks.StartedEvent("Test.1.1", tasks.Test, protocol.PartOne, 1)) // ignored
+	p.Handle(tasks.PlannedEvent("Test.1.1", tasks.Test, protocol.PartOne, 1, "")) // ignored
+	p.Handle(tasks.StartedEvent("Test.1.1", tasks.Test, protocol.PartOne, 1, "")) // ignored
 	p.Handle(tasks.FinishedEvent(tasks.Result{
 		ID: "Test.1.1", Type: tasks.Test, Part: protocol.PartOne, SubPart: 1,
 		Status: tasks.StatusPassed, Duration: 0.071143,
-	}))
+	}, ""))
 	_ = p.Close()
 
 	out := buf.String()
@@ -82,10 +82,10 @@ func TestPlainPlannedAndStartedEmitNothing(t *testing.T) {
 	// header is emitted on construction, not on events; capture post-construction state
 	headerLen := buf.Len()
 
-	p.Handle(tasks.PlannedEvent("Test.1.1", tasks.Test, protocol.PartOne, 1))
+	p.Handle(tasks.PlannedEvent("Test.1.1", tasks.Test, protocol.PartOne, 1, ""))
 	afterPlanned := buf.Len()
 
-	p.Handle(tasks.StartedEvent("Test.1.1", tasks.Test, protocol.PartOne, 1))
+	p.Handle(tasks.StartedEvent("Test.1.1", tasks.Test, protocol.PartOne, 1, ""))
 	afterStarted := buf.Len()
 
 	if afterPlanned != headerLen {
@@ -103,7 +103,7 @@ func TestPlainTimeoutLine(t *testing.T) {
 	p.Handle(tasks.FinishedEvent(tasks.Result{
 		ID: "Test.1.1", Type: tasks.Test, Part: protocol.PartOne, SubPart: 1,
 		Status: tasks.StatusTimeout, Duration: 5.0,
-	}))
+	}, ""))
 	_ = p.Close()
 
 	out := buf.String()
@@ -119,7 +119,7 @@ func TestPlainSolveSectionLabel(t *testing.T) {
 	p.Handle(tasks.FinishedEvent(tasks.Result{
 		ID: "Solve.1", Type: tasks.Solve, Part: protocol.PartOne,
 		Status: tasks.StatusPassed, Duration: 0.001,
-	}))
+	}, ""))
 	_ = p.Close()
 
 	out := buf.String()
@@ -135,7 +135,7 @@ func TestPlainFailLine(t *testing.T) {
 	p.Handle(tasks.FinishedEvent(tasks.Result{
 		ID: "Test.1.1", Type: tasks.Test, Part: protocol.PartOne, SubPart: 1,
 		Status: tasks.StatusFailed, Output: "42", Expected: "99", Duration: 0.005,
-	}))
+	}, ""))
 	_ = p.Close()
 
 	out := buf.String()
@@ -151,11 +151,11 @@ func TestPlainSectionLabelOnlyOncePerType(t *testing.T) {
 	p.Handle(tasks.FinishedEvent(tasks.Result{
 		ID: "Test.1.1", Type: tasks.Test, Part: protocol.PartOne, SubPart: 1,
 		Status: tasks.StatusPassed, Duration: 0.001,
-	}))
+	}, ""))
 	p.Handle(tasks.FinishedEvent(tasks.Result{
 		ID: "Test.1.2", Type: tasks.Test, Part: protocol.PartOne, SubPart: 2,
 		Status: tasks.StatusPassed, Duration: 0.002,
-	}))
+	}, ""))
 	_ = p.Close()
 
 	out := buf.String()
@@ -175,7 +175,7 @@ func TestPlainMetaEventSetsHeaderAndLanguage(t *testing.T) {
 	p.Handle(tasks.FinishedEvent(tasks.Result{
 		ID: "Test.1.0", Type: tasks.Test, Part: protocol.PartOne, SubPart: 0,
 		Status: tasks.StatusPassed, Duration: 0.000190984,
-	}))
+	}, ""))
 	if err := p.Close(); err != nil {
 		t.Fatalf("Close: %v", err)
 	}
@@ -202,7 +202,7 @@ func TestPlainUniformDurationUnitAndAlignment(t *testing.T) {
 		p.Handle(tasks.FinishedEvent(tasks.Result{
 			ID: "Test.1." + string(rune('0'+i)), Type: tasks.Test,
 			Part: protocol.PartOne, SubPart: i, Status: tasks.StatusPassed, Duration: d,
-		}))
+		}, ""))
 	}
 	if err := p.Close(); err != nil {
 		t.Fatalf("Close: %v", err)
@@ -227,16 +227,16 @@ func TestPlainDurationUnitIsPerSection(t *testing.T) {
 	p.Handle(tasks.FinishedEvent(tasks.Result{
 		ID: "Test.1.0", Type: tasks.Test, Part: protocol.PartOne, SubPart: 0,
 		Status: tasks.StatusPassed, Duration: 0.000200,
-	}))
+	}, ""))
 	p.Handle(tasks.FinishedEvent(tasks.Result{
 		ID: "Test.2.0", Type: tasks.Test, Part: protocol.PartTwo, SubPart: 0,
 		Status: tasks.StatusPassed, Duration: 0.000353,
-	}))
+	}, ""))
 	// Solving: multi-second → section renders in seconds.
 	p.Handle(tasks.FinishedEvent(tasks.Result{
 		ID: "Solve.1", Type: tasks.Solve, Part: protocol.PartOne, SubPart: 0,
 		Status: tasks.StatusUnverified, Output: "569999", Duration: 8.652,
-	}))
+	}, ""))
 	if err := p.Close(); err != nil {
 		t.Fatalf("Close: %v", err)
 	}
@@ -252,5 +252,42 @@ func TestPlainDurationUnitIsPerSection(t *testing.T) {
 	}
 	if !strings.Contains(out, "569999") {
 		t.Errorf("NEW answer must be shown:\n%s", out)
+	}
+}
+
+// Plain collapses benchmark iterations into one settled line per (runner, Part)
+// — the same "not every iteration its own line" intent as the live bars, minus
+// animation (ADR-0011).
+func TestPlainBenchmarkAggregatesPerRunnerPart(t *testing.T) {
+	var buf bytes.Buffer
+	p := NewPlain(&buf, Header{Year: 2015, Day: 1, Title: "Day 1"})
+
+	const iters = 3
+
+	for i := range iters {
+		p.Handle(tasks.FinishedEvent(tasks.Result{
+			ID: tasks.MakeTaskID(tasks.Benchmark, protocol.PartOne, i), Type: tasks.Benchmark,
+			Part: protocol.PartOne, SubPart: i, Status: tasks.StatusPassed, Duration: 0.5,
+		}, "Go"))
+	}
+
+	if err := p.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+
+	out := buf.String()
+	// One aggregated line: runner name, count, and summed duration.
+	if !strings.Contains(out, "Go") {
+		t.Errorf("benchmark line should name the runner:\n%s", out)
+	}
+	if !strings.Contains(out, "3") {
+		t.Errorf("benchmark line should show the iteration count:\n%s", out)
+	}
+	if !strings.Contains(out, "1.500s") {
+		t.Errorf("benchmark line should show summed duration 1.500s (3 × 0.5):\n%s", out)
+	}
+	// Must NOT print one line per iteration: no per-iteration task labels.
+	if strings.Contains(out, "1.0:") || strings.Contains(out, "1.1:") || strings.Contains(out, "1.2:") {
+		t.Errorf("benchmark iterations must not render as per-iteration lines:\n%s", out)
 	}
 }

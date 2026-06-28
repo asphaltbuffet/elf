@@ -75,7 +75,7 @@ func runBenchmarkCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	h := render.Header{Language: cfg.GetLanguage()}
-	_, benchErr := render.Run(cmd.Context(), cmd.OutOrStdout(), h, true,
+	_, benchErr := render.Run(cmd.Context(), cmd.OutOrStdout(), h, plainFlag,
 		func(cb func(tasks.Event)) ([]tasks.Result, error) {
 			return a.Benchmark(cmd.Context(), dir, cfg.GetLanguage(), cb, iterations)
 		})

@@ -287,6 +287,124 @@ func TestBenchmarker_EmitsBenchmarkEvents(t *testing.T) {
 	assert.Positive(t, finished, "expected at least one Benchmark Finished event to be emitted")
 }
 
+// A benchmark iteration's measurement is its duration, not its output string
+// (ADR-0011). An Ok-but-empty-output run must still emit a Finished event and
+// contribute a sample so the progress bar can reach 100%.
+func TestBenchmarker_EmptyOutputStillEmitsFinishedAndSample(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	mockRunner := mocks.NewMockRunner(t)
+	mockRunner.EXPECT().String().Return("Go").Maybe()
+	mockRunner.EXPECT().Prepare(mock.Anything).Return(nil)
+	mockRunner.EXPECT().Open(mock.Anything).Return(nil)
+	// Ok, but empty output and a real duration — the old guard dropped these.
+	mockRunner.EXPECT().Run(mock.Anything, mock.Anything).Return(&protocol.Result{
+		TaskID:   "benchmark.1.0",
+		Ok:       true,
+		Output:   "",
+		Duration: 0.002,
+	}, nil).Times(2) // part1 + part2 for 1 iteration
+	mockRunner.EXPECT().Close(mock.Anything).Return(nil).Maybe()
+	mockRunner.EXPECT().Cleanup().Return(nil).Maybe()
+
+	restore := runners.ResetRegistry(map[string]runners.RunnerCreator{
+		"go": func(_ runners.ExerciseMeta) runners.Runner { return mockRunner },
+	})
+	t.Cleanup(restore)
+
+	b := &Benchmarker{
+		Exercise: &Exercise{
+			ID:       "2017-01",
+			Title:    "Fake Title",
+			Language: "go",
+			Year:     2017,
+			Day:      1,
+			URL:      "www.fake.com",
+			Data:     &Data{InputFileName: "input.txt"},
+			Path:     "exercises/2017/01-fakeFullDay",
+		},
+		exerciseBaseDir: "",
+	}
+
+	var finished int
+
+	var gotLang string
+
+	cb := func(ev tasks.Event) {
+		if ev.Kind == tasks.EventFinished && ev.Type == tasks.Benchmark {
+			finished++
+
+			gotLang = ev.Language
+		}
+	}
+
+	results, err := b.Benchmark(context.Background(), testFs, logger, cb, 1)
+	require.NoError(t, err)
+	assert.Equal(t, 2, finished, "both parts must emit Finished despite empty output")
+	assert.Len(t, results, 2, "both empty-output iterations must be recorded as samples")
+	assert.Equal(t, "Go", gotLang, "benchmark Finished events must carry the runner name")
+}
+
+// A single runner that fails to start (Prepare/Open) must be skipped, not abort
+// the whole benchmark: the other runners' results still come back.
+func TestBenchmarker_SkipsRunnerThatFailsToOpen(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	// "go" runs fine; "py" fails to open (e.g. missing interpreter).
+	goRunner := mocks.NewMockRunner(t)
+	goRunner.EXPECT().String().Return("Go").Maybe()
+	goRunner.EXPECT().Prepare(mock.Anything).Return(nil)
+	goRunner.EXPECT().Open(mock.Anything).Return(nil)
+	goRunner.EXPECT().Run(mock.Anything, mock.Anything).Return(&protocol.Result{
+		TaskID: "benchmark.1.0", Ok: true, Output: "42", Duration: 0.003,
+	}, nil).Times(2)
+	goRunner.EXPECT().Close(mock.Anything).Return(nil).Maybe()
+	goRunner.EXPECT().Cleanup().Return(nil).Maybe()
+
+	pyRunner := mocks.NewMockRunner(t)
+	pyRunner.EXPECT().String().Return("Python").Maybe()
+	pyRunner.EXPECT().Prepare(mock.Anything).Return(nil).Maybe()
+	pyRunner.EXPECT().Open(mock.Anything).Return(errors.New("python3 not found"))
+	pyRunner.EXPECT().Close(mock.Anything).Return(nil).Maybe()
+	pyRunner.EXPECT().Cleanup().Return(nil).Maybe()
+
+	restore := runners.ResetRegistry(map[string]runners.RunnerCreator{
+		"go": func(_ runners.ExerciseMeta) runners.Runner { return goRunner },
+		"py": func(_ runners.ExerciseMeta) runners.Runner { return pyRunner },
+	})
+	t.Cleanup(restore)
+
+	b := &Benchmarker{
+		Exercise: &Exercise{
+			ID:       "2017-01",
+			Title:    "Fake Title",
+			Language: "go",
+			Year:     2017,
+			Day:      1,
+			URL:      "www.fake.com",
+			Data:     &Data{InputFileName: "input.txt"},
+			Path:     "exercises/2017/01-fakeFullDay",
+		},
+		exerciseBaseDir: "",
+	}
+
+	results, err := b.Benchmark(context.Background(), testFs, logger, nil, 1)
+	require.NoError(t, err, "one runner failing to open must not abort the benchmark")
+	assert.Len(t, results, 2, "the working runner's two parts must still be benchmarked")
+}
+
 func TestRunBenchmark(t *testing.T) {
 	type fields struct {
 		exerciseBaseDir string
@@ -330,7 +448,11 @@ func TestRunBenchmark(t *testing.T) {
 			assertion:   assert.Error,
 		},
 		{
-			name: "all tasks fail",
+			// A benchmark's measurement is its duration, not its Ok flag or
+			// output (ADR-0011): a non-timeout Ok:false result is still a
+			// recorded sample. Both tasks here decode to PartOne (the mock
+			// returns a fixed TaskID), so PartOne carries both samples.
+			name: "non-ok results are still measured samples",
 			setup: func(_m *mocks.MockRunner) {
 				_m.EXPECT().Prepare(mock.Anything).Return(nil)
 				_m.EXPECT().Open(mock.Anything).Return(nil)
@@ -341,12 +463,36 @@ func TestRunBenchmark(t *testing.T) {
 					Duration: 0.666,
 				}, nil)
 			},
-			fields:      fields{exerciseBaseDir: ""},
-			args:        args{iterations: 1},
-			wantResults: []tasks.Result{},
+			fields: fields{exerciseBaseDir: ""},
+			args:   args{iterations: 1},
+			wantResults: []tasks.Result{
+				{
+					ID:       "benchmark.1.1",
+					Type:     tasks.Benchmark,
+					Part:     protocol.PartOne,
+					SubPart:  1,
+					Status:   tasks.StatusPassed,
+					Output:   "fake output",
+					Duration: 0.666,
+				},
+				{
+					ID:       "benchmark.1.1",
+					Type:     tasks.Benchmark,
+					Part:     protocol.PartOne,
+					SubPart:  1,
+					Status:   tasks.StatusPassed,
+					Output:   "fake output",
+					Duration: 0.666,
+				},
+			},
 			wantData: &ImplementationData{
-				Name:    "MOCK",
-				PartOne: nil,
+				Name: "MOCK",
+				PartOne: &PartData{
+					Mean: 0.666,
+					Min:  0.666,
+					Max:  0.666,
+					Data: []float64{0.666, 0.666},
+				},
 				PartTwo: nil,
 			},
 			assertion: assert.NoError,
@@ -358,7 +504,9 @@ func TestRunBenchmark(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockRunner := mocks.NewMockRunner(t)
-			mockRunner.EXPECT().String().Return("MOCK")
+			// String() is only reached once a task runs (for the event language)
+			// and on the success return; error paths short-circuit before then.
+			mockRunner.EXPECT().String().Return("MOCK").Maybe()
 			mockRunner.EXPECT().Close(mock.Anything).Return(nil).Maybe()
 			mockRunner.EXPECT().Cleanup().Return(nil).Maybe()
 

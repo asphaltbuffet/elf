@@ -35,8 +35,13 @@ type Event struct {
 	Type    TaskType
 	Part    protocol.Part
 	SubPart int
-	Result  *Result
-	Meta    *Meta
+	// Language is the human-readable runner name (e.g. "Go"), matching
+	// [Meta.Language]. Benchmark sets it so a renderer can group iteration
+	// events into one progress bar per (runner, Part); Solve and Test leave it
+	// empty (their single runner is named in the header). See ADR-0011.
+	Language string
+	Result   *Result
+	Meta     *Meta
 }
 
 // MetaEvent reports run-level chrome metadata. It should be emitted once, before
@@ -45,24 +50,29 @@ func MetaEvent(m Meta) Event {
 	return Event{Kind: EventMeta, Meta: &m}
 }
 
-// PlannedEvent reports that a task will run.
-func PlannedEvent(id string, t TaskType, part protocol.Part, subPart int) Event {
-	return Event{Kind: EventPlanned, ID: id, Type: t, Part: part, SubPart: subPart}
+// PlannedEvent reports that a task will run. lang is the runner name for
+// benchmark events and empty for Solve/Test.
+func PlannedEvent(id string, t TaskType, part protocol.Part, subPart int, lang string) Event {
+	return Event{Kind: EventPlanned, ID: id, Type: t, Part: part, SubPart: subPart, Language: lang}
 }
 
-// StartedEvent reports that a task has begun executing.
-func StartedEvent(id string, t TaskType, part protocol.Part, subPart int) Event {
-	return Event{Kind: EventStarted, ID: id, Type: t, Part: part, SubPart: subPart}
+// StartedEvent reports that a task has begun executing. lang is the runner name
+// for benchmark events and empty for Solve/Test.
+func StartedEvent(id string, t TaskType, part protocol.Part, subPart int, lang string) Event {
+	return Event{Kind: EventStarted, ID: id, Type: t, Part: part, SubPart: subPart, Language: lang}
 }
 
-// FinishedEvent reports that a task has completed, carrying its [Result].
-func FinishedEvent(r Result) Event {
+// FinishedEvent reports that a task has completed, carrying its [Result]. lang
+// is passed explicitly because [Result] does not carry it; it is the runner
+// name for benchmark events and empty for Solve/Test.
+func FinishedEvent(r Result, lang string) Event {
 	return Event{
-		Kind:    EventFinished,
-		ID:      r.ID,
-		Type:    r.Type,
-		Part:    r.Part,
-		SubPart: r.SubPart,
-		Result:  &r,
+		Kind:     EventFinished,
+		ID:       r.ID,
+		Type:     r.Type,
+		Part:     r.Part,
+		SubPart:  r.SubPart,
+		Language: lang,
+		Result:   &r,
 	}
 }

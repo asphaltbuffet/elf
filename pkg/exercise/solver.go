@@ -91,7 +91,7 @@ func (e *Exercise) runMainTasks(
 	if cb != nil {
 		for _, t := range solveTasks {
 			tt, part, sub := tasks.ParseTaskID(t.task.TaskID)
-			cb(tasks.PlannedEvent(t.task.TaskID, tt, part, sub))
+			cb(tasks.PlannedEvent(t.task.TaskID, tt, part, sub, ""))
 		}
 	}
 
@@ -100,14 +100,14 @@ func (e *Exercise) runMainTasks(
 	for _, t := range solveTasks {
 		if cb != nil {
 			tt, part, sub := tasks.ParseTaskID(t.task.TaskID)
-			cb(tasks.StartedEvent(t.task.TaskID, tt, part, sub))
+			cb(tasks.StartedEvent(t.task.TaskID, tt, part, sub, ""))
 		}
 
 		result, err := runWithTimeout(ctx, runner, t.task, e.taskTimeout)
 		if errors.Is(err, errTaskTimeout) {
 			r := timeoutResult(t.task.TaskID)
 			if cb != nil {
-				cb(tasks.FinishedEvent(r))
+				cb(tasks.FinishedEvent(r, ""))
 			}
 
 			results = append(results, r)
@@ -123,7 +123,7 @@ func (e *Exercise) runMainTasks(
 
 		r := handleTaskResult(result, t.expected)
 		if cb != nil {
-			cb(tasks.FinishedEvent(r))
+			cb(tasks.FinishedEvent(r, ""))
 		}
 
 		results = append(results, r)

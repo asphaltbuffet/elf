@@ -26,6 +26,10 @@ var sectionLabels = map[tasks.TaskType]string{
 type section struct {
 	typ     tasks.TaskType
 	results []*tasks.Result
+	// langs[i] is the runner name for results[i], captured from the Finished
+	// event because tasks.Result does not carry it (ADR-0011). Empty for
+	// Solve/Test; set for Benchmark so Close can group by (runner, part).
+	langs []string
 }
 
 // Plain is a non-TTY renderer. It buffers finished results per section and emits
@@ -74,6 +78,7 @@ func (p *Plain) Handle(e tasks.Event) {
 			p.sections = append(p.sections, section{typ: e.Type})
 		}
 		p.sections[i].results = append(p.sections[i].results, e.Result)
+		p.sections[i].langs = append(p.sections[i].langs, e.Language)
 
 	case tasks.EventPlanned, tasks.EventStarted:
 		// Plain output is settled-only; progress events are ignored.
@@ -90,6 +95,13 @@ func (p *Plain) Close() error {
 	statusWidth := p.statusColumnWidth()
 
 	for _, s := range p.sections {
+		// Benchmark collapses to one aggregated line per (runner, part) rather
+		// than one line per iteration (ADR-0011).
+		if s.typ == tasks.Benchmark {
+			p.printBenchmarkSection(s)
+			continue
+		}
+
 		if label, ok := sectionLabels[s.typ]; ok && label != "" {
 			fmt.Fprintf(p.w, "\n%s (%s)…\n", label, p.header.Language)
 		}
@@ -101,6 +113,53 @@ func (p *Plain) Close() error {
 	}
 
 	return nil
+}
+
+// benchAgg accumulates a (runner, part) group's iteration count and summed
+// duration for the Plain benchmark summary.
+type benchAgg struct {
+	lang    string
+	part    int
+	count   int
+	sumSecs float64
+}
+
+// printBenchmarkSection writes one settled line per (runner, part): the runner
+// name, part, iteration count, and summed duration. Groups are emitted in
+// first-seen order so output is deterministic.
+func (p *Plain) printBenchmarkSection(s section) {
+	if label, ok := sectionLabels[s.typ]; ok && label != "" {
+		fmt.Fprintf(p.w, "\n%s…\n", label)
+	}
+
+	type key struct {
+		lang string
+		part int
+	}
+
+	order := make([]key, 0)
+	groups := make(map[key]*benchAgg)
+
+	for i, r := range s.results {
+		k := key{lang: s.langs[i], part: int(r.Part)}
+
+		g, ok := groups[k]
+		if !ok {
+			g = &benchAgg{lang: k.lang, part: k.part}
+			groups[k] = g
+			order = append(order, k)
+		}
+
+		g.count++
+		g.sumSecs += r.Duration
+	}
+
+	for _, k := range order {
+		g := groups[k]
+		unit := pickDurationUnit(secondsToDuration(g.sumSecs))
+		fmt.Fprintf(p.w, "%s P%d: %d iterations, %s\n",
+			g.lang, g.part, g.count, formatDuration(secondsToDuration(g.sumSecs), unit))
+	}
 }
 
 // maxResultDuration returns the largest duration among the given results.

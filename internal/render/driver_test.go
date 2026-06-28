@@ -20,9 +20,9 @@ func TestRunPlainPathEmitsOutputAndReturnsResults(t *testing.T) {
 	}}
 
 	op := func(cb func(tasks.Event)) ([]tasks.Result, error) {
-		cb(tasks.PlannedEvent("Test.1.1", tasks.Test, protocol.PartOne, 1))
-		cb(tasks.StartedEvent("Test.1.1", tasks.Test, protocol.PartOne, 1))
-		cb(tasks.FinishedEvent(want[0]))
+		cb(tasks.PlannedEvent("Test.1.1", tasks.Test, protocol.PartOne, 1, ""))
+		cb(tasks.StartedEvent("Test.1.1", tasks.Test, protocol.PartOne, 1, ""))
+		cb(tasks.FinishedEvent(want[0], ""))
 		return want, nil
 	}
 

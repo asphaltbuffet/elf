@@ -31,6 +31,9 @@ schema = 3
   [mod."github.com/charmbracelet/fang"]
     version = "v1.0.0"
     hash = "sha256-SALDwtCulOMSoSs4xnHB81xbWOeHD2/GPXPoaEp1ZRs="
+  [mod."github.com/charmbracelet/harmonica"]
+    version = "v0.2.0"
+    hash = "sha256-fi5N0IXhSbbYHdSZFngCfpT4kdiEaKedqj8YpnlvX0o="
   [mod."github.com/charmbracelet/ultraviolet"]
     version = "v0.0.0-20260615092913-2399af76d5b1"
     hash = "sha256-HlP3x92FLSSVEGNEGgV1kNKR9fnUHtdC4TBOdjyKGIo="
@@ -91,9 +94,6 @@ schema = 3
   [mod."github.com/mattn/go-runewidth"]
     version = "v0.0.24"
     hash = "sha256-t2uvZkmlTXQCj76p4poI9y82iziJX2lF44UhkLgLN40="
-  [mod."github.com/mitchellh/colorstring"]
-    version = "v0.0.0-20190213212951-d06e56a500db"
-    hash = "sha256-dg5havre+NkxU85tbWXgdhjVtVnkNfTVa999HX+JVbQ="
   [mod."github.com/montanaflynn/stats"]
     version = "v0.9.0"
     hash = "sha256-9+oez2WnubmA3J+Od+XU55MPd9UmBhRVd6JKwR/BADY="
@@ -127,9 +127,6 @@ schema = 3
   [mod."github.com/sagikazarmark/locafero"]
     version = "v0.12.0"
     hash = "sha256-EXk9S5Z5sYyApAzCgHIugsGMbt/pHWRfHYFZH5D+5Ws="
-  [mod."github.com/schollz/progressbar/v3"]
-    version = "v3.19.0"
-    hash = "sha256-ABW5J1C0XgtVYV+7N6g6/ZGMKOzF4iingBS7ruvO5S8="
   [mod."github.com/spf13/afero"]
     version = "v1.15.0"
     hash = "sha256-LhcezbOqfuBzacytbqck0hNUxi6NbWNhifUc5/9uHQ8="
@@ -175,9 +172,6 @@ schema = 3
   [mod."golang.org/x/sys"]
     version = "v0.46.0"
     hash = "sha256-NzRXMSEk6upeudJvUEPVnw6clJ3d8UdC/vdfANWAc8g="
-  [mod."golang.org/x/term"]
-    version = "v0.44.0"
-    hash = "sha256-nzbvOgvGRbx1qpq1rbk7b6zNsNeNj8mOGoyZLtnzq3w="
   [mod."golang.org/x/text"]
     version = "v0.38.0"
     hash = "sha256-PzREcn7yzTAJ0WBvyYL/2/r+tfoeKTY/E5HVXi/CJsU="
