@@ -1,6 +1,7 @@
 package exercise
 
 import (
+	"context"
 	"errors"
 	"io"
 	"log/slog"
@@ -94,7 +95,7 @@ func Test_Test(t *testing.T) {
 				Path:     "",
 			}
 
-			got, err := e.Test(t.Context(), logger, mockRunner, io.Discard, nil)
+			got, err := e.Test(t.Context(), logger, mockRunner, nil)
 
 			tt.assertion(t, err)
 			if err == nil {
@@ -102,6 +103,64 @@ func Test_Test(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestExercise_Test_EmitsLifecycleEvents(t *testing.T) {
+	mockRunner := mocks.NewMockRunner(t)
+	mockRunner.EXPECT().String().Return("MOCK").Maybe()
+	mockRunner.EXPECT().Prepare(mock.Anything).Return(nil)
+	mockRunner.EXPECT().Open(mock.Anything).Return(nil)
+	mockRunner.EXPECT().Run(mock.Anything, mock.Anything).Return(&protocol.Result{
+		TaskID:   "test.1.0",
+		Ok:       true,
+		Output:   "FAKE OUTPUT",
+		Duration: 0.042,
+	}, nil)
+	mockRunner.EXPECT().Close(mock.Anything).Return(nil)
+	mockRunner.EXPECT().Cleanup().Return(nil)
+
+	e := &Exercise{
+		ID:       "1111-22",
+		Title:    "Fake Title",
+		Language: "fakeLang",
+		Year:     1111,
+		Day:      22,
+		Data: &Data{
+			InputData: "FAKE INPUT",
+			TestCases: TestCase{
+				One: []*Test{
+					{Input: "FAKE INPUT", Expected: "FAKE OUTPUT"},
+				},
+			},
+			Answers: Answer{},
+		},
+		Path: "",
+	}
+
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	var events []tasks.Event
+	cb := func(ev tasks.Event) { events = append(events, ev) }
+
+	_, err := e.Test(context.Background(), logger, mockRunner, cb)
+	require.NoError(t, err)
+
+	// At least one Planned precedes the first Finished.
+	var sawPlanned, sawFinished bool
+	for _, ev := range events {
+		switch ev.Kind {
+		case tasks.EventPlanned:
+			sawPlanned = true
+			assert.False(t, sawFinished, "Planned must precede Finished")
+		case tasks.EventStarted:
+			// no assertion needed; just consume to satisfy exhaustive
+		case tasks.EventFinished:
+			sawFinished = true
+			require.NotNil(t, ev.Result)
+		}
+	}
+	assert.True(t, sawPlanned)
+	assert.True(t, sawFinished)
 }
 
 func Test_runTests(t *testing.T) {
@@ -136,7 +195,7 @@ func Test_runTests(t *testing.T) {
 		},
 	}
 
-	_, err := e.runTests(t.Context(), mockRunner, io.Discard, nil)
+	_, err := e.runTests(t.Context(), mockRunner, nil)
 
 	require.NoError(t, err)
 

@@ -37,8 +37,7 @@ func (b *Benchmarker) Benchmark(
 	ctx context.Context,
 	fs afero.Fs,
 	logger *slog.Logger,
-	w io.Writer,
-	cb func(tasks.Result),
+	cb func(tasks.Event),
 	iterations int,
 ) ([]tasks.Result, error) {
 	normFactor := NormalizationFactor()
@@ -61,6 +60,8 @@ func (b *Benchmarker) Benchmark(
 
 	results := []tasks.Result{}
 
+	emitPlannedBatch(cb, len(impls), iterations)
+
 	for _, impl := range impls {
 		logger.DebugContext(ctx, "running benchmark", slog.String("impl", impl))
 
@@ -81,7 +82,7 @@ func (b *Benchmarker) Benchmark(
 		var implData *ImplementationData
 
 		var implResults []tasks.Result
-		implResults, implData, err = b.runBenchmark(ctx, logger, runner, w, cb, iterations)
+		implResults, implData, err = b.runBenchmark(ctx, logger, runner, cb, iterations)
 		if err != nil {
 			return nil, err
 		}
@@ -90,7 +91,6 @@ func (b *Benchmarker) Benchmark(
 		benchmarks = append(benchmarks, implData)
 
 		logger.DebugContext(ctx, "benchmarking complete", "lang", impl, "iterations", iterations)
-		_, _ = fmt.Fprintln(w, "") // blank line between implementations
 	}
 
 	var benchmarkData []BenchmarkData
@@ -139,8 +139,7 @@ func (b *Benchmarker) runBenchmark(
 	ctx context.Context,
 	logger *slog.Logger,
 	runner runners.Runner,
-	w io.Writer,
-	cb func(tasks.Result),
+	cb func(tasks.Event),
 	iterations int,
 ) ([]tasks.Result, *ImplementationData, error) {
 	const numParts int = 2
@@ -172,7 +171,7 @@ func (b *Benchmarker) runBenchmark(
 		progressbar.OptionSetDescription(
 			fmt.Sprintf("Benchmarking %q (%s)", b.Title, runner),
 		),
-		progressbar.OptionSetWriter(w),
+		progressbar.OptionSetWriter(io.Discard),
 	)
 
 	defer func() {
@@ -191,7 +190,7 @@ func (b *Benchmarker) runBenchmark(
 	}
 
 	for _, t := range benchmarkTasks {
-		if err := b.runBenchmarkTask(ctx, logger, runner, w, cb, t, metricsResults, &results); err != nil {
+		if err := b.runBenchmarkTask(ctx, logger, runner, cb, t, metricsResults, &results); err != nil {
 			return nil, nil, err
 		}
 
@@ -215,23 +214,49 @@ func (b *Benchmarker) runBenchmark(
 		}, nil
 }
 
+// emitPlannedBatch emits [tasks.EventPlanned] events for all implementation×part×iteration combinations.
+// Task IDs use benchmark.<part>.<iteration> — the implementation name is not part of the ID.
+func emitPlannedBatch(cb func(tasks.Event), implCount, iterations int) {
+	if cb == nil {
+		return
+	}
+
+	for range implCount {
+		for i := range iterations {
+			cb(tasks.PlannedEvent(
+				tasks.MakeTaskID(tasks.Benchmark, protocol.PartOne, i),
+				tasks.Benchmark, protocol.PartOne, i,
+			))
+			cb(tasks.PlannedEvent(
+				tasks.MakeTaskID(tasks.Benchmark, protocol.PartTwo, i),
+				tasks.Benchmark, protocol.PartTwo, i,
+			))
+		}
+	}
+}
+
 // runBenchmarkTask executes one benchmark task and records its result.
 // Returns a non-nil error only on fatal runner failure; timeout is handled inline.
 func (b *Benchmarker) runBenchmarkTask(
 	ctx context.Context,
 	logger *slog.Logger,
 	runner runners.Runner,
-	w io.Writer,
-	cb func(tasks.Result),
+	cb func(tasks.Event),
 	t *protocol.Task,
 	metricsResults map[protocol.Part][]float64,
 	results *[]tasks.Result,
 ) error {
+	taskType, taskPart, taskSubPart := tasks.ParseTaskID(t.TaskID)
+
+	if cb != nil {
+		cb(tasks.StartedEvent(t.TaskID, taskType, taskPart, taskSubPart))
+	}
+
 	benchResult, runErr := runWithTimeout(ctx, runner, t, b.taskTimeout)
 	if errors.Is(runErr, errTaskTimeout) {
-		r := timeoutResult(w, t.TaskID)
+		r := timeoutResult(t.TaskID)
 		if cb != nil {
-			cb(r)
+			cb(tasks.FinishedEvent(r))
 		}
 
 		*results = append(*results, r)
@@ -247,9 +272,9 @@ func (b *Benchmarker) runBenchmarkTask(
 	}
 
 	if benchResult.Ok && benchResult.Output != "" {
-		r := handleTaskResult(w, benchResult, "")
+		r := handleTaskResult(benchResult, "")
 		if cb != nil {
-			cb(r)
+			cb(tasks.FinishedEvent(r))
 		}
 
 		*results = append(*results, r)

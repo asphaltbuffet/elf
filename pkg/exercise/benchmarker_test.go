@@ -1,6 +1,7 @@
 package exercise
 
 import (
+	"context"
 	"errors"
 	"io"
 	"log/slog"
@@ -13,6 +14,7 @@ import (
 
 	mocks "github.com/asphaltbuffet/elf/mocks/runners"
 	"github.com/asphaltbuffet/elf/pkg/protocol"
+	"github.com/asphaltbuffet/elf/pkg/runners"
 	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
@@ -98,7 +100,7 @@ func TestBenchmark(t *testing.T) {
 				exerciseBaseDir: "",
 			}
 
-			got, err := b.Benchmark(t.Context(), testFs, logger, io.Discard, nil, tt.args.iterations)
+			got, err := b.Benchmark(t.Context(), testFs, logger, nil, tt.args.iterations)
 
 			require.ErrorIs(t, err, tt.wantErr)
 			if err == nil {
@@ -133,7 +135,7 @@ func TestBenchmarkWithMissingInput(t *testing.T) {
 
 	b := &Benchmarker{Exercise: e, exerciseBaseDir: ""}
 
-	_, err := b.Benchmark(t.Context(), testFs, logger, io.Discard, nil, 1)
+	_, err := b.Benchmark(t.Context(), testFs, logger, nil, 1)
 
 	require.Error(t, err)
 }
@@ -230,6 +232,61 @@ func TestBenchmarkerString(t *testing.T) {
 	}
 }
 
+func TestBenchmarker_EmitsBenchmarkEvents(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	// Use a fixture that has a Go implementation so at least one benchmark task runs.
+	mockRunner := mocks.NewMockRunner(t)
+	mockRunner.EXPECT().String().Return("MOCK").Maybe()
+	mockRunner.EXPECT().Prepare(mock.Anything).Return(nil)
+	mockRunner.EXPECT().Open(mock.Anything).Return(nil)
+	mockRunner.EXPECT().Run(mock.Anything, mock.Anything).Return(&protocol.Result{
+		TaskID:   "benchmark.1.0",
+		Ok:       true,
+		Output:   "42",
+		Duration: 0.001,
+	}, nil).Times(2) // part1 + part2 for 1 iteration
+	mockRunner.EXPECT().Close(mock.Anything).Return(nil).Maybe()
+	mockRunner.EXPECT().Cleanup().Return(nil).Maybe()
+
+	restore := runners.ResetRegistry(map[string]runners.RunnerCreator{
+		"go": func(_ runners.ExerciseMeta) runners.Runner { return mockRunner },
+	})
+	t.Cleanup(restore)
+
+	b := &Benchmarker{
+		Exercise: &Exercise{
+			ID:       "2017-01",
+			Title:    "Fake Title",
+			Language: "go",
+			Year:     2017,
+			Day:      1,
+			URL:      "www.fake.com",
+			Data:     &Data{InputFileName: "input.txt"},
+			Path:     "exercises/2017/01-fakeFullDay",
+		},
+		exerciseBaseDir: "",
+	}
+
+	var finished int
+
+	cb := func(ev tasks.Event) {
+		if ev.Kind == tasks.EventFinished && ev.Type == tasks.Benchmark {
+			finished++
+		}
+	}
+
+	_, err := b.Benchmark(context.Background(), testFs, logger, cb, 1)
+	require.NoError(t, err)
+	assert.Positive(t, finished, "expected at least one Benchmark Finished event to be emitted")
+}
+
 func TestRunBenchmark(t *testing.T) {
 	type fields struct {
 		exerciseBaseDir string
@@ -321,7 +378,7 @@ func TestRunBenchmark(t *testing.T) {
 				exerciseBaseDir: tt.fields.exerciseBaseDir,
 			}
 
-			got, got1, err := b.runBenchmark(t.Context(), logger, mockRunner, io.Discard, nil, tt.args.iterations)
+			got, got1, err := b.runBenchmark(t.Context(), logger, mockRunner, nil, tt.args.iterations)
 
 			tt.assertion(t, err)
 			if err == nil {

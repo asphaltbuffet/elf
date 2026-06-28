@@ -70,7 +70,7 @@ func runBenchmarkCmd(cmd *cobra.Command, args []string) error {
 		a.SetTaskTimeout(timeoutFlag)
 	}
 
-	_, benchErr := a.Benchmark(cmd.Context(), dir, cfg.GetLanguage(), cmd.OutOrStdout(), nil, iterations)
+	_, benchErr := a.Benchmark(cmd.Context(), dir, cfg.GetLanguage(), nil, iterations)
 	if benchErr != nil {
 		cmd.PrintErrln("benchmark failed:", benchErr)
 	}

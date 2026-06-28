@@ -72,7 +72,7 @@ func runTestCmd(cmd *cobra.Command, args []string) error {
 		a.SetTaskTimeout(timeoutFlag)
 	}
 
-	_, testErr := a.Test(cmd.Context(), dir, language, "", cmd.OutOrStdout(), nil)
+	_, testErr := a.Test(cmd.Context(), dir, language, "", nil)
 	if testErr != nil {
 		cfg.GetLogger().Error("testing exercise", tint.Err(testErr))
 		cmd.Printf("Failed to run tests: %v\n", testErr)

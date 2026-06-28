@@ -4,7 +4,6 @@ package app
 
 import (
 	"context"
-	"io"
 	"log/slog"
 	"time"
 
@@ -65,8 +64,7 @@ func (a *App) GetLogger() *slog.Logger { return a.Logger }
 func (a *App) Solve(
 	ctx context.Context,
 	path, language, customInput string,
-	w io.Writer,
-	cb func(tasks.Result),
+	cb func(tasks.Event),
 	skipTests bool,
 ) ([]tasks.Result, error) {
 	ex, err := exercise.Load(path, language, customInput, a.FS, a.Logger, exercise.WithTaskTimeout(a.taskTimeout))
@@ -82,7 +80,6 @@ func (a *App) Solve(
 		a.FS,
 		a.Logger,
 		rc(runners.ExerciseMeta{Year: ex.Year, Day: ex.Day, Title: ex.Title, Dir: path, Key: language}),
-		w,
 		cb,
 		skipTests,
 	)
@@ -92,8 +89,7 @@ func (a *App) Solve(
 func (a *App) Test(
 	ctx context.Context,
 	path, language, customInput string,
-	w io.Writer,
-	cb func(tasks.Result),
+	cb func(tasks.Event),
 ) ([]tasks.Result, error) {
 	ex, err := exercise.Load(path, language, customInput, a.FS, a.Logger, exercise.WithTaskTimeout(a.taskTimeout))
 	if err != nil {
@@ -107,7 +103,6 @@ func (a *App) Test(
 		ctx,
 		a.Logger,
 		rc(runners.ExerciseMeta{Year: ex.Year, Day: ex.Day, Title: ex.Title, Dir: path, Key: language}),
-		w,
 		cb,
 	)
 }
@@ -117,8 +112,7 @@ func (a *App) Test(
 func (a *App) Benchmark(
 	ctx context.Context,
 	path, language string,
-	w io.Writer,
-	cb func(tasks.Result),
+	cb func(tasks.Event),
 	iterations int,
 ) ([]tasks.Result, error) {
 	ex, err := exercise.Load(path, language, "", a.FS, a.Logger, exercise.WithTaskTimeout(a.taskTimeout))
@@ -128,5 +122,5 @@ func (a *App) Benchmark(
 
 	bmk := exercise.NewBenchmarker(ex)
 
-	return bmk.Benchmark(ctx, a.FS, a.Logger, w, cb, iterations)
+	return bmk.Benchmark(ctx, a.FS, a.Logger, cb, iterations)
 }

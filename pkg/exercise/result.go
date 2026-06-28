@@ -65,68 +65,6 @@ func buildResult(r *protocol.Result, expected string) tasks.Result {
 	return result
 }
 
-// renderResult writes a styled representation of a task result to w.
-// It reconstructs the CLI visual output from the result data alone.
-func renderResult(w io.Writer, result tasks.Result) {
-	if result.Type == tasks.Benchmark {
-		return
-	}
-
-	dur, err := time.ParseDuration(fmt.Sprintf("%fs", result.Duration))
-	if err != nil {
-		panic(err)
-	}
-
-	name := taskStyle(int(result.Part), result.SubPart)
-
-	var output, extra, followUpText lipgloss.Style
-	var printExtra bool
-
-	switch result.Status {
-	case tasks.StatusInvalid:
-		// nothing to render for invalid results
-
-	case tasks.StatusError:
-		output = lipgloss.NewStyle().
-			Bold(true).Align(lipgloss.Center).
-			Foreground(lipgloss.Color("9")).
-			SetString("ERROR")
-
-		extra = extraStyle.Foreground(bad).SetString(result.Output)
-		printExtra = true
-
-	case tasks.StatusUnverified:
-		output = statusStyle.Foreground(newAns).Background(lipgloss.Color("0")).SetString("NEW")
-		followUpText = timeStyle.SetString(dur.String())
-
-		extra = extraStyle.SetString("⤷ " + result.Output)
-		printExtra = true
-
-	case tasks.StatusPassed:
-		output = lipgloss.NewStyle().Bold(true).Align(lipgloss.Right).Foreground(lipgloss.Color("46")).SetString("PASS")
-		followUpText = timeStyle.SetString(dur.String())
-
-		if result.Type == tasks.Solve {
-			extra = extraStyle.Foreground(lipgloss.Color("7")).SetString("⤷ " + result.Output)
-			printExtra = true
-		}
-
-	case tasks.StatusFailed:
-		output = statusStyle.Foreground(bad).SetString("FAIL")
-		extra = extraStyle.Foreground(bad).SetString(result.Output)
-		printExtra = true
-
-	case tasks.StatusTimeout:
-		output = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("214")).SetString("TIMEOUT")
-	}
-
-	fmt.Fprintln(w, name, output, followUpText)
-
-	if printExtra {
-		fmt.Fprintln(w, extra)
-	}
-}
-
 // RenderReport writes a scaffold Report to w: one indented row per file, showing the relative path
 // followed by a colorized outcome (green added, yellow replaced, faint skipped). The exercise
 // directory itself is not printed here — the caller prints it as a header.
@@ -138,29 +76,23 @@ func RenderReport(w io.Writer, r Report) {
 	}
 }
 
-func handleTaskResult(w io.Writer, r *protocol.Result, expected string) tasks.Result {
-	result := buildResult(r, expected)
-	renderResult(w, result)
-
-	return result
+// handleTaskResult builds a [tasks.Result] from a runner result; rendering is the
+// caller's concern (via the event stream), not the domain's.
+func handleTaskResult(r *protocol.Result, expected string) tasks.Result {
+	return buildResult(r, expected)
 }
 
-// timeoutResult synthesizes a TIMEOUT result for a task that exceeded its deadline,
-// renders it inline, and returns it so callers can continue to the next task.
-func timeoutResult(w io.Writer, taskID string) tasks.Result {
+// timeoutResult synthesizes a TIMEOUT result for a task that exceeded its deadline.
+func timeoutResult(taskID string) tasks.Result {
 	taskType, part, subpart := tasks.ParseTaskID(taskID)
 
-	r := tasks.Result{
+	return tasks.Result{
 		ID:      taskID,
 		Type:    taskType,
 		Part:    part,
 		SubPart: subpart,
 		Status:  tasks.StatusTimeout,
 	}
-
-	renderResult(w, r)
-
-	return r
 }
 
 // errTaskTimeout is returned by runWithTimeout when the per-task deadline fires.

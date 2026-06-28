@@ -1,7 +1,6 @@
 package exercise
 
 import (
-	"io"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -66,7 +65,7 @@ func Test_handleMainResult(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := handleTaskResult(io.Discard, tt.args.r, "good output")
+			got := handleTaskResult(tt.args.r, "good output")
 
 			assert.Equal(t, tt.want, got)
 		})

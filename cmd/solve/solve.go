@@ -81,7 +81,7 @@ func runSolveCmd(cmd *cobra.Command, args []string) error {
 		a.SetTaskTimeout(timeoutFlag)
 	}
 
-	_, solveErr := a.Solve(cmd.Context(), dir, language, filepath.Clean(input), cmd.OutOrStdout(), nil, noTest)
+	_, solveErr := a.Solve(cmd.Context(), dir, language, filepath.Clean(input), nil, noTest)
 	if solveErr != nil {
 		cmd.PrintErrln("Failed to solve: ", solveErr)
 	}
