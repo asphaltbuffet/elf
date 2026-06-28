@@ -1,22 +1,15 @@
 # Task Completion
 
-Run after any coding change:
+Run before committing any change:
 
 ```
-mise run dev   # generate → mock → lint → test → snapshot
+mise run lint   # must pass clean
+mise run test   # must pass with coverage
 ```
 
-For quick iteration (skip snapshot):
+For a full verification (including generate, mock, snapshot):
 ```
-mise run lint-fix && mise run test
-```
-
-After adding new files:
-```
-jj file track <path>   # required before nix build sees them
+mise run dev
 ```
 
-After dependency changes:
-```
-mise run mod-tidy   # auto-runs nix-hash (gomod2nix generate) as post-dep
-```
+For auto-fixable lint issues, run `mise run lint-fix` first, then `mise run lint` to confirm clean.

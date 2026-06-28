@@ -1,0 +1,5 @@
+kind: Fixed
+body: Visualize outdir determines absolute path
+time: 2026-06-28T16:21:16.784293214-04:00
+custom:
+    Issue: '#154'

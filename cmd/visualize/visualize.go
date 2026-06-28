@@ -73,10 +73,12 @@ func runVisualizeCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	if outdir == "" {
-		outdir, err = filepath.Abs(".")
-		if err != nil {
-			return err
-		}
+		outdir = "."
+	}
+
+	outdir, err = filepath.Abs(outdir)
+	if err != nil {
+		return err
 	}
 
 	a := appPkg.New(cfg)
