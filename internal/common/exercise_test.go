@@ -1,8 +1,6 @@
 package common
 
 import (
-	"bytes"
-	"io"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -33,11 +31,10 @@ func TestBaseExercise_Two(t *testing.T) {
 
 func TestBaseExercise_Vis(t *testing.T) {
 	t.Parallel()
-	var b bytes.Buffer
 
-	w := io.Writer(&b)
 	e := BaseExercise{}
 
-	require.Error(t, e.Vis("fake", &w))
-	assert.Empty(t, b.String())
+	got, err := e.Vis("fake", "/tmp")
+	require.Error(t, err)
+	assert.Empty(t, got)
 }

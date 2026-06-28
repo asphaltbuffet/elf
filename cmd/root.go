@@ -15,6 +15,7 @@ import (
 	runnerspkg "github.com/asphaltbuffet/elf/cmd/runners"
 	"github.com/asphaltbuffet/elf/cmd/solve"
 	"github.com/asphaltbuffet/elf/cmd/test"
+	"github.com/asphaltbuffet/elf/cmd/visualize"
 )
 
 var rootCmd *cobra.Command
@@ -51,6 +52,7 @@ func GetRootCommand() *cobra.Command {
 		rootCmd.AddCommand(runnerspkg.GetRunnersCmd())
 		rootCmd.AddCommand(solve.GetSolveCmd())
 		rootCmd.AddCommand(test.GetTestCmd())
+		rootCmd.AddCommand(visualize.GetVisualizeCmd())
 	}
 
 	return rootCmd
