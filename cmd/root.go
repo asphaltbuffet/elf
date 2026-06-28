@@ -15,9 +15,6 @@ import (
 	runnerspkg "github.com/asphaltbuffet/elf/cmd/runners"
 	"github.com/asphaltbuffet/elf/cmd/solve"
 	"github.com/asphaltbuffet/elf/cmd/test"
-	"github.com/asphaltbuffet/elf/internal/tui"
-	appPkg "github.com/asphaltbuffet/elf/pkg/app"
-	elfconfig "github.com/asphaltbuffet/elf/pkg/config"
 )
 
 var rootCmd *cobra.Command
@@ -39,15 +36,8 @@ func GetRootCommand() *cobra.Command {
 		rootCmd = &cobra.Command{
 			Use:   "elf [command]",
 			Short: "elf is a programming challenge helper application",
-			RunE: func(_ *cobra.Command, _ []string) error {
-				cfg, err := elfconfig.NewConfig(elfconfig.WithFile(cfgFile))
-				if err != nil {
-					return err
-				}
-
-				appPkg.RegisterRunners(cfg)
-
-				return tui.Run(cfg)
+			RunE: func(cmd *cobra.Command, _ []string) error {
+				return cmd.Help()
 			},
 		}
 
