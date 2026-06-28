@@ -5,6 +5,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/asphaltbuffet/elf/pkg/protocol"
 	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
@@ -22,9 +25,7 @@ func TestPlainNoANSIOnNonTTY(t *testing.T) {
 	_ = p.Close()
 
 	out := buf.String()
-	if strings.Contains(out, "\x1b[") {
-		t.Errorf("output contains ANSI escape sequences on non-TTY writer:\n%q", out)
-	}
+	assert.NotContains(t, out, "\x1b[", "output contains ANSI escape sequences on non-TTY writer")
 }
 
 // TestPlainEmptyHeaderOmitsAoCBox asserts that Year==0 suppresses the AoC header box,
@@ -35,9 +36,8 @@ func TestPlainEmptyHeaderOmitsAoCBox(t *testing.T) {
 		p := NewPlain(&buf, Header{Language: "Go"})
 		_ = p.Close()
 		out := buf.String()
-		if strings.Contains(out, "ADVENT OF CODE 0") || strings.Contains(out, "Day 0") {
-			t.Errorf("header with Year=0 should not render AoC box, got:\n%q", out)
-		}
+		assert.NotContains(t, out, "ADVENT OF CODE 0", "header with Year=0 should not render AoC box")
+		assert.NotContains(t, out, "Day 0", "header with Year=0 should not render AoC box")
 	})
 
 	t.Run("populated header renders box", func(t *testing.T) {
@@ -45,9 +45,7 @@ func TestPlainEmptyHeaderOmitsAoCBox(t *testing.T) {
 		p := NewPlain(&buf, Header{Year: 2015, Day: 4, Title: "The Ideal Stocking Stuffer", Language: "Go"})
 		_ = p.Close()
 		out := buf.String()
-		if !strings.Contains(out, "The Ideal Stocking Stuffer") {
-			t.Errorf("populated header should render AoC box, got:\n%q", out)
-		}
+		assert.Contains(t, out, "The Ideal Stocking Stuffer", "populated header should render AoC box")
 	})
 }
 
@@ -64,15 +62,9 @@ func TestPlainRendersHeaderAndPassLine(t *testing.T) {
 	_ = p.Close()
 
 	out := buf.String()
-	if !strings.Contains(out, "The Ideal Stocking Stuffer") {
-		t.Errorf("missing title in:\n%s", out)
-	}
-	if !strings.Contains(out, "Testing (Go)") {
-		t.Errorf("missing section label in:\n%s", out)
-	}
-	if !strings.Contains(out, "PASS") {
-		t.Errorf("missing PASS in:\n%s", out)
-	}
+	assert.Contains(t, out, "The Ideal Stocking Stuffer", "missing title")
+	assert.Contains(t, out, "Testing (Go)", "missing section label")
+	assert.Contains(t, out, "PASS", "missing PASS")
 }
 
 func TestPlainPlannedAndStartedEmitNothing(t *testing.T) {
@@ -88,12 +80,8 @@ func TestPlainPlannedAndStartedEmitNothing(t *testing.T) {
 	p.Handle(tasks.StartedEvent("Test.1.1", tasks.Test, protocol.PartOne, 1, ""))
 	afterStarted := buf.Len()
 
-	if afterPlanned != headerLen {
-		t.Errorf("PlannedEvent wrote %d bytes (expected 0 new bytes after header)", afterPlanned-headerLen)
-	}
-	if afterStarted != headerLen {
-		t.Errorf("StartedEvent wrote %d bytes (expected 0 new bytes after header)", afterStarted-headerLen)
-	}
+	assert.Equal(t, headerLen, afterPlanned, "PlannedEvent wrote unexpected bytes after header")
+	assert.Equal(t, headerLen, afterStarted, "StartedEvent wrote unexpected bytes after header")
 }
 
 func TestPlainTimeoutLine(t *testing.T) {
@@ -107,9 +95,7 @@ func TestPlainTimeoutLine(t *testing.T) {
 	_ = p.Close()
 
 	out := buf.String()
-	if !strings.Contains(out, "TIMEOUT") {
-		t.Errorf("missing TIMEOUT in:\n%s", out)
-	}
+	assert.Contains(t, out, "TIMEOUT", "missing TIMEOUT")
 }
 
 func TestPlainSolveSectionLabel(t *testing.T) {
@@ -123,9 +109,7 @@ func TestPlainSolveSectionLabel(t *testing.T) {
 	_ = p.Close()
 
 	out := buf.String()
-	if !strings.Contains(out, "Solving (py)") {
-		t.Errorf("missing Solving section label in:\n%s", out)
-	}
+	assert.Contains(t, out, "Solving (py)", "missing Solving section label")
 }
 
 func TestPlainFailLine(t *testing.T) {
@@ -139,9 +123,7 @@ func TestPlainFailLine(t *testing.T) {
 	_ = p.Close()
 
 	out := buf.String()
-	if !strings.Contains(out, "FAIL") {
-		t.Errorf("missing FAIL in:\n%s", out)
-	}
+	assert.Contains(t, out, "FAIL", "missing FAIL")
 }
 
 func TestPlainSectionLabelOnlyOncePerType(t *testing.T) {
@@ -159,10 +141,7 @@ func TestPlainSectionLabelOnlyOncePerType(t *testing.T) {
 	_ = p.Close()
 
 	out := buf.String()
-	count := strings.Count(out, "Testing (Go)")
-	if count != 1 {
-		t.Errorf("expected exactly 1 section label, got %d in:\n%s", count, out)
-	}
+	assert.Equal(t, 1, strings.Count(out, "Testing (Go)"), "expected exactly 1 section label")
 }
 
 func TestPlainMetaEventSetsHeaderAndLanguage(t *testing.T) {
@@ -176,20 +155,12 @@ func TestPlainMetaEventSetsHeaderAndLanguage(t *testing.T) {
 		ID: "Test.1.0", Type: tasks.Test, Part: protocol.PartOne, SubPart: 0,
 		Status: tasks.StatusPassed, Duration: 0.000190984,
 	}, ""))
-	if err := p.Close(); err != nil {
-		t.Fatalf("Close: %v", err)
-	}
+	require.NoError(t, p.Close())
 
 	out := buf.String()
-	if !strings.Contains(out, "2015 Day 11: Corporate Policy") {
-		t.Errorf("header missing/wrong:\n%s", out)
-	}
-	if !strings.Contains(out, "Testing (Rust)") {
-		t.Errorf("section label should use pretty name 'Rust', not a key:\n%s", out)
-	}
-	if strings.Contains(out, "(rs)") {
-		t.Errorf("section label leaked the lang key 'rs':\n%s", out)
-	}
+	assert.Contains(t, out, "2015 Day 11: Corporate Policy", "header missing/wrong")
+	assert.Contains(t, out, "Testing (Rust)", "section label should use pretty name 'Rust', not a key")
+	assert.NotContains(t, out, "(rs)", "section label leaked the lang key 'rs'")
 }
 
 func TestPlainUniformDurationUnitAndAlignment(t *testing.T) {
@@ -204,19 +175,12 @@ func TestPlainUniformDurationUnitAndAlignment(t *testing.T) {
 			Part: protocol.PartOne, SubPart: i, Status: tasks.StatusPassed, Duration: d,
 		}, ""))
 	}
-	if err := p.Close(); err != nil {
-		t.Fatalf("Close: %v", err)
-	}
+	require.NoError(t, p.Close())
 
 	out := buf.String()
-	// Every duration uses ms (uniform magnitude); none uses µs.
-	if strings.Contains(out, "µs") {
-		t.Errorf("expected uniform ms unit, found µs:\n%s", out)
-	}
+	assert.NotContains(t, out, "µs", "expected uniform ms unit, found µs")
 	for _, want := range []string{"0.191ms", "11.635ms", "0.185ms", "15.326ms"} {
-		if !strings.Contains(out, want) {
-			t.Errorf("missing uniform-unit duration %q in:\n%s", want, out)
-		}
+		assert.Contains(t, out, want, "missing uniform-unit duration")
 	}
 }
 
@@ -237,22 +201,12 @@ func TestPlainDurationUnitIsPerSection(t *testing.T) {
 		ID: "Solve.1", Type: tasks.Solve, Part: protocol.PartOne, SubPart: 0,
 		Status: tasks.StatusUnverified, Output: "569999", Duration: 8.652,
 	}, ""))
-	if err := p.Close(); err != nil {
-		t.Fatalf("Close: %v", err)
-	}
+	require.NoError(t, p.Close())
 
 	out := buf.String()
-	// Fast tests must NOT collapse to 0.000s — they keep a sub-second unit.
-	if strings.Contains(out, "0.000s") {
-		t.Errorf("fast test crushed to 0.000s; section unit should be sub-second:\n%s", out)
-	}
-	// The slow solve uses seconds, and its answer is shown.
-	if !strings.Contains(out, "8.652s") {
-		t.Errorf("solve section should render seconds:\n%s", out)
-	}
-	if !strings.Contains(out, "569999") {
-		t.Errorf("NEW answer must be shown:\n%s", out)
-	}
+	assert.NotContains(t, out, "0.000s", "fast test crushed to 0.000s; section unit should be sub-second")
+	assert.Contains(t, out, "8.652s", "solve section should render seconds")
+	assert.Contains(t, out, "569999", "NEW answer must be shown")
 }
 
 // Plain collapses benchmark iterations into one settled line per (runner, Part)
@@ -271,23 +225,13 @@ func TestPlainBenchmarkAggregatesPerRunnerPart(t *testing.T) {
 		}, "Go"))
 	}
 
-	if err := p.Close(); err != nil {
-		t.Fatalf("Close: %v", err)
-	}
+	require.NoError(t, p.Close())
 
 	out := buf.String()
-	// One aggregated line: runner name, count, and summed duration.
-	if !strings.Contains(out, "Go") {
-		t.Errorf("benchmark line should name the runner:\n%s", out)
-	}
-	if !strings.Contains(out, "3") {
-		t.Errorf("benchmark line should show the iteration count:\n%s", out)
-	}
-	if !strings.Contains(out, "1.500s") {
-		t.Errorf("benchmark line should show summed duration 1.500s (3 × 0.5):\n%s", out)
-	}
-	// Must NOT print one line per iteration: no per-iteration task labels.
-	if strings.Contains(out, "1.0:") || strings.Contains(out, "1.1:") || strings.Contains(out, "1.2:") {
-		t.Errorf("benchmark iterations must not render as per-iteration lines:\n%s", out)
-	}
+	assert.Contains(t, out, "Go", "benchmark line should name the runner")
+	assert.Contains(t, out, "3", "benchmark line should show the iteration count")
+	assert.Contains(t, out, "1.500s", "benchmark line should show summed duration 1.500s (3 × 0.5)")
+	assert.NotContains(t, out, "1.0:", "benchmark iterations must not render as per-iteration lines")
+	assert.NotContains(t, out, "1.1:", "benchmark iterations must not render as per-iteration lines")
+	assert.NotContains(t, out, "1.2:", "benchmark iterations must not render as per-iteration lines")
 }

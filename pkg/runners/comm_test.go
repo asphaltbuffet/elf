@@ -271,7 +271,7 @@ func Test_checkWait(t *testing.T) {
 		select {
 		case <-done:
 		case <-time.After(5 * time.Second):
-			t.Fatal("checkWait hung on a dead subprocess")
+			require.Fail(t, "checkWait hung on a dead subprocess")
 		}
 
 		require.Error(t, err)

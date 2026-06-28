@@ -295,7 +295,7 @@ func startReapedRunner(t *testing.T) *descriptorRunner {
 	case waited := <-waitErr:
 		waitErr <- waited
 	case <-time.After(2 * time.Second):
-		t.Fatal("reaper did not finish in time")
+		require.Fail(t, "reaper did not finish in time")
 	}
 
 	return &descriptorRunner{
