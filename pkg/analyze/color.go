@@ -39,14 +39,14 @@ var langPalette = []color.RGBA{
 // Languages listed but not yet active are commented out — uncomment when the
 // corresponding Runner Descriptor is added.
 var knownLangIndex = map[string]int{
-	"Bash":    0,
-	"Go":      1,
-	"Python":  2, //nolint:mnd // palette index
-	"Rust":    3, //nolint:mnd // palette index
-	"Fortran": 4, //nolint:mnd // palette index
-	// "Perl":   5,
-	// "Lua":    6,
-	// "Kotlin": 7,
+	"Bash":       0,
+	"Go":         1,
+	"Python":     2, //nolint:mnd // palette index
+	"Rust":       3, //nolint:mnd // palette index
+	"Fortran 77": 4, //nolint:mnd // palette index
+	// "Perl":     5,
+	// "Lua":      6,
+	// "Kotlin":   7,
 }
 
 // colorForLang returns a deterministic, opaque color for a language display

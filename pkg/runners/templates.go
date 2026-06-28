@@ -21,3 +21,8 @@ var BashTemplate []byte
 //
 //go:embed interface/rust.tmpl
 var RustTemplate []byte
+
+// F77Template is the built-in Fortran 77 runner wrapper template (a C harness compiled with gfortran).
+//
+//go:embed interface/f77.tmpl
+var F77Template []byte
