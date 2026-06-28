@@ -5,30 +5,59 @@ import (
 	"image/color"
 )
 
-// langPalette is a fixed, opaque palette. Colors are assigned to languages by
-// hashing the language key into this slice, so a given language is the same
-// color in every graph. Collisions past len(langPalette) are accepted.
+// langPalette is a fixed, opaque 12-color qualitative palette. Known languages
+// are pinned to specific indices via knownLangIndex; unknown languages fall back
+// to hashing into this slice (collisions accepted for unrecognised names).
 //
-// These are the chromatic colors of the Okabe-Ito palette, chosen because they
-// remain distinguishable under all common forms of color-vision deficiency
-// (deuteranopia, protanopia, tritanopia). Okabe-Ito's eighth color (black) is
-// omitted: it would be indistinguishable from the graph axes and reference line.
-// Reference: https://jfly.uni-koeln.de/color/
+// Colors are drawn from ColorBrewer's 12-color qualitative Set, chosen for
+// perceptual distinctness across a wide gamut. Adjacent entries are visually
+// separable; the set is broadly accessible but not strictly CVD-safe at all
+// palette positions.
+// Reference: https://colorbrewer2.org/#type=qualitative
 //
 //nolint:mnd // palette color definitions
 var langPalette = []color.RGBA{
-	{R: 230, G: 159, B: 0, A: 255},   // orange
-	{R: 86, G: 180, B: 233, A: 255},  // sky blue
-	{R: 0, G: 158, B: 115, A: 255},   // bluish green
-	{R: 240, G: 228, B: 66, A: 255},  // yellow
-	{R: 0, G: 114, B: 178, A: 255},   // blue
-	{R: 213, G: 94, B: 0, A: 255},    // vermillion
-	{R: 204, G: 121, B: 167, A: 255}, // reddish purple
+	{R: 228, G: 26, B: 28, A: 255},   // 0  red
+	{R: 55, G: 126, B: 184, A: 255},  // 1  blue
+	{R: 77, G: 175, B: 74, A: 255},   // 2  green
+	{R: 152, G: 78, B: 163, A: 255},  // 3  purple
+	{R: 255, G: 127, B: 0, A: 255},   // 4  orange
+	{R: 255, G: 255, B: 51, A: 255},  // 5  yellow
+	{R: 166, G: 86, B: 40, A: 255},   // 6  brown
+	{R: 247, G: 129, B: 191, A: 255}, // 7  pink
+	{R: 153, G: 153, B: 153, A: 255}, // 8  grey
+	{R: 0, G: 190, B: 190, A: 255},   // 9  cyan
+	{R: 190, G: 0, B: 190, A: 255},   // 10 magenta
+	{R: 0, G: 128, B: 0, A: 255},     // 11 dark green
 }
 
-// colorForLang returns a deterministic, opaque color for a language key.
-// The same key always maps to the same color, across calls and processes.
+// knownLangIndex pins display names (RunnerDescriptor.Name, written into
+// benchmark.json as impl.Name) to specific palette indices, guaranteeing no
+// two known languages share a color. Add a new entry here whenever a new
+// Runner Descriptor is shipped; choose an index not already in use.
+//
+// Languages listed but not yet active are commented out — uncomment when the
+// corresponding Runner Descriptor is added.
+var knownLangIndex = map[string]int{
+	"Bash":    0,
+	"Go":      1,
+	"Python":  2, //nolint:mnd // palette index
+	"Rust":    3, //nolint:mnd // palette index
+	"Fortran": 4, //nolint:mnd // palette index
+	// "Perl":   5,
+	// "Lua":    6,
+	// "Kotlin": 7,
+}
+
+// colorForLang returns a deterministic, opaque color for a language display
+// name. Known languages (those in knownLangIndex) always map to a unique
+// palette entry. Unknown names fall back to FNV-32a hash mod palette length —
+// same color across all graphs for that name, but uniqueness not guaranteed.
 func colorForLang(name string) color.Color {
+	if idx, ok := knownLangIndex[name]; ok {
+		return langPalette[idx]
+	}
+
 	h := fnv.New32a()
 	_, _ = h.Write([]byte(name))
 
