@@ -49,6 +49,10 @@ func (e *Exercise) Test(
 		return nil, err
 	}
 
+	if cb != nil {
+		cb(e.metaEvent(runner))
+	}
+
 	results, err := e.runTests(ctx, runner, cb)
 	if err != nil {
 		logger.ErrorContext(ctx, "running tests", tint.Err(err))

@@ -7,7 +7,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/charmbracelet/lipgloss"
+	lipgloss "charm.land/lipgloss/v2"
 
 	"github.com/asphaltbuffet/elf/pkg/protocol"
 	"github.com/asphaltbuffet/elf/pkg/runners"
@@ -17,6 +17,18 @@ import (
 type testTask struct {
 	task     *protocol.Task
 	expected string
+}
+
+// metaEvent builds the run-level metadata event a renderer uses for chrome:
+// the exercise identity for the header and the runner's human-readable name
+// (e.g. "Rust") rather than the lookup key (e.g. "rs").
+func (e *Exercise) metaEvent(runner runners.Runner) tasks.Event {
+	return tasks.MetaEvent(tasks.Meta{
+		Year:     e.Year,
+		Day:      e.Day,
+		Title:    e.Title,
+		Language: runner.String(),
+	})
 }
 
 // buildResult constructs a tasks.Result from a runner result and expected value.

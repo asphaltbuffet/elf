@@ -5,17 +5,30 @@ import "github.com/asphaltbuffet/elf/pkg/protocol"
 // EventKind identifies a stage in a task's lifecycle as it streams to a renderer.
 type EventKind int
 
-// Task lifecycle event kinds. Planned/Started/Finished are emitted per task.
+// Task lifecycle event kinds. Meta is emitted once at the start of a run;
+// Planned/Started/Finished are emitted per task.
 const (
 	eventInvalid  EventKind = iota // zero value guards against an unset Kind
+	EventMeta                      // run metadata for chrome (header, pretty language); Meta is non-nil
 	EventPlanned                   // task will run (renderer shows "<not started>")
 	EventStarted                   // task is now executing (renderer animates spinner + timer)
 	EventFinished                  // task is done; Result is non-nil
 )
 
-// Event is a presentation-facing record of a task's lifecycle. It is display-only:
+// Meta carries the run-level metadata a renderer needs to draw chrome: the
+// exercise identity for the header box and the runner's human-readable name for
+// section labels. It is resolved by the domain after the exercise is loaded.
+type Meta struct {
+	Year     int
+	Day      int
+	Title    string
+	Language string // human-readable runner name (e.g. "Rust"), not the lookup key ("rs")
+}
+
+// Event is a presentation-facing record of a run's progress. It is display-only:
 // the authoritative outcome of a run remains the []Result returned by the operation.
-// Result is non-nil only when Kind == EventFinished.
+// Result is non-nil only when Kind == EventFinished; Meta is non-nil only when
+// Kind == EventMeta.
 type Event struct {
 	Kind    EventKind
 	ID      string
@@ -23,6 +36,13 @@ type Event struct {
 	Part    protocol.Part
 	SubPart int
 	Result  *Result
+	Meta    *Meta
+}
+
+// MetaEvent reports run-level chrome metadata. It should be emitted once, before
+// any task events, so a renderer can draw the header and section labels.
+func MetaEvent(m Meta) Event {
+	return Event{Kind: EventMeta, Meta: &m}
 }
 
 // PlannedEvent reports that a task will run.

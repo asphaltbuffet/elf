@@ -149,6 +149,9 @@ func TestExercise_Test_EmitsLifecycleEvents(t *testing.T) {
 	var sawPlanned, sawFinished bool
 	for _, ev := range events {
 		switch ev.Kind {
+		case tasks.EventMeta:
+			require.NotNil(t, ev.Meta)
+			assert.False(t, sawPlanned, "Meta must precede task events")
 		case tasks.EventPlanned:
 			sawPlanned = true
 			assert.False(t, sawFinished, "Planned must precede Finished")

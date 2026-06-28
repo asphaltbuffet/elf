@@ -1,7 +1,7 @@
 package exercise
 
 import (
-	"github.com/charmbracelet/lipgloss"
+	lipgloss "charm.land/lipgloss/v2"
 )
 
 // Column width and padding constants for CLI result rendering.
@@ -15,48 +15,11 @@ const (
 )
 
 var (
-	good = lipgloss.AdaptiveColor{Light: "#008000", Dark: "#00ff00"} // green
-	warn = lipgloss.AdaptiveColor{Light: "#808000", Dark: "#ffff00"} // yellow
+	good = lipgloss.Color("#00ff00") // green (dark terminal default)
+	warn = lipgloss.Color("#ffff00") // yellow (dark terminal default)
 
-	minor = lipgloss.AdaptiveColor{Light: "#808080", Dark: "#808080"} // gray
+	minor = lipgloss.Color("#808080") // gray
 )
-
-// func taskHeaderStyle(s string) lipgloss.Style {
-// 	headerStyle := lipgloss.NewStyle().
-// 		Italic(true).
-// 		MarginTop(1).
-// 		Foreground(lipgloss.Color("5"))
-
-// 	return headerStyle.SetString(s)
-// }
-
-// func mainResultStyle(status string, success bool) lipgloss.Style {
-// 	style := lipgloss.NewStyle().Bold(true)
-
-// 	switch {
-// 	case status == "":
-// 		status = "..."
-// 		fallthrough
-// 	case !success:
-// 		style.Foreground(bad)
-// 	case success:
-// 		style.Foreground(good)
-// 	}
-
-// 	return style.SetString(status)
-// }
-
-// func mainNoteStyle(note string, success bool) lipgloss.Style {
-// 	style := lipgloss.NewStyle().Faint(true).Italic(true)
-
-// 	if success {
-// 		style = style.Foreground(minor).SetString("in", note)
-// 	} else {
-// 		style = style.Foreground(warn).SetString("saying", note)
-// 	}
-
-// 	return style.SetString(note)
-// }
 
 // scaffoldOutcomeStyle returns the color styling for a scaffold Outcome:
 // green for Added, yellow for Replaced, and a faint gray for Skipped.

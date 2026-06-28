@@ -54,7 +54,7 @@ go test -run TestFunctionName ./path/to/package
 - **pkg/runners/**: Language runner abstraction - executes solutions in Go (`go/`) or Python (`py/`) subdirectories
 - **pkg/tasks/**: Task types (Solve, Test, Benchmark, Visualize) and result handling
 - **pkg/analyze/**: Benchmark analysis and graph generation
-- **internal/tui/**: Bubbletea TUI mode (launched when `elf` runs with no subcommand)
+- **internal/render/**: Event-stream rendering — `Renderer` interface, `Plain` (non-TTY) and `Live` (bubbletea/v2 TUI) renderers, `Run` driver, TTY auto-detect and `--plain` override (see ADR-0010)
 - **internal/utilities/**: Internal string helpers
 
 ### `pkg/exercise/` File Organization
@@ -66,7 +66,7 @@ The largest package splits files by responsibility:
 | `advent.go` | `Exercise` struct, constructor, options, `loadInfo` |
 | `solver.go` | `Solve`, `runMainTasks`, `makeMainTasks` |
 | `tester.go` | `Test`, `runTests`, `makeTestTasks` |
-| `result.go` | `buildResult` (pure data), `renderResult` (CLI styling), `handleTaskResult` wrapper, `testTask` type |
+| `result.go` | `buildResult` (pure data), `handleTaskResult` wrapper, `timeoutResult`, `restartRunner`, `runWithTimeout`, `testTask` type, scaffold `RenderReport` |
 | `benchmarker.go` | `Benchmarker` struct, `NewBenchmarker`, `Benchmark`, `runBenchmark`, `NormalizationFactor` |
 | `benchmarker_data.go` | `BenchmarkData`, `ImplementationData`, `PartData` types, `calculateMetrics` |
 | `downloader.go` | `Downloader` struct, constructor, options, `validate`, `Download`, URL parsing, path resolution |
@@ -94,29 +94,25 @@ exercises/<year>/<day>-<title>/
 
 The `runners.Runner` interface abstracts language execution. Each runner (Go, Python) implements Start/Stop/Run/Cleanup methods. Solutions communicate results back via a standardized protocol in `pkg/runners/comm.go`.
 
-### TUI Architecture
+### Rendering Architecture
 
-The TUI uses [bubbletea](https://github.com/charmbracelet/bubbletea) with a navigation stack pattern:
+The `internal/tui/` package was removed entirely (see ADR-0010). Presentation is now handled by the event-stream renderer in `internal/render/`.
 
-| Package | Purpose |
-|---------|---------|
-| `internal/tui/` | Root `App` model with nav stack (`[]tea.Model`), `Run()` entry point |
-| `internal/tui/dashboard/` | Year list with progress bars, config summary |
-| `internal/tui/yearview/` | Exercise table for a single year, action keybindings (s/t/b/a) |
-| `internal/tui/exerciseview/` | Runs solve/test/benchmark with result streaming via channel |
-| `internal/tui/components/` | Reusable: `ResultList` (viewport), `Progress` (spinner), `OpenFile` (xdg-open) |
-| `internal/tui/discover/` | Filesystem scanner: reads `info.json` files, groups exercises by year |
-| `internal/tui/nav/` | Shared message types (`PushScreenMsg`, `PopScreenMsg`) to prevent import cycles |
+| File | Purpose |
+|------|---------|
+| `render.go` | `Renderer` interface (`Handle`/`Close`), `Header` struct, `isTTY`, `New` factory |
+| `plain.go` | `Plain` — non-TTY renderer; writes settled lines to `io.Writer`; wraps writer with `colorprofile.NewWriter` to strip ANSI on non-TTY |
+| `live.go` | `Live` — bubbletea/v2 model with spinner + live elapsed timer, settles rows on `EventFinished` |
+| `driver.go` | `Run` — drives a `tea.Program` (Live path) or direct calls (Plain path); returns op results |
+| `styles.go` | Shared lipgloss v2 styles (`StatusStyle`, `TimeStyle`, `HeaderStyle`, etc.) |
 
 **Key patterns:**
-- **Result streaming**: `exercise.WithResultCallback` sends `tasks.Result` through a channel. `exerciseview` reads it via `waitForResult` tea.Cmd, dispatching `resultMsg` for each item.
-- **Suppressed CLI output**: TUI passes `exercise.WithWriter(io.Discard)` to suppress the CLI's direct stdout rendering. Results flow only through the callback.
-- **ANSI-aware columns**: Use `lipgloss.Style.Width()` (not `fmt.Sprintf` `%-Ns`) for fixed-width columns — `fmt` counts ANSI escape bytes, breaking alignment for styled text.
-
-**Gotchas:**
-- `fmt.Sprintf("%-Ns")` counts ANSI escape bytes, not visible chars — always use `lipgloss.Style.Width()` for fixed columns
-- Bubbletea `Init()` uses value receivers — cannot mutate model state; initialize channels/timers in constructors
-- `lipgloss.Style.Inherit(other)` copies color/bold but preserves layout (width, align, padding) — use for styled table cells
+- Domain emits `tasks.Event` (Planned/Started/Finished) via a `cb func(tasks.Event)` callback.
+- `render.Run` feeds events into the renderer and returns `([]tasks.Result, error)` from the domain operation.
+- `New(w, h, plain)` auto-selects Plain vs Live: `plain==true` or non-TTY → Plain; otherwise → Live.
+- Non-TTY output is wrapped with `colorprofile.NewWriter` in `NewPlain` to strip ANSI escape sequences.
+- Header box is omitted when `Header.Year==0` (no exercise metadata) in both Plain and Live.
+- `--plain` flag on solve/test/benchmark forces the Plain renderer regardless of TTY state.
 
 ### Configuration
 

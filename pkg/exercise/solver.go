@@ -48,6 +48,10 @@ func (e *Exercise) Solve(
 		return nil, err
 	}
 
+	if cb != nil {
+		cb(e.metaEvent(runner))
+	}
+
 	results := []tasks.Result{}
 
 	if !skipTests {

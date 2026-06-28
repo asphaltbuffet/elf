@@ -13,7 +13,10 @@ Two renderers consume the same event stream:
 - a **live renderer** (bubbles/v2 + lipgloss/v2) that owns stdout, shows all tasks up
   front as `<not started>`, animates a spinner and a wall-clock elapsed timer for the
   `<running>` task, and settles each row to PASS/FAIL/TIMEOUT with the runner-measured
-  `Duration` on Finished; and
+  `Duration` on Finished. Like the plain renderer, it also prints the per-result detail
+  lines under a settled row — the computed answer for a `NEW` result (which the user
+  submits) and got/expected on failure — so a live solve is not missing the answer it
+  was run to produce; and
 - a **plain renderer** that reproduces the previous synchronous output (one line per
   Finished result, header box and section labels on the appropriate first events) for
   non-interactive output.

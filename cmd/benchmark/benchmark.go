@@ -7,13 +7,16 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/asphaltbuffet/elf/internal/render"
 	appPkg "github.com/asphaltbuffet/elf/pkg/app"
 	"github.com/asphaltbuffet/elf/pkg/config"
+	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
 var (
 	benchmarkCmd *cobra.Command
 	iterations   int
+	plainFlag    bool
 	timeoutFlag  time.Duration
 
 	makeConfig = func(cf string) (config.Config, error) {
@@ -44,6 +47,7 @@ func GetBenchmarkCmd() *cobra.Command {
 		benchmarkCmd.Flags().StringP("config-file", "c", "", "configuration file")
 		benchmarkCmd.Flags().
 			DurationVarP(&timeoutFlag, "timeout", "t", 0, "per-task timeout (0 or negative = no timeout; omit to use config default)")
+		benchmarkCmd.Flags().BoolVar(&plainFlag, "plain", false, "disable live output (plain renderer)")
 	}
 
 	return benchmarkCmd
@@ -70,7 +74,11 @@ func runBenchmarkCmd(cmd *cobra.Command, args []string) error {
 		a.SetTaskTimeout(timeoutFlag)
 	}
 
-	_, benchErr := a.Benchmark(cmd.Context(), dir, cfg.GetLanguage(), nil, iterations)
+	h := render.Header{Language: cfg.GetLanguage()}
+	_, benchErr := render.Run(cmd.Context(), cmd.OutOrStdout(), h, true,
+		func(cb func(tasks.Event)) ([]tasks.Result, error) {
+			return a.Benchmark(cmd.Context(), dir, cfg.GetLanguage(), cb, iterations)
+		})
 	if benchErr != nil {
 		cmd.PrintErrln("benchmark failed:", benchErr)
 	}

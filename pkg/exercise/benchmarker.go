@@ -60,6 +60,12 @@ func (b *Benchmarker) Benchmark(
 
 	results := []tasks.Result{}
 
+	if cb != nil {
+		// Benchmark spans multiple implementations, so there is no single runner
+		// name; the header carries the exercise identity only.
+		cb(tasks.MetaEvent(tasks.Meta{Year: b.Year, Day: b.Day, Title: b.Title}))
+	}
+
 	emitPlannedBatch(cb, len(impls), iterations)
 
 	for _, impl := range impls {
