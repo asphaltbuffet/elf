@@ -11,9 +11,9 @@ import (
 	"github.com/asphaltbuffet/elf/pkg/exercise"
 )
 
-// Downloader is an interface for downloading challenges.
-type Downloader interface {
-	Download() error
+// Adder makes a challenge exercise exist in the workspace.
+type Adder interface {
+	Add() error
 	FilePath() string
 	Report() exercise.Report
 }
@@ -27,10 +27,10 @@ var (
 	makeConfig = func(cf string) (config.Config, error) {
 		return config.NewConfig(config.WithFile(cf))
 	}
-	makeDownloader = func(cfg config.Config, url, lang string, forced *exercise.Overwrites) (Downloader, error) {
-		return exercise.NewDownloader(cfg,
+	makeAdder = func(cfg config.Config, url, lang string, forced *exercise.Overwrites) (Adder, error) {
+		return exercise.NewAdder(cfg,
 			exercise.WithURL(url),
-			exercise.WithDownloadLanguage(lang),
+			exercise.WithLanguage(lang),
 			exercise.WithOverwrites(forced),
 		)
 	}
@@ -75,13 +75,13 @@ func runDownloadCmd(cmd *cobra.Command, args []string) error {
 		Input: forceInput,
 	}
 
-	chdl, err := makeDownloader(cfg, args[0], language, forced)
+	chdl, err := makeAdder(cfg, args[0], language, forced)
 	if err != nil {
-		return fmt.Errorf("creating downloader: %w", err)
+		return fmt.Errorf("creating adder: %w", err)
 	}
 
-	if err = chdl.Download(); err != nil {
-		return fmt.Errorf("downloading challenge: %w", err)
+	if err = chdl.Add(); err != nil {
+		return fmt.Errorf("adding challenge: %w", err)
 	}
 
 	out := cmd.OutOrStdout()

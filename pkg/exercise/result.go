@@ -88,12 +88,6 @@ func RenderReport(w io.Writer, r Report) {
 	}
 }
 
-// handleTaskResult builds a [tasks.Result] from a runner result; rendering is the
-// caller's concern (via the event stream), not the domain's.
-func handleTaskResult(r *protocol.Result, expected string) tasks.Result {
-	return buildResult(r, expected)
-}
-
 // timeoutResult synthesizes a TIMEOUT result for a task that exceeded its deadline.
 func timeoutResult(taskID string) tasks.Result {
 	taskType, part, subpart := tasks.ParseTaskID(taskID)

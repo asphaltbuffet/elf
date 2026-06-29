@@ -66,15 +66,17 @@ The largest package splits files by responsibility:
 | `advent.go` | `Exercise` struct, constructor, options, `loadInfo` |
 | `solver.go` | `Solve`, `runMainTasks`, `makeMainTasks` |
 | `tester.go` | `Test`, `runTests`, `makeTestTasks` |
-| `result.go` | `buildResult` (pure data), `handleTaskResult` wrapper, `timeoutResult`, `restartRunner`, `runWithTimeout`, `testTask` type, scaffold `RenderReport` |
+| `result.go` | `buildResult` (pure data), `timeoutResult`, `restartRunner`, `runWithTimeout`, `testTask` type, scaffold `RenderReport` |
 | `benchmarker.go` | `Benchmarker` struct, `NewBenchmarker`, `Benchmark`, `runBenchmark`, `NormalizationFactor` |
 | `benchmarker_data.go` | `BenchmarkData`, `ImplementationData`, `PartData` types, `calculateMetrics` |
-| `downloader.go` | `Downloader` struct, constructor, options, `validate`, `Download`, URL parsing, path resolution |
-| `downloader_http.go` | `getPage`, `getCachedPage`, `downloadPage`, `getCachedInput`, `downloadInput`, `getInput` |
-| `downloader_files.go` | `go:embed` templates, `addMissingFiles`, `writeInputFile`, `writeInfoFile`, `addTemplatedFile` |
-| `helpers_test.go` | Shared test fixtures: `setupTestCase`, `setupSubTest`, `FileExists`, `goldenValue`, package-level vars (`testFs`, `mockDlr`) |
+| `adder.go` | `Adder` struct (the Exercise Adder orchestrator), `NewAdder`, options, `validate`, `Add`, `assemble`, URL parsing, path resolution |
+| `page_fetcher.go` | `pageFetcher` (the Page Fetcher), `newPageFetcher`, `fetchPage`/`fetchInput`, cache helpers (`getCachedPage`, `downloadPage`, `getCachedInput`, `downloadInput`) |
+| `exercise_scaffold.go` | `exerciseScaffold` (the Exercise Scaffold), `go:embed` templates, `write`, `writeInputFile`, `writeInfoFile`, `addTemplatedFile` |
+| `helpers_test.go` | Shared test fixtures: `setupTestCase`, `setupSubTest`, `FileExists`, `goldenValue`, package-level vars (`testFs`, `testAdder`) |
 
-Test files mirror source files (e.g., `downloader_http_test.go` tests HTTP/caching functions).
+Note: `newExerciseFromSource` (Exercise-from-download construction) lives in `advent.go` alongside `loadInfo` (Exercise-from-disk), since both produce an `Exercise` value from a source.
+
+Test files mirror source files (e.g., `page_fetcher_test.go` tests HTTP/caching functions).
 
 ### Exercise Structure
 

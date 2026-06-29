@@ -107,7 +107,7 @@ func (e *Exercise) runTests(
 			return nil, err
 		}
 
-		r := handleTaskResult(result, t.expected)
+		r := buildResult(result, t.expected)
 		if cb != nil {
 			cb(tasks.FinishedEvent(r, ""))
 		}

@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/go-resty/resty/v2"
 	"github.com/jarcoal/httpmock"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
@@ -22,7 +21,7 @@ var NotFoundResponder = httpmock.NewStringResponder(http.StatusNotFound, "404 No
 //go:embed testdata/http/input_body
 var respBodyInput string
 
-func TestDownload(t *testing.T) {
+func TestAdd(t *testing.T) {
 	type args struct {
 		url       string
 		lang      string
@@ -97,18 +96,18 @@ func TestDownload(t *testing.T) {
 				`=~input$`,
 				tt.inputResponder)
 
-			mockDlr.language = tt.args.lang
-			mockDlr.url = tt.args.url
-			mockDlr.scaffold.inputFileName = "input.txt"
-			mockDlr.logger = slog.New(slog.NewTextHandler(io.Discard, nil))
+			testAdder.language = tt.args.lang
+			testAdder.url = tt.args.url
+			testAdder.scaffold.inputFileName = "input.txt"
+			testAdder.logger = slog.New(slog.NewTextHandler(io.Discard, nil))
 
 			// execute function under test
-			err := mockDlr.Download()
+			err := testAdder.Add()
 
 			// assert results
 			require.ErrorIs(t, err, tt.wantErr)
 			if err == nil {
-				FileExists(t, testFs, filepath.Join(mockDlr.FilePath(), "input.txt"))
+				FileExists(t, testFs, filepath.Join(testAdder.FilePath(), "input.txt"))
 			}
 		})
 	}
@@ -117,7 +116,7 @@ func TestDownload(t *testing.T) {
 // TestDownload_existingExercise covers re-downloading an exercise whose directory already exists.
 // This path loads info.json instead of assembling a fresh exercise, and must still fetch and write
 // the puzzle input rather than writing an empty input.txt.
-func TestDownload_existingExercise(t *testing.T) {
+func TestAdd_existingExercise(t *testing.T) {
 	teardownTestCase := setupTestCase(t)
 	defer teardownTestCase(t)
 
@@ -133,16 +132,16 @@ func TestDownload_existingExercise(t *testing.T) {
 		httpmock.NewStringResponder(http.StatusOK, respBodyInput))
 
 	// 2017-01 exists as a fixture directory with info.json, so Download takes the loadInfo branch.
-	mockDlr.language = "go"
-	mockDlr.url = "https://adventofcode.com/2017/day/1"
-	mockDlr.scaffold.inputFileName = "input.txt"
-	mockDlr.scaffold.overwrites = &Overwrites{Input: true}
-	mockDlr.logger = slog.New(slog.NewTextHandler(io.Discard, nil))
+	testAdder.language = "go"
+	testAdder.url = "https://adventofcode.com/2017/day/1"
+	testAdder.scaffold.inputFileName = "input.txt"
+	testAdder.scaffold.overwrites = &Overwrites{Input: true}
+	testAdder.logger = slog.New(slog.NewTextHandler(io.Discard, nil))
 
-	err := mockDlr.Download()
+	err := testAdder.Add()
 	require.NoError(t, err)
 
-	got, err := afero.ReadFile(testFs, filepath.Join(mockDlr.FilePath(), "input.txt"))
+	got, err := afero.ReadFile(testFs, filepath.Join(testAdder.FilePath(), "input.txt"))
 	require.NoError(t, err)
 	assert.Equal(t, respBodyInput, string(got), "input.txt must contain the fetched puzzle input, not be empty")
 }
@@ -322,9 +321,9 @@ func Test_getExercisePath(t *testing.T) {
 			defer teardownSubTest(t)
 
 			// uncomment to view debug logging in test output
-			// mockDownloader.logger = slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
+			// mockAdder.logger = slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
 
-			gotPath, gotOk := mockDlr.getExercisePath(tt.args.year, tt.args.day)
+			gotPath, gotOk := testAdder.getExercisePath(tt.args.year, tt.args.day)
 
 			require.Equal(t, tt.wantPath, gotPath)
 			tt.okAssertion(t, gotOk)
@@ -362,25 +361,25 @@ func Test_makeExercisePath(t *testing.T) {
 	}
 }
 
-func TestNewDownloader(t *testing.T) {
+func TestNewAdder(t *testing.T) {
 	type args struct {
-		options []func(*Downloader)
+		options []func(*Adder)
 		inFile  string
 	}
 
 	tests := []struct {
 		name      string
 		args      args
-		want      *Downloader
+		want      *Adder
 		assertion assert.ErrorAssertionFunc
 	}{
 		{
 			name: "no options",
 			args: args{
-				options: []func(*Downloader){},
+				options: []func(*Adder){},
 				inFile:  "input.txt",
 			},
-			want: &Downloader{
+			want: &Adder{
 				language:        "go",
 				exerciseBaseDir: "TEST_exercises",
 				cfgDir:          "TEST_cfgdir",
@@ -393,15 +392,15 @@ func TestNewDownloader(t *testing.T) {
 		{
 			name: "with options",
 			args: args{
-				options: []func(*Downloader){
-					WithDownloadLanguage("py"),
+				options: []func(*Adder){
+					WithLanguage("py"),
 					WithURL("https://fake.url"),
 					WithOverwrites(&Overwrites{Input: true}),
 					WithSkipImpl(true),
 				},
 				inFile: "fakeInput.fake",
 			},
-			want: &Downloader{
+			want: &Adder{
 				language:        "py",
 				exerciseBaseDir: "TEST_exercises",
 				cfgDir:          "TEST_cfgdir",
@@ -435,7 +434,7 @@ func TestNewDownloader(t *testing.T) {
 
 			require.NoError(t, testFs.MkdirAll("TEST_exercises", 0o755))
 
-			got, err := NewDownloader(cfg, tt.args.options...)
+			got, err := NewAdder(cfg, tt.args.options...)
 
 			tt.assertion(t, err)
 			assert.Equal(t, tt.want.fetcher.cacheDir, got.fetcher.cacheDir)
@@ -450,34 +449,30 @@ func TestNewDownloader(t *testing.T) {
 	}
 }
 
-func TestDownloader_validate(t *testing.T) {
+func TestAdder_validate(t *testing.T) {
 	tests := []struct {
 		name    string
-		set     func(*Downloader)
+		set     func(*Adder)
 		wantErr error
 	}{
-		{"all required fields set", func(*Downloader) {}, nil},
-		{"language not set", func(d *Downloader) { d.language = "" }, ErrNotConfigured},
-		{"client not set", func(d *Downloader) { d.fetcher.rClient = nil }, ErrNotConfigured},
-		{"fs not set", func(d *Downloader) { d.appFs = nil }, ErrNotConfigured},
-		{"cfg dir not set", func(d *Downloader) { d.cfgDir = "" }, ErrNotConfigured},
-		{"cache dir not set", func(d *Downloader) { d.fetcher.cacheDir = "" }, ErrNotConfigured},
-		{"base dir not set", func(d *Downloader) { d.exerciseBaseDir = "" }, ErrNotConfigured},
-		{"token not set", func(d *Downloader) { d.fetcher.token = "" }, ErrNotConfigured},
+		{"all required fields set", func(*Adder) {}, nil},
+		{"language not set", func(d *Adder) { d.language = "" }, ErrNotConfigured},
+		{"fs not set", func(d *Adder) { d.appFs = nil }, ErrNotConfigured},
+		{"cfg dir not set", func(d *Adder) { d.cfgDir = "" }, ErrNotConfigured},
+		{"base dir not set", func(d *Adder) { d.exerciseBaseDir = "" }, ErrNotConfigured},
 	}
 
 	for _, tt := range tests {
-		d := &Downloader{
+		fetcher, err := newPageFetcher("TEST_token", "TEST_cacheDir", afero.NewMemMapFs(), nil)
+		require.NoError(t, err)
+
+		d := &Adder{
 			language:        "fake",
 			exerciseBaseDir: "testExercise",
 			appFs:           afero.NewMemMapFs(),
 			cfgDir:          "TEST_cfgDir",
 			skipImpl:        false,
-			fetcher: &pageFetcher{
-				rClient:  resty.New(),
-				token:    "tt.fields.token",
-				cacheDir: "TEST_cacheDir",
-			},
+			fetcher:         fetcher,
 			scaffold: &exerciseScaffold{
 				inputFileName: "tt.fields.inputFileName",
 				overwrites:    &Overwrites{},

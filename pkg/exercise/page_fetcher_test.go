@@ -2,6 +2,8 @@ package exercise
 
 import (
 	_ "embed"
+	"io"
+	"log/slog"
 	"net/http"
 	"path/filepath"
 	"testing"
@@ -60,7 +62,7 @@ func Test_downloadPage(t *testing.T) {
 
 			httpmock.RegisterNoResponder(httpmock.NewNotFoundResponder(t.Error))
 
-			got, err := mockDlr.fetcher.downloadPage(tt.args.year, tt.args.day)
+			got, err := testAdder.fetcher.downloadPage(tt.args.year, tt.args.day)
 
 			require.ErrorIs(t, err, tt.wantErr)
 			if err == nil {
@@ -70,7 +72,7 @@ func Test_downloadPage(t *testing.T) {
 				FileExists(
 					t,
 					testFs,
-					filepath.Join(mockDlr.fetcher.cacheDir, "pages", makeExerciseID(tt.args.year, tt.args.day)),
+					filepath.Join(testAdder.fetcher.cacheDir, "pages", makeExerciseID(tt.args.year, tt.args.day)),
 				)
 			}
 		})
@@ -118,7 +120,7 @@ func Test_getCachedInput(t *testing.T) {
 			defer teardownSubTest(t)
 
 			if tt.seed != nil {
-				inputsDir := filepath.Join(mockDlr.fetcher.cacheDir, "inputs")
+				inputsDir := filepath.Join(testAdder.fetcher.cacheDir, "inputs")
 				require.NoError(t, testFs.MkdirAll(inputsDir, 0o755))
 				require.NoError(t, afero.WriteFile(
 					testFs,
@@ -128,7 +130,7 @@ func Test_getCachedInput(t *testing.T) {
 				))
 			}
 
-			got, gotOk := mockDlr.fetcher.getCachedInput(tt.args.year, tt.args.day)
+			got, gotOk := testAdder.fetcher.getCachedInput(tt.args.year, tt.args.day)
 
 			tt.wantOk(t, gotOk)
 			if gotOk {
@@ -192,7 +194,7 @@ func Test_downloadInput(t *testing.T) {
 
 			httpmock.RegisterNoResponder(httpmock.NewNotFoundResponder(t.Error))
 
-			got, err := mockDlr.fetcher.downloadInput(tt.args.year, tt.args.day)
+			got, err := testAdder.fetcher.downloadInput(tt.args.year, tt.args.day)
 
 			require.ErrorIs(t, err, tt.wantErr)
 			assert.Equal(t, tt.want, got)
@@ -201,7 +203,7 @@ func Test_downloadInput(t *testing.T) {
 				FileExists(
 					t,
 					testFs,
-					filepath.Join(mockDlr.fetcher.cacheDir, "inputs", makeExerciseID(tt.args.year, tt.args.day)),
+					filepath.Join(testAdder.fetcher.cacheDir, "inputs", makeExerciseID(tt.args.year, tt.args.day)),
 				)
 			}
 		})
@@ -242,7 +244,7 @@ func Test_getCachedPage(t *testing.T) {
 			teardownSubTest := setupSubTest(t)
 			defer teardownSubTest(t)
 
-			got, gotOk := mockDlr.fetcher.getCachedPage(tt.args.year, tt.args.day)
+			got, gotOk := testAdder.fetcher.getCachedPage(tt.args.year, tt.args.day)
 
 			tt.wantOk(t, gotOk)
 			if gotOk {
@@ -252,4 +254,62 @@ func Test_getCachedPage(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_newPageFetcher(t *testing.T) {
+	tests := []struct {
+		name     string
+		token    string
+		cacheDir string
+		wantErr  error
+	}{
+		{"valid", "fakeToken", "testCache", nil},
+		{"empty token", "", "testCache", ErrNotConfigured},
+		{"empty cache dir", "fakeToken", "", ErrNotConfigured},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			log := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+			got, err := newPageFetcher(tt.token, tt.cacheDir, afero.NewMemMapFs(), log)
+
+			if tt.wantErr != nil {
+				require.ErrorIs(t, err, tt.wantErr)
+				assert.Nil(t, got)
+
+				return
+			}
+
+			require.NoError(t, err)
+			require.NotNil(t, got)
+			assert.NotNil(t, got.rClient)
+			assert.Equal(t, tt.token, got.token)
+			assert.Equal(t, tt.cacheDir, got.cacheDir)
+		})
+	}
+}
+
+func Test_pageFetcher_sendsUserAgent(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+
+	var gotUA string
+
+	httpmock.RegisterResponder("GET",
+		`=~^/(201[5-9]|202[012])/day/([1-9]|1[0-9]|2[0-5])$`,
+		func(req *http.Request) (*http.Response, error) {
+			gotUA = req.Header.Get("User-Agent")
+
+			return httpmock.NewStringResponse(http.StatusOK, respBody2015d1), nil
+		})
+	httpmock.RegisterNoResponder(httpmock.NewNotFoundResponder(t.Error))
+
+	_, err := testAdder.fetcher.downloadPage(2015, 1)
+	require.NoError(t, err)
+
+	assert.Equal(t, userAgent, gotUA)
 }

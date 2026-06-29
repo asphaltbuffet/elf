@@ -9,7 +9,7 @@ import (
 	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
-func Test_handleMainResult(t *testing.T) {
+func Test_buildResult(t *testing.T) {
 	type args struct {
 		r *protocol.Result
 	}
@@ -65,7 +65,7 @@ func Test_handleMainResult(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := handleTaskResult(tt.args.r, "good output")
+			got := buildResult(tt.args.r, "good output")
 
 			assert.Equal(t, tt.want, got)
 		})

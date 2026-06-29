@@ -9,7 +9,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/go-resty/resty/v2"
 	"github.com/jarcoal/httpmock"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
@@ -19,9 +18,9 @@ import (
 )
 
 var (
-	roBase  afero.Fs
-	testFs  afero.Fs
-	mockDlr *Downloader
+	roBase    afero.Fs
+	testFs    afero.Fs
+	testAdder *Adder
 )
 
 // FileExists checks whether a file exists in the given path. It also fails if
@@ -72,20 +71,16 @@ func setupSubTest(t *testing.T) func(t *testing.T) {
 	require.NoError(t, testFs.MkdirAll("testCache", 0o755))
 
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	rClient := resty.New().SetBaseURL("https://test.fake")
 
-	mockDlr = &Downloader{
+	fetcher, err := newPageFetcher("fakeToken", "testCache", testFs, logger)
+	require.NoError(t, err)
+
+	testAdder = &Adder{
 		cfgDir:          "./",
 		exerciseBaseDir: "exercises",
 		appFs:           testFs,
 		logger:          logger,
-		fetcher: &pageFetcher{
-			rClient:  rClient,
-			token:    "fakeToken",
-			cacheDir: "testCache",
-			fs:       testFs,
-			logger:   logger,
-		},
+		fetcher:         fetcher,
 		scaffold: &exerciseScaffold{
 			fs:            testFs,
 			inputFileName: "input.txt",
@@ -94,7 +89,7 @@ func setupSubTest(t *testing.T) func(t *testing.T) {
 		},
 	}
 
-	httpmock.ActivateNonDefault(mockDlr.fetcher.rClient.GetClient())
+	httpmock.ActivateNonDefault(testAdder.fetcher.rClient.GetClient())
 
 	httpmock.Reset()
 

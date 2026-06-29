@@ -18,13 +18,29 @@ finished value before anything writes it to disk — it is never built up in pla
 **Not** a session or runner context. An Exercise has no opinion about how it is executed, fetched,
 or scaffolded.
 
+## Exercise Adder
+
+Makes an Exercise exist in the workspace. Given a puzzle URL, it produces an Exercise — fetching
+the puzzle page and input via the [[Page Fetcher]] on a cache miss, or reading an existing
+`info.json` from disk — and then lays it out via the [[Exercise Scaffold]]. Owns the puzzle URL,
+the implementation language, and the overwrite policy; holds the resulting filesystem path and the
+scaffold report once it has run. Surface: `Add() → error`, then `FilePath()` and `Report()`.
+
+The name is deliberately *not* "download": on a cache hit nothing is fetched, and the durable
+result is an exercise on disk ready to solve, not a network transfer. `download` survives only as
+the user-facing CLI verb (`elf download <url>`), not as a domain noun. The per-file results of an
+Add are [[Scaffold Outcome]]s (Added / Skipped / Replaced).
+
+_Avoid_: downloader, fetcher, getter
+
 ## Page Fetcher
 
 Fetches puzzle page HTML and puzzle input from Advent of Code, with on-disk caching. Owns the HTTP
-client, the session token, and the cache directory. Surface: `fetchPage(year, day) → bytes`,
-`fetchInput(year, day) → bytes` — a cache check followed by an HTTP request on miss. Knows the AoC
-URL shape and the `cacheDir/pages` + `cacheDir/inputs` cache layout, and nothing about the exercise
-directory on disk.
+client, the session token, and the cache directory. It builds and fully configures its own client
+(base URL and User-Agent) at construction — callers never configure it externally. Surface:
+`fetchPage(year, day) → bytes`, `fetchInput(year, day) → bytes` — a cache check followed by an HTTP
+request on miss. Knows the AoC URL shape and the `cacheDir/pages` + `cacheDir/inputs` cache layout,
+and nothing about the exercise directory on disk.
 
 _Avoid_: HTTP client, downloader, page loader
 

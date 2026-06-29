@@ -30,7 +30,7 @@ func TestGetDownloadCmd(t *testing.T) {
 func resetState(
 	t *testing.T,
 	origMakeConfig func(string) (config.Config, error),
-	origMakeDownloader func(config.Config, string, string, *exercise.Overwrites) (Downloader, error),
+	origMakeAdder func(config.Config, string, string, *exercise.Overwrites) (Adder, error),
 ) {
 	t.Helper()
 
@@ -39,16 +39,16 @@ func resetState(
 		language = ""
 		forceInput = false
 		makeConfig = origMakeConfig
-		makeDownloader = origMakeDownloader
+		makeAdder = origMakeAdder
 	})
 }
 
 func Test_runDownloadCmd(t *testing.T) {
 	origMakeConfig := makeConfig
-	origMakeDownloader := makeDownloader
+	origMakeAdder := makeAdder
 
 	t.Run("config error", func(t *testing.T) {
-		resetState(t, origMakeConfig, origMakeDownloader)
+		resetState(t, origMakeConfig, origMakeAdder)
 
 		makeConfig = func(_ string) (config.Config, error) {
 			return config.Config{}, errors.New("bad config")
@@ -63,12 +63,12 @@ func Test_runDownloadCmd(t *testing.T) {
 	})
 
 	t.Run("downloader creation error", func(t *testing.T) {
-		resetState(t, origMakeConfig, origMakeDownloader)
+		resetState(t, origMakeConfig, origMakeAdder)
 
 		makeConfig = func(_ string) (config.Config, error) {
 			return config.NewConfig()
 		}
-		makeDownloader = func(_ config.Config, _, _ string, _ *exercise.Overwrites) (Downloader, error) {
+		makeAdder = func(_ config.Config, _, _ string, _ *exercise.Overwrites) (Adder, error) {
 			return nil, errors.New("invalid URL")
 		}
 
@@ -77,22 +77,22 @@ func Test_runDownloadCmd(t *testing.T) {
 		cmd.SetErr(&bytes.Buffer{})
 
 		err := runDownloadCmd(cmd, []string{"https://adventofcode.com/2023/day/1"})
-		require.ErrorContains(t, err, "creating downloader")
+		require.ErrorContains(t, err, "creating adder")
 		assert.ErrorContains(t, err, "invalid URL")
 	})
 
 	t.Run("download error", func(t *testing.T) {
-		resetState(t, origMakeConfig, origMakeDownloader)
+		resetState(t, origMakeConfig, origMakeAdder)
 
 		makeConfig = func(_ string) (config.Config, error) {
 			return config.NewConfig()
 		}
 
-		mockDl := mocks.NewMockDownloader(t)
-		mockDl.EXPECT().Download().Return(errors.New("network timeout"))
+		mockAdder := mocks.NewMockAdder(t)
+		mockAdder.EXPECT().Add().Return(errors.New("network timeout"))
 
-		makeDownloader = func(_ config.Config, _, _ string, _ *exercise.Overwrites) (Downloader, error) {
-			return mockDl, nil
+		makeAdder = func(_ config.Config, _, _ string, _ *exercise.Overwrites) (Adder, error) {
+			return mockAdder, nil
 		}
 
 		cmd := GetDownloadCmd()
@@ -100,27 +100,27 @@ func Test_runDownloadCmd(t *testing.T) {
 		cmd.SetErr(&bytes.Buffer{})
 
 		err := runDownloadCmd(cmd, []string{"https://adventofcode.com/2023/day/1"})
-		require.ErrorContains(t, err, "downloading challenge")
+		require.ErrorContains(t, err, "adding challenge")
 		assert.ErrorContains(t, err, "network timeout")
 	})
 
 	t.Run("happy path prints file path", func(t *testing.T) {
-		resetState(t, origMakeConfig, origMakeDownloader)
+		resetState(t, origMakeConfig, origMakeAdder)
 
 		makeConfig = func(_ string) (config.Config, error) {
 			return config.NewConfig()
 		}
 
-		mockDl := mocks.NewMockDownloader(t)
-		mockDl.EXPECT().Download().Return(nil)
-		mockDl.EXPECT().FilePath().Return("/exercises/2023/01-trebuchet")
-		mockDl.EXPECT().Report().Return(exercise.Report{
+		mockAdder := mocks.NewMockAdder(t)
+		mockAdder.EXPECT().Add().Return(nil)
+		mockAdder.EXPECT().FilePath().Return("/exercises/2023/01-trebuchet")
+		mockAdder.EXPECT().Report().Return(exercise.Report{
 			{Path: "input.txt", Outcome: exercise.Added},
 			{Path: "info.json", Outcome: exercise.Skipped},
 		})
 
-		makeDownloader = func(_ config.Config, _, _ string, _ *exercise.Overwrites) (Downloader, error) {
-			return mockDl, nil
+		makeAdder = func(_ config.Config, _, _ string, _ *exercise.Overwrites) (Adder, error) {
+			return mockAdder, nil
 		}
 
 		cmd := GetDownloadCmd()
@@ -139,7 +139,7 @@ func Test_runDownloadCmd(t *testing.T) {
 	})
 
 	t.Run("language flag passed to downloader", func(t *testing.T) {
-		resetState(t, origMakeConfig, origMakeDownloader)
+		resetState(t, origMakeConfig, origMakeAdder)
 
 		makeConfig = func(_ string) (config.Config, error) {
 			return config.NewConfig()
@@ -147,14 +147,14 @@ func Test_runDownloadCmd(t *testing.T) {
 
 		var gotLang string
 
-		mockDl := mocks.NewMockDownloader(t)
-		mockDl.EXPECT().Download().Return(nil)
-		mockDl.EXPECT().FilePath().Return("/some/path")
-		mockDl.EXPECT().Report().Return(nil)
+		mockAdder := mocks.NewMockAdder(t)
+		mockAdder.EXPECT().Add().Return(nil)
+		mockAdder.EXPECT().FilePath().Return("/some/path")
+		mockAdder.EXPECT().Report().Return(nil)
 
-		makeDownloader = func(_ config.Config, _, lang string, _ *exercise.Overwrites) (Downloader, error) {
+		makeAdder = func(_ config.Config, _, lang string, _ *exercise.Overwrites) (Adder, error) {
 			gotLang = lang
-			return mockDl, nil
+			return mockAdder, nil
 		}
 
 		cmd := GetDownloadCmd()
@@ -170,7 +170,7 @@ func Test_runDownloadCmd(t *testing.T) {
 	})
 
 	t.Run("force-input flag passed to downloader", func(t *testing.T) {
-		resetState(t, origMakeConfig, origMakeDownloader)
+		resetState(t, origMakeConfig, origMakeAdder)
 
 		makeConfig = func(_ string) (config.Config, error) {
 			return config.NewConfig()
@@ -178,14 +178,14 @@ func Test_runDownloadCmd(t *testing.T) {
 
 		var gotForced *exercise.Overwrites
 
-		mockDl := mocks.NewMockDownloader(t)
-		mockDl.EXPECT().Download().Return(nil)
-		mockDl.EXPECT().FilePath().Return("/some/path")
-		mockDl.EXPECT().Report().Return(nil)
+		mockAdder := mocks.NewMockAdder(t)
+		mockAdder.EXPECT().Add().Return(nil)
+		mockAdder.EXPECT().FilePath().Return("/some/path")
+		mockAdder.EXPECT().Report().Return(nil)
 
-		makeDownloader = func(_ config.Config, _, _ string, forced *exercise.Overwrites) (Downloader, error) {
+		makeAdder = func(_ config.Config, _, _ string, forced *exercise.Overwrites) (Adder, error) {
 			gotForced = forced
-			return mockDl, nil
+			return mockAdder, nil
 		}
 
 		cmd := GetDownloadCmd()
