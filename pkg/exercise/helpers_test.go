@@ -9,7 +9,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/go-resty/resty/v2"
 	"github.com/jarcoal/httpmock"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
@@ -72,20 +71,16 @@ func setupSubTest(t *testing.T) func(t *testing.T) {
 	require.NoError(t, testFs.MkdirAll("testCache", 0o755))
 
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	rClient := resty.New().SetBaseURL("https://test.fake")
+
+	fetcher, err := newPageFetcher("fakeToken", "testCache", testFs, logger)
+	require.NoError(t, err)
 
 	mockDlr = &Downloader{
 		cfgDir:          "./",
 		exerciseBaseDir: "exercises",
 		appFs:           testFs,
 		logger:          logger,
-		fetcher: &pageFetcher{
-			rClient:  rClient,
-			token:    "fakeToken",
-			cacheDir: "testCache",
-			fs:       testFs,
-			logger:   logger,
-		},
+		fetcher:         fetcher,
 		scaffold: &exerciseScaffold{
 			fs:            testFs,
 			inputFileName: "input.txt",

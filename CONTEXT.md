@@ -21,10 +21,11 @@ or scaffolded.
 ## Page Fetcher
 
 Fetches puzzle page HTML and puzzle input from Advent of Code, with on-disk caching. Owns the HTTP
-client, the session token, and the cache directory. Surface: `fetchPage(year, day) → bytes`,
-`fetchInput(year, day) → bytes` — a cache check followed by an HTTP request on miss. Knows the AoC
-URL shape and the `cacheDir/pages` + `cacheDir/inputs` cache layout, and nothing about the exercise
-directory on disk.
+client, the session token, and the cache directory. It builds and fully configures its own client
+(base URL and User-Agent) at construction — callers never configure it externally. Surface:
+`fetchPage(year, day) → bytes`, `fetchInput(year, day) → bytes` — a cache check followed by an HTTP
+request on miss. Knows the AoC URL shape and the `cacheDir/pages` + `cacheDir/inputs` cache layout,
+and nothing about the exercise directory on disk.
 
 _Avoid_: HTTP client, downloader, page loader
 

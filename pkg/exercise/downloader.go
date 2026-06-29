@@ -11,7 +11,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/go-resty/resty/v2"
 	"github.com/lmittmann/tint"
 	"github.com/spf13/afero"
 	"golang.org/x/net/html"
@@ -64,19 +63,18 @@ type Overwrites struct {
 
 // NewDownloader creates a Downloader, applies options, and validates the configuration.
 func NewDownloader(cfg config.Config, options ...func(*Downloader)) (*Downloader, error) {
+	fetcher, err := newPageFetcher(cfg.GetToken(), cfg.GetCacheDir(), cfg.GetFs(), cfg.GetLogger())
+	if err != nil {
+		return nil, err
+	}
+
 	d := &Downloader{
 		language:        cfg.GetLanguage(),
 		cfgDir:          cfg.GetConfigDir(),
 		exerciseBaseDir: cfg.GetBaseDir(),
 		appFs:           cfg.GetFs(),
 		logger:          cfg.GetLogger(),
-		fetcher: &pageFetcher{
-			rClient:  resty.New().SetBaseURL("https://adventofcode.com"),
-			token:    cfg.GetToken(),
-			cacheDir: cfg.GetCacheDir(),
-			fs:       cfg.GetFs(),
-			logger:   cfg.GetLogger(),
-		},
+		fetcher:         fetcher,
 		scaffold: &exerciseScaffold{
 			fs:            cfg.GetFs(),
 			inputFileName: cfg.GetInputFilename(),
@@ -88,7 +86,7 @@ func NewDownloader(cfg config.Config, options ...func(*Downloader)) (*Downloader
 		option(d)
 	}
 
-	if err := d.validate(); err != nil {
+	if err = d.validate(); err != nil {
 		return nil, err
 	}
 
@@ -134,17 +132,8 @@ func WithSkipImpl(skip bool) func(*Downloader) {
 func (d *Downloader) validate() error {
 	var err []error
 
-	if d.fetcher.rClient == nil {
-		err = append(err, fmt.Errorf("http client: %w", ErrNotConfigured))
-	}
-
 	if d.appFs == nil {
 		err = append(err, fmt.Errorf("filesystem: %w", ErrNotConfigured))
-	}
-
-	// the token cannot be empty if we're downloading the input
-	if d.fetcher.token == "" {
-		err = append(err, fmt.Errorf("advent user token: %w", ErrNotConfigured))
 	}
 
 	if !d.skipImpl && d.language == "" {
@@ -153,10 +142,6 @@ func (d *Downloader) validate() error {
 
 	if d.cfgDir == "" {
 		err = append(err, fmt.Errorf("user config directory: %w", ErrNotConfigured))
-	}
-
-	if d.fetcher.cacheDir == "" {
-		err = append(err, fmt.Errorf("cache directory: %w", ErrNotConfigured))
 	}
 
 	if d.exerciseBaseDir == "" {
@@ -176,14 +161,6 @@ func (d *Downloader) Download() error {
 	if err != nil {
 		return err
 	}
-
-	// update client with year and day
-	d.fetcher.rClient.
-		SetHeader("User-Agent", "github.com/asphaltbuffet/elf").
-		SetPathParams(map[string]string{
-			"year": strconv.Itoa(year),
-			"day":  strconv.Itoa(day),
-		})
 
 	var ex *Exercise
 

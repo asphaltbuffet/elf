@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/go-resty/resty/v2"
 	"github.com/jarcoal/httpmock"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
@@ -458,26 +457,22 @@ func TestDownloader_validate(t *testing.T) {
 	}{
 		{"all required fields set", func(*Downloader) {}, nil},
 		{"language not set", func(d *Downloader) { d.language = "" }, ErrNotConfigured},
-		{"client not set", func(d *Downloader) { d.fetcher.rClient = nil }, ErrNotConfigured},
 		{"fs not set", func(d *Downloader) { d.appFs = nil }, ErrNotConfigured},
 		{"cfg dir not set", func(d *Downloader) { d.cfgDir = "" }, ErrNotConfigured},
-		{"cache dir not set", func(d *Downloader) { d.fetcher.cacheDir = "" }, ErrNotConfigured},
 		{"base dir not set", func(d *Downloader) { d.exerciseBaseDir = "" }, ErrNotConfigured},
-		{"token not set", func(d *Downloader) { d.fetcher.token = "" }, ErrNotConfigured},
 	}
 
 	for _, tt := range tests {
+		fetcher, err := newPageFetcher("TEST_token", "TEST_cacheDir", afero.NewMemMapFs(), nil)
+		require.NoError(t, err)
+
 		d := &Downloader{
 			language:        "fake",
 			exerciseBaseDir: "testExercise",
 			appFs:           afero.NewMemMapFs(),
 			cfgDir:          "TEST_cfgDir",
 			skipImpl:        false,
-			fetcher: &pageFetcher{
-				rClient:  resty.New(),
-				token:    "tt.fields.token",
-				cacheDir: "TEST_cacheDir",
-			},
+			fetcher:         fetcher,
 			scaffold: &exerciseScaffold{
 				inputFileName: "tt.fields.inputFileName",
 				overwrites:    &Overwrites{},

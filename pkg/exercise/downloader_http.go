@@ -26,6 +26,34 @@ type pageFetcher struct {
 	logger   *slog.Logger
 }
 
+const (
+	// aocBaseURL is the Advent of Code site root; all page and input requests are relative to it.
+	aocBaseURL = "https://adventofcode.com"
+	// userAgent identifies elf to Advent of Code, per their automation etiquette.
+	userAgent = "github.com/asphaltbuffet/elf"
+)
+
+// newPageFetcher builds a pageFetcher that owns its HTTP client, session token, and cache directory.
+// The client is configured with the AoC base URL and elf's User-Agent so callers never have to
+// configure it externally. Returns ErrNotConfigured if the token or cache directory is empty.
+func newPageFetcher(token, cacheDir string, fs afero.Fs, logger *slog.Logger) (*pageFetcher, error) {
+	if token == "" {
+		return nil, fmt.Errorf("advent user token: %w", ErrNotConfigured)
+	}
+
+	if cacheDir == "" {
+		return nil, fmt.Errorf("cache directory: %w", ErrNotConfigured)
+	}
+
+	return &pageFetcher{
+		rClient:  resty.New().SetBaseURL(aocBaseURL).SetHeader("User-Agent", userAgent),
+		token:    token,
+		cacheDir: cacheDir,
+		fs:       fs,
+		logger:   logger,
+	}, nil
+}
+
 func (f *pageFetcher) fetchPage(year, day int) ([]byte, error) {
 	logger := f.logger.With(slog.Int("year", year), slog.Int("day", day), slog.String("fn", "getPage"))
 
