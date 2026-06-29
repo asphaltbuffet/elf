@@ -59,8 +59,10 @@ func TestRunInstallCmd_WritesFiles(t *testing.T) {
 	assert.FileExists(t, filepath.Join(runnersDir, "python.templ"))
 	assert.FileExists(t, filepath.Join(runnersDir, "go.tmpl"))
 	assert.FileExists(t, filepath.Join(runnersDir, "bash.tmpl"))
+	assert.FileExists(t, filepath.Join(runnersDir, "f77.tmpl"))
 	assert.Contains(t, out.String(), "[[runner]]")
 	assert.Contains(t, out.String(), "YOUR_MODULE")
+	assert.Contains(t, out.String(), "gfortran")
 }
 
 func TestRunInstallCmd_SkipsExistingFiles(t *testing.T) {

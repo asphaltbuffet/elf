@@ -51,6 +51,7 @@ func runInstallCmd(cmd *cobra.Command, _ []string) error {
 		{"go.tmpl", elfrunners.GoTemplate},
 		{"bash.tmpl", elfrunners.BashTemplate},
 		{"rust.tmpl", elfrunners.RustTemplate},
+		{"f77.tmpl", elfrunners.F77Template},
 	}
 
 	for _, tmpl := range templates {
@@ -140,11 +141,26 @@ build_commands = [
 # Crate name is pinned to "solution" in the scaffolded Cargo.toml, so the built
 # binary is always at this path regardless of year/day.
 binary = "{lang_dir}/target/release/solution"
+
+[[runner]]
+key = "f77"
+name = "Fortran 77"
+
+[runner.prepare]
+template_path = %q
+wrapper_ext = ".c"
+build_commands = [
+  ["gfortran", "-O2", "-o", "{binary_file}", "{wrapper_file}", "{lang_dir}/solution.f"],
+]
+
+[runner.open]
+binary = "{binary_file}"
 `,
 		filepath.Join(runnersDir, "python.templ"),
 		filepath.Join(runnersDir, "go.tmpl"),
 		filepath.Join(runnersDir, "bash.tmpl"),
 		filepath.Join(runnersDir, "rust.tmpl"),
+		filepath.Join(runnersDir, "f77.tmpl"),
 	)
 
 	cmd.Println("Replace YOUR_MODULE with your Go module name (from go.mod, e.g. github.com/you/advent-of-code).")

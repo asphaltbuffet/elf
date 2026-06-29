@@ -31,6 +31,9 @@ var rsCargoTemplate []byte
 //go:embed templates/rs-solution.tmpl
 var rsSolutionTemplate []byte
 
+//go:embed templates/f77.tmpl
+var f77Template []byte
+
 type tmplFile struct {
 	Name     string
 	Path     string
@@ -87,7 +90,12 @@ func (s *exerciseScaffold) write(ex *Exercise) (Report, error) {
 	}
 	report = append(report, Entry{Path: "info.json", Outcome: infoOutcome})
 
-	tmpls := []tmplFile{
+	langTmpls, err := languageTemplates(ex.Language)
+	if err != nil {
+		return nil, err
+	}
+
+	tmpls := append([]tmplFile{
 		{
 			Name:     "readme",
 			Path:     "",
@@ -95,60 +103,7 @@ func (s *exerciseScaffold) write(ex *Exercise) (Report, error) {
 			FileName: "README.md",
 			Replace:  false,
 		},
-	}
-
-	switch ex.Language {
-	case "go":
-		tmpls = append(tmpls, tmplFile{
-			Name:     "go",
-			Path:     "go",
-			Data:     goTemplate,
-			FileName: "exercise.go",
-			Replace:  false,
-		})
-
-	case "py":
-		tmpls = append(tmpls, tmplFile{
-			Name:     "py",
-			Path:     "py",
-			Data:     pyTemplate,
-			FileName: "__init__.py",
-			Replace:  false,
-		})
-
-	case "bash":
-		tmpls = append(tmpls, tmplFile{
-			Name:     "bash",
-			Path:     "bash",
-			Data:     bashTemplate,
-			FileName: "exercise.sh",
-			Replace:  false,
-		})
-
-	case "rs":
-		// A cargo crate per exercise: Cargo.toml at the crate root and the
-		// solution module under src/. The harness (src/runtime-wrapper.rs) is
-		// rendered by the Rust runner's PrepareSpec, not scaffolded here.
-		tmpls = append(tmpls,
-			tmplFile{
-				Name:     "rs-cargo",
-				Path:     "rs",
-				Data:     rsCargoTemplate,
-				FileName: "Cargo.toml",
-				Replace:  false,
-			},
-			tmplFile{
-				Name:     "rs-solution",
-				Path:     filepath.Join("rs", "src"),
-				Data:     rsSolutionTemplate,
-				FileName: "solution.rs",
-				Replace:  false,
-			},
-		)
-
-	default:
-		return nil, fmt.Errorf("template %s files: %w", ex.Language, ErrInvalidLanguage)
-	}
+	}, langTmpls...)
 
 	for _, t := range tmpls {
 		logger.Debug("add template file", slog.Any("template", t.LogValue()))
@@ -161,6 +116,42 @@ func (s *exerciseScaffold) write(ex *Exercise) (Report, error) {
 	}
 
 	return report, nil
+}
+
+func languageTemplates(lang string) ([]tmplFile, error) {
+	switch lang {
+	case "go":
+		return []tmplFile{
+			{Name: "go", Path: "go", Data: goTemplate, FileName: "exercise.go"},
+		}, nil
+
+	case "py":
+		return []tmplFile{
+			{Name: "py", Path: "py", Data: pyTemplate, FileName: "__init__.py"},
+		}, nil
+
+	case "bash":
+		return []tmplFile{
+			{Name: "bash", Path: "bash", Data: bashTemplate, FileName: "exercise.sh"},
+		}, nil
+
+	case "rs":
+		// A cargo crate per exercise: Cargo.toml at the crate root and the
+		// solution module under src/. The harness (src/runtime-wrapper.rs) is
+		// rendered by the Rust runner's PrepareSpec, not scaffolded here.
+		return []tmplFile{
+			{Name: "rs-cargo", Path: "rs", Data: rsCargoTemplate, FileName: "Cargo.toml"},
+			{Name: "rs-solution", Path: filepath.Join("rs", "src"), Data: rsSolutionTemplate, FileName: "solution.rs"},
+		}, nil
+
+	case "f77":
+		return []tmplFile{
+			{Name: "f77", Path: "f77", Data: f77Template, FileName: "solution.f"},
+		}, nil
+
+	default:
+		return nil, fmt.Errorf("template %s files: %w", lang, ErrInvalidLanguage)
+	}
 }
 
 // writeInputFile writes the already-fetched input data from ex.Data to disk. It does not fetch —
