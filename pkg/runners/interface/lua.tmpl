@@ -1,0 +1,68 @@
+-- elf Lua runner wrapper harness.
+--
+-- Speaks elf's line-delimited JSON wire protocol (ADR-0002) over stdin/stdout:
+--   reads one Task per line: {"task_id","part","input","output_dir"}
+--   dispatches `part` to the user's part_one / part_two function
+--   writes one Result per line: {"task_id","ok","output","duration"}
+--
+-- The user's solution is loaded from the sibling exercise.lua via dofile.
+-- It must define module-level functions part_one(input) and part_two(input),
+-- each returning a value (converted to string for the result).
+
+local json = require("dkjson")
+
+-- Load the user's solution from the same directory as this wrapper.
+local script_dir = debug.getinfo(1, "S").source:match("^@(.+/)[^/]+$") or "./"
+dofile(script_dir .. "exercise.lua")
+
+local function send_result(task_id, ok, output, duration)
+  io.write(json.encode({
+    task_id  = task_id,
+    ok       = ok,
+    output   = tostring(output or ""),
+    duration = duration,
+  }) .. "\n")
+  io.flush()
+end
+
+local clock = os.clock
+
+for line in io.lines() do
+  line = line:match("^%s*(.-)%s*$")  -- trim whitespace
+  if line ~= "" then
+    local task, _, err = json.decode(line)
+    if not task then
+      send_result("", false, "json decode error: " .. tostring(err), 0)
+    else
+      local task_id = task.task_id
+      local part    = task.part
+      local input   = task.input
+
+      local fn
+      if part == 1 then
+        fn = part_one
+      elseif part == 2 then
+        fn = part_two
+      else
+        send_result(task_id, false, "unknown task part: " .. tostring(part), 0)
+      end
+
+      if fn then
+        local start    = clock()
+        local ok_flag  = true
+        local output
+        local status, result = pcall(fn, input)
+        local duration = clock() - start
+
+        if status then
+          output = tostring(result or "")
+        else
+          ok_flag = false
+          output  = tostring(result)
+        end
+
+        send_result(task_id, ok_flag, output, duration)
+      end
+    end
+  end
+end

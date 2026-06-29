@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -52,6 +53,7 @@ func runInstallCmd(cmd *cobra.Command, _ []string) error {
 		{"bash.tmpl", elfrunners.BashTemplate},
 		{"rust.tmpl", elfrunners.RustTemplate},
 		{"f77.tmpl", elfrunners.F77Template},
+		{"lua.tmpl", elfrunners.LuaTemplate},
 	}
 
 	for _, tmpl := range templates {
@@ -74,13 +76,13 @@ func runInstallCmd(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
-// printRunnerConfig prints the paste-able [[runner]] blocks for the built-in
-// runners, with template paths resolved under runnersDir.
-func printRunnerConfig(cmd *cobra.Command, runnersDir string) {
-	cmd.Println()
-	cmd.Println("Add the following to your elf.toml:")
-	cmd.Println()
-	cmd.Printf(`[[runner]]
+type runnerConfigBlock struct {
+	tmplFile string
+	toml     func(tmplPath string) string
+}
+
+func pythonBlock(p string) string {
+	return fmt.Sprintf(`[[runner]]
 key = "py"
 name = "Python"
 
@@ -95,8 +97,11 @@ args = ["-B", "{wrapper_file}"]
 # below assumes a lib/ at the project root (exercises/<year>/<day>/py -> four
 # levels up); adjust if your shared package lives elsewhere.
 env = ["PYTHONPATH={lang_dir}/..:{lang_dir}/../../../../lib"]
+`, p)
+}
 
-[[runner]]
+func goBlock(p string) string {
+	return fmt.Sprintf(`[[runner]]
 key = "go"
 name = "Go"
 
@@ -110,8 +115,11 @@ build_commands = [
 
 [runner.open]
 binary = "{binary_file}"
+`, p)
+}
 
-[[runner]]
+func bashBlock(p string) string {
+	return fmt.Sprintf(`[[runner]]
 key = "bash"
 name = "Bash"
 
@@ -122,8 +130,11 @@ wrapper_ext = ".sh"
 [runner.open]
 interpreter = "bash"
 args = ["{wrapper_file}"]
+`, p)
+}
 
-[[runner]]
+func rustBlock(p string) string {
+	return fmt.Sprintf(`[[runner]]
 key = "rs"
 name = "Rust"
 
@@ -141,8 +152,11 @@ build_commands = [
 # Crate name is pinned to "solution" in the scaffolded Cargo.toml, so the built
 # binary is always at this path regardless of year/day.
 binary = "{lang_dir}/target/release/solution"
+`, p)
+}
 
-[[runner]]
+func f77Block(p string) string {
+	return fmt.Sprintf(`[[runner]]
 key = "f77"
 name = "Fortran 77"
 
@@ -155,13 +169,50 @@ build_commands = [
 
 [runner.open]
 binary = "{binary_file}"
-`,
-		filepath.Join(runnersDir, "python.tmpl"),
-		filepath.Join(runnersDir, "go.tmpl"),
-		filepath.Join(runnersDir, "bash.tmpl"),
-		filepath.Join(runnersDir, "rust.tmpl"),
-		filepath.Join(runnersDir, "f77.tmpl"),
-	)
+`, p)
+}
+
+func luaBlock(p string) string {
+	return fmt.Sprintf(`[[runner]]
+key = "lua"
+name = "Lua"
+
+[runner.prepare]
+template_path = %q
+wrapper_ext = ".lua"
+
+[runner.open]
+interpreter = "lua"
+args = ["{wrapper_file}"]
+# Requires dkjson: lua5_2.withPackages (ps: [ps.dkjson]) in your Nix devshell,
+# or via LuaRocks: luarocks install dkjson
+`, p)
+}
+
+func runnerConfigBlocks() []runnerConfigBlock {
+	return []runnerConfigBlock{
+		{"python.tmpl", pythonBlock},
+		{"go.tmpl", goBlock},
+		{"bash.tmpl", bashBlock},
+		{"rust.tmpl", rustBlock},
+		{"f77.tmpl", f77Block},
+		{"lua.tmpl", luaBlock},
+	}
+}
+
+// printRunnerConfig prints the paste-able [[runner]] blocks for the built-in
+// runners, with template paths resolved under runnersDir.
+func printRunnerConfig(cmd *cobra.Command, runnersDir string) {
+	cmd.Println()
+	cmd.Println("Add the following to your elf.toml:")
+	cmd.Println()
+
+	var sb strings.Builder
+	for _, block := range runnerConfigBlocks() {
+		sb.WriteString(block.toml(filepath.Join(runnersDir, block.tmplFile)))
+		sb.WriteByte('\n')
+	}
+	cmd.Print(sb.String())
 
 	cmd.Println("Replace YOUR_MODULE with your Go module name (from go.mod, e.g. github.com/you/advent-of-code).")
 }

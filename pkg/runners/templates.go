@@ -26,3 +26,8 @@ var RustTemplate []byte
 //
 //go:embed interface/f77.tmpl
 var F77Template []byte
+
+// LuaTemplate is the built-in Lua runner wrapper template.
+//
+//go:embed interface/lua.tmpl
+var LuaTemplate []byte
