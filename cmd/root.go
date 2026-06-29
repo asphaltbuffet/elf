@@ -15,6 +15,7 @@ import (
 	runnerspkg "github.com/asphaltbuffet/elf/cmd/runners"
 	"github.com/asphaltbuffet/elf/cmd/solve"
 	"github.com/asphaltbuffet/elf/cmd/test"
+	versioncmd "github.com/asphaltbuffet/elf/cmd/version"
 	"github.com/asphaltbuffet/elf/cmd/visualize"
 )
 
@@ -25,7 +26,7 @@ var rootCmd *cobra.Command
 func Execute() {
 	// err := GetRootCommand().Execute()
 	// if err != nil {
-	if err := fang.Execute(context.Background(), GetRootCommand()); err != nil {
+	if err := fang.Execute(context.Background(), GetRootCommand(), fang.WithVersion(versioncmd.Version)); err != nil {
 		os.Exit(1)
 	}
 }
