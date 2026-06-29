@@ -125,26 +125,21 @@ Configuration uses Viper with:
 
 ### Testing Cobra Commands
 
-All `cmd/` packages (`solve`, `test`, `benchmark`, `download`, `analyze`) use a **factory variable pattern** for testability. Package-level `var` functions wrap constructors so tests can swap them with mock-returning functions. This avoids changing cobra `RunE` signatures while enabling mock injection.
+Every `cmd/` package constructs a real `App` and calls a domain method on it directly — `Solve`, `Test`, `Benchmark`, `Visualize`, `Add` (download), `Analyze` (analyze). `cmd/` packages define **no domain interfaces and no domain factory variables** (see ADR-0014). Domain behavior is tested where it lives (`pkg/app`, `pkg/exercise`, `pkg/analyze`); `cmd/` tests cover command construction and the `makeConfig` error path only.
 
-Each `cmd/` test file follows this structure:
-1. **Internal test** (`package solve`, not `package solve_test`) for access to unexported `runXxxCmd` and factory vars
-2. **`resetState` helper** that restores all package-level vars and factory functions via `t.Cleanup`
-3. **Factory variable swaps** to inject mocks or error-returning stubs
-
-Example factory variables from `cmd/download/`:
+The **one** sanctioned `cmd/` factory variable is `makeConfig`, present in every command so tests can stub configuration without touching the real filesystem/env:
 ```go
+// makeConfig is the sanctioned config seam (not a domain seam).
 var makeConfig = func(cf string) (config.Config, error) {
     return config.NewConfig(config.WithFile(cf))
 }
-var makeDownloader = func(cfg config.DownloadConfiguration, url, lang string, forced *exercise.Overwrites) (Downloader, error) {
-    return exercise.NewDownloader(cfg, ...)
-}
 ```
+
+Each `cmd/` test file is an **internal test** (`package solve`, not `package solve_test`) for access to unexported `runXxxCmd` and `makeConfig`, restores `makeConfig` + flag vars via `t.Cleanup`, and swaps `makeConfig` to exercise the config-error path.
 
 **pflag gotcha**: `StringVarP(&variable, ...)` sets the variable to the default value immediately. In tests, always set package-level flag variables **after** `GetXxxCmd()`, not before.
 
-Mockery-generated mocks exist in `mocks/` for `Challenge`, `ChallengeTester`, `Benchmarker`, `Downloader`, `Analyzer`, `ConfigurationReader`, `DownloadConfiguration`, `ExerciseConfiguration`, and `Runner` — use them with the factory variable pattern.
+Mockery-generated mocks exist in `mocks/` for `Challenge`, `ChallengeTester`, `Benchmarker`, `ConfigurationReader`, `ExerciseConfiguration`, and `Runner`. The `cmd/download` `Downloader`/`Adder` and `cmd/analyze` `Analyzer` mocks were removed when those operations became `App` methods (ADR-0014).
 
 ### Code Generation
 

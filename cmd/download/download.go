@@ -11,28 +11,15 @@ import (
 	"github.com/asphaltbuffet/elf/pkg/exercise"
 )
 
-// Adder makes a challenge exercise exist in the workspace.
-type Adder interface {
-	Add() error
-	FilePath() string
-	Report() exercise.Report
-}
-
 var (
 	downloadCmd *cobra.Command
 	language    string
 	forceInput  bool
 
-	// Factory variables for testing.
+	// makeConfig is the sanctioned config seam tests stub to avoid touching the real
+	// filesystem/env; the domain operation itself is exercised in pkg/app (see ADR-0005).
 	makeConfig = func(cf string) (config.Config, error) {
 		return config.NewConfig(config.WithFile(cf))
-	}
-	makeAdder = func(cfg config.Config, url, lang string, forced *exercise.Overwrites) (Adder, error) {
-		return exercise.NewAdder(cfg,
-			exercise.WithURL(url),
-			exercise.WithLanguage(lang),
-			exercise.WithOverwrites(forced),
-		)
 	}
 )
 
@@ -75,18 +62,14 @@ func runDownloadCmd(cmd *cobra.Command, args []string) error {
 		Input: forceInput,
 	}
 
-	chdl, err := makeAdder(cfg, args[0], language, forced)
+	report, path, err := appPkg.New(cfg).Add(args[0], language, forced)
 	if err != nil {
-		return fmt.Errorf("creating adder: %w", err)
-	}
-
-	if err = chdl.Add(); err != nil {
-		return fmt.Errorf("adding challenge: %w", err)
+		return err
 	}
 
 	out := cmd.OutOrStdout()
-	_, _ = fmt.Fprintln(out, chdl.FilePath())
-	exercise.RenderReport(out, chdl.Report())
+	_, _ = fmt.Fprintln(out, path)
+	exercise.RenderReport(out, report)
 
 	return nil
 }

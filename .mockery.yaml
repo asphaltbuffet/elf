@@ -6,12 +6,6 @@ template: testify
 template-data:
   unroll-variadic: true
 packages:
-  github.com/asphaltbuffet/elf/cmd/download:
-    interfaces:
-      Adder: {}
-  github.com/asphaltbuffet/elf/cmd/analyze:
-    interfaces:
-      Analyzer: {}
   github.com/asphaltbuffet/elf/pkg/runners:
     interfaces:
       Runner: {}

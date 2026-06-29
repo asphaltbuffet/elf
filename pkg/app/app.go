@@ -4,11 +4,13 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"time"
 
 	"github.com/spf13/afero"
 
+	"github.com/asphaltbuffet/elf/pkg/analyze"
 	"github.com/asphaltbuffet/elf/pkg/config"
 	"github.com/asphaltbuffet/elf/pkg/exercise"
 	"github.com/asphaltbuffet/elf/pkg/runners"
@@ -19,6 +21,7 @@ import (
 type App struct {
 	FS          afero.Fs
 	Logger      *slog.Logger
+	cfg         config.Config
 	language    string
 	baseDir     string
 	taskTimeout time.Duration
@@ -35,6 +38,7 @@ func New(cfg config.Config) *App {
 	return &App{
 		FS:          cfg.GetFs(),
 		Logger:      cfg.GetLogger(),
+		cfg:         cfg,
 		language:    cfg.GetLanguage(),
 		baseDir:     cfg.GetBaseDir(),
 		taskTimeout: cfg.GetTaskTimeout(),
@@ -147,4 +151,40 @@ func (a *App) Visualize(
 		outdir,
 		cb,
 	)
+}
+
+// Add makes the exercise at url exist in the workspace, writing files in lang. It is the App-level
+// entry point for the `download` command: it builds an exercise.Adder from the App's config and the
+// per-call arguments, runs it, and returns the scaffold report and the resolved exercise path.
+func (a *App) Add(url, lang string, forced *exercise.Overwrites) (exercise.Report, string, error) {
+	adder, err := exercise.NewAdder(a.cfg,
+		exercise.WithURL(url),
+		exercise.WithLanguage(lang),
+		exercise.WithOverwrites(forced),
+	)
+	if err != nil {
+		return nil, "", fmt.Errorf("creating adder: %w", err)
+	}
+
+	if err = adder.Add(); err != nil {
+		return nil, "", fmt.Errorf("adding challenge: %w", err)
+	}
+
+	return adder.Report(), adder.FilePath(), nil
+}
+
+// Analyze renders run-time graphs from persisted benchmark data under dir, writing the graph to
+// out (or a default location when out is empty). It is the App-level entry point for the `analyze`
+// command: it builds an analyze.Analyzer and runs it.
+func (a *App) Analyze(dir, out string) error {
+	az, err := analyze.NewAnalyzer(a.Logger, analyze.WithDirectory(dir), analyze.WithOutput(out))
+	if err != nil {
+		return fmt.Errorf("creating analyzer: %w", err)
+	}
+
+	if err = az.Graph(); err != nil {
+		return fmt.Errorf("generating graph: %w", err)
+	}
+
+	return nil
 }
