@@ -124,3 +124,27 @@ func (a *App) Benchmark(
 
 	return bmk.Benchmark(ctx, a.FS, a.Logger, cb, iterations)
 }
+
+// Visualize runs the visualization task for the exercise at path.
+func (a *App) Visualize(
+	ctx context.Context,
+	path, language, outdir string,
+	cb func(tasks.Event),
+) ([]tasks.Result, error) {
+	ex, err := exercise.Load(path, language, "", a.FS, a.Logger, exercise.WithTaskTimeout(a.taskTimeout))
+	if err != nil {
+		return nil, err
+	}
+
+	// Load guarantees language is registered; the lookup cannot fail here.
+	rc := runners.Available[language]
+
+	return ex.Visualize(
+		ctx,
+		a.FS,
+		a.Logger,
+		rc(runners.ExerciseMeta{Year: ex.Year, Day: ex.Day, Title: ex.Title, Dir: path, Key: language}),
+		outdir,
+		cb,
+	)
+}

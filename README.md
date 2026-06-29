@@ -12,27 +12,26 @@
 
 </div>
 
-`elf` is a helper app for several programming practice sites that attempts to reduce the overhead needed to test and solve puzzles.
+`elf` is a helper app for Advent of Code that reduces the overhead needed to download, test, solve, and benchmark puzzles.
 
 Currently supporting:
 
 - [Advent of Code](https://adventofcode.com/)
-- *WIP* [Exercism](https://exercism.org/)
 
 
 ## Features
 
-- `Download` challenge information with local caching
-- `Solve` challenge with multiple language implementations
-- `Test` solution with implementation-agnostic test cases
-- Show debug output inline with solution output
-- Write `visualization` for solutions to disk
-- `Benchmark` with graphs to compare implementations
+- `download` challenge information with local caching
+- `solve` challenge with multiple language implementations
+- `test` solution with implementation-agnostic test cases
+- `visualize` solution output written to disk
+- `benchmark` timing across all language implementations
+- `analyze` benchmark results as a graph (box plot per exercise, line graph per year)
 
 ## Requirements
 
-- Language toolchains must be installed separately (Go, Python, etc.)
-- Site-specific authorization tokens (see Configuration)
+- Language toolchains must be installed separately
+- Advent of Code session token (see Configuration)
 
 ## Install
 
@@ -130,10 +129,12 @@ Available `programs.elf` options:
 | `package` | package | `pkgs.elf` | The elf package to install |
 | `settings.language` | string | `"go"` | Default implementation language |
 | `settings.input-file` | string | `"input.txt"` | Default input file name |
+| `settings.task-timeout` | string | `null` | Per-task timeout in Go duration syntax (e.g. `"30s"`); null = elf default (2m) |
 | `settings.config-dir` | string | `null` | Config directory (null = XDG default) |
 | `settings.cache-dir` | string | `null` | Cache directory (null = XDG default) |
 | `settings.advent.token` | string | `""` | AoC session token (written to TOML; prefer `ELF_ADVENT_TOKEN`) |
 | `settings.advent.dir` | string | `"exercises"` | Advent of Code exercise directory |
+| `settings.runners` | list | `[]` | Runner plugin descriptors (each becomes a `[[runner]]` block in `elf.toml`) |
 | `ELF_ADVENT_TOKEN` | string | `null` | Set `ELF_ADVENT_TOKEN` env var |
 | `ELF_LANGUAGE` | string | `null` | Set `ELF_LANGUAGE` env var |
 
@@ -149,7 +150,9 @@ Configuration can be set via config file or environment variables (with `ELF_` p
 elf config init           # Create elf.toml in current directory
 elf config init --global  # Create in user config directory
 elf config check          # Display and validate current configuration
-elf config update-token   # Update Advent of Code session token
+elf config check -c /path/to/elf.toml  # Check a specific config file
+elf config update-token   # Update Advent of Code session token interactively
+elf config update-token -t "your-token"  # Update token directly
 ```
 
 Files may also be managed directly. Create `elf.toml` in your working directory or the user config directory:
@@ -218,7 +221,7 @@ mise install
 ```bash
 mise run dev         # Full dev pipeline: generate, mock, lint, test, snapshot
 mise run test        # Run tests with coverage
-mise run lint        # Lint with auto-fix
+mise run lint        # Lint (read-only)
 mise run snapshot    # Build release snapshot for your OS (output in ./dist/)
 
 mise tasks           # List all available tasks

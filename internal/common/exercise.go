@@ -1,10 +1,7 @@
 // Package common contains the base struct for all exercises.
 package common
 
-import (
-	"errors"
-	"io"
-)
+import "errors"
 
 // BaseExercise is the base struct for all exercises.
 type BaseExercise struct{}
@@ -25,7 +22,10 @@ func (e BaseExercise) Two(in string) (any, error) {
 
 // Vis is the visualization of the exercise.
 //
+// Vis is the visualization of the exercise.
+//
 //nolint:revive // this is a stub
-func (e BaseExercise) Vis(in string, w *io.Writer) error {
-	return errors.New("not implemented")
+//nolint:revive // this is a stub
+func (e BaseExercise) Vis(in string, outdir string) (string, error) {
+	return "", errors.New("not implemented")
 }

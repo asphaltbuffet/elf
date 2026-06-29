@@ -1,23 +1,31 @@
-# elf — Core
+# Core
 
-CLI tool for managing programming challenge exercises (Advent of Code, Exercism). Downloads challenges, runs solutions in multiple languages, benchmarks implementations.
+**elf** is a Go CLI tool (cobra) for managing programming challenge exercises (Advent of Code). It downloads challenges, runs solutions in multiple languages, and benchmarks implementations.
 
-## Source map
+## Top-level commands
 
-- `cmd/` — Cobra CLI commands (analyze, benchmark, config, download, man, solve, test)
-- `pkg/analyze/` — benchmark analysis and graph generation
-- `pkg/config/` — Viper-based configuration (env prefix `ELF_`, file `elf.toml`)
-- `pkg/exercise/` — exercise management (downloading, solving, testing, benchmarking)
-- `pkg/runners/` — language runner abstraction (Go, Python)
-- `pkg/tasks/` — task types (Solve, Test, Benchmark, Visualize) and Result types
-- `internal/tui/` — Bubbletea TUI (launched with no subcommand); see `mem:tui`
-- `internal/utilities/` — string helpers
+| Command | Short | Purpose |
+|---|---|---|
+| `solve` | `s` | Run solution + optional tests |
+| `test` | `t` | Run test cases only |
+| `benchmark` | `b` | Benchmark all implementations |
+| `visualize` | `vis`, `v` | Run visualization output to disk |
+| `download` | `d` | Download challenge from URL |
+| `analyze` | `a`, `analyse` | Graph benchmark run-time data |
+| `config` | — | Manage config (init, check, update-token) |
+| `runners` | — | Manage runner plugins (list, install) |
+| `version` | — | Print version |
+| `man` | — | Generate man pages |
 
-## Project-wide invariants
+## Source layout
 
-- VCS: **jj** (Jujutsu). Use `jj file track` instead of `git add`. New files must be tracked before `nix build` sees them.
-- Build: Nix flake with `gomod2nix` (`buildGoApplication`). `gomod2nix.toml` is the dep lockfile.
-- Tool management: **mise**. Use `mise exec --` from non-activated shells.
-- Issue tracker: GitHub Issues at `github.com/asphaltbuffet/elf`. Use `gh` CLI.
+- `cmd/` — Cobra commands (one subdir per command)
+- `pkg/exercise/` — Download, solve, test, benchmark logic
+- `pkg/runners/` — Language runner abstraction (descriptor-driven plugin system)
+- `pkg/config/` — Viper-based config (file + env)
+- `pkg/tasks/` — Task types and result handling
+- `pkg/analyze/` — Benchmark graph generation
+- `internal/render/` — Event-stream rendering (Plain + Live bubbletea renderers)
+- `internal/utilities/` — Internal string helpers
 
-See `mem:tech_stack`, `mem:suggested_commands`, `mem:conventions`, `mem:task_completion`, `mem:tui`.
+See `mem:conventions` for code patterns. See `mem:tech_stack` for build tools.

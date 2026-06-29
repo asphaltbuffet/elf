@@ -113,6 +113,12 @@ One of: PartOne, PartTwo, Visualize. Identifies which sub-problem of a puzzle a 
 
 The outcome of a Task: TaskID, success flag, output string, duration.
 
+## Visualization
+
+The artifact produced by running a Visualize Task against an exercise. Always a file on disk; the exercise implementation decides the filename and format (SVG, HTML, PNG, etc.). The output directory is passed to the exercise via `Task.OutputDir`; the exercise returns the full path of the file it wrote as the Result output string. The `elf visualize` command defaults `OutputDir` to the current working directory and exposes `--outdir`/`-o` to override it. A Visualization Result carries `StatusUnverified` (no expected answer exists). The file path is reported to the user; elf never opens it automatically.
+
+_Avoid_: visualization output, vis output, render
+
 ## Iteration
 
 One repetition of a benchmark Task. Benchmarking runs each (Runner, Part) `iterations` times to
