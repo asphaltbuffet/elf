@@ -1,2 +1,2 @@
-// Package versioncmd is the version subcommand.
+// Package versioncmd holds the build version string injected at link time.
 package versioncmd

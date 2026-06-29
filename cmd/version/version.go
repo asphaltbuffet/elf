@@ -1,22 +1,6 @@
 package versioncmd
 
-import (
-	"fmt"
-
-	"github.com/spf13/cobra"
-)
-
-var version = "dev"
-
-// NewVersionCmd returns the cobra command for printing the version number.
-func NewVersionCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "version",
-		Short: "Print the version number",
-		Run: func(cmd *cobra.Command, _ []string) {
-			fmt.Fprint(cmd.OutOrStdout(), version)
-		},
-	}
-
-	return cmd
-}
+// Version is the elf version, set via -ldflags -X at build time
+// (see flake.nix and .goreleaser.yml). It defaults to "dev" for plain
+// `go build` invocations that do not inject it.
+var Version = "dev"

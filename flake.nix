@@ -19,7 +19,28 @@
           overlays = [ gomod2nix.overlays.default ];
         };
         lib = pkgs.lib;
-        version = if (self ? shortRev) then self.shortRev else "dev";
+
+        # Released version is the topmost `## [x.y.z]` heading in CHANGELOG.md
+        # (changie prepends, so the first match is always the latest release).
+        # Read with pure Nix — `changie latest` is not available in the build
+        # sandbox; the file already lives in `src`. See ADR-0013.
+        # POSIX ERE (builtins.match) matches per-string, not across newlines, and
+        # a literal `[` must be written as the bracket expression `[[]`, not `\[`.
+        releaseVersion =
+          let
+            lines = lib.splitString "\n" (builtins.readFile ./CHANGELOG.md);
+            matched = builtins.filter (m: m != null)
+              (map (builtins.match "## [[]([0-9]+\\.[0-9]+\\.[0-9]+)[]].*") lines);
+          in
+          if matched == [ ] then "dev" else builtins.head (builtins.head matched);
+
+        # Distinguish build provenance: a clean tagged/release build reports the
+        # bare version; a clean commit appends the short rev; a dirty tree marks
+        # it `-dirty`; a source with no rev falls back to a bare `-dirty`.
+        version =
+          if (self ? shortRev) then "${releaseVersion}+g${self.shortRev}"
+          else if (self ? dirtyShortRev) then "${releaseVersion}+g${self.dirtyShortRev}-dirty"
+          else "${releaseVersion}-dirty";
       in {
         packages.default = pkgs.buildGoApplication {
           pname = "elf";
@@ -44,7 +65,7 @@
 
           ldflags = [
             "-s" "-w"
-            "-X github.com/asphaltbuffet/elf/cmd/version/version.version=${version}"
+            "-X github.com/asphaltbuffet/elf/cmd/version.Version=${version}"
           ];
 
           postInstall = ''
