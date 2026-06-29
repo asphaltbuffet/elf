@@ -9,7 +9,7 @@ var GoTemplate []byte
 
 // PythonTemplate is the built-in Python runner wrapper template.
 //
-//go:embed interface/python.templ
+//go:embed interface/python.tmpl
 var PythonTemplate []byte
 
 // BashTemplate is the built-in Bash runner wrapper template.

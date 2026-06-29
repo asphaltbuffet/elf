@@ -47,7 +47,7 @@ func runInstallCmd(cmd *cobra.Command, _ []string) error {
 		filename string
 		content  []byte
 	}{
-		{"python.templ", elfrunners.PythonTemplate},
+		{"python.tmpl", elfrunners.PythonTemplate},
 		{"go.tmpl", elfrunners.GoTemplate},
 		{"bash.tmpl", elfrunners.BashTemplate},
 		{"rust.tmpl", elfrunners.RustTemplate},
@@ -156,7 +156,7 @@ build_commands = [
 [runner.open]
 binary = "{binary_file}"
 `,
-		filepath.Join(runnersDir, "python.templ"),
+		filepath.Join(runnersDir, "python.tmpl"),
 		filepath.Join(runnersDir, "go.tmpl"),
 		filepath.Join(runnersDir, "bash.tmpl"),
 		filepath.Join(runnersDir, "rust.tmpl"),
