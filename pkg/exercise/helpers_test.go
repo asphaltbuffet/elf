@@ -18,9 +18,9 @@ import (
 )
 
 var (
-	roBase  afero.Fs
-	testFs  afero.Fs
-	mockDlr *Downloader
+	roBase    afero.Fs
+	testFs    afero.Fs
+	testAdder *Adder
 )
 
 // FileExists checks whether a file exists in the given path. It also fails if
@@ -75,7 +75,7 @@ func setupSubTest(t *testing.T) func(t *testing.T) {
 	fetcher, err := newPageFetcher("fakeToken", "testCache", testFs, logger)
 	require.NoError(t, err)
 
-	mockDlr = &Downloader{
+	testAdder = &Adder{
 		cfgDir:          "./",
 		exerciseBaseDir: "exercises",
 		appFs:           testFs,
@@ -89,7 +89,7 @@ func setupSubTest(t *testing.T) func(t *testing.T) {
 		},
 	}
 
-	httpmock.ActivateNonDefault(mockDlr.fetcher.rClient.GetClient())
+	httpmock.ActivateNonDefault(testAdder.fetcher.rClient.GetClient())
 
 	httpmock.Reset()
 

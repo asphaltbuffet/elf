@@ -62,7 +62,7 @@ func Test_downloadPage(t *testing.T) {
 
 			httpmock.RegisterNoResponder(httpmock.NewNotFoundResponder(t.Error))
 
-			got, err := mockDlr.fetcher.downloadPage(tt.args.year, tt.args.day)
+			got, err := testAdder.fetcher.downloadPage(tt.args.year, tt.args.day)
 
 			require.ErrorIs(t, err, tt.wantErr)
 			if err == nil {
@@ -72,7 +72,7 @@ func Test_downloadPage(t *testing.T) {
 				FileExists(
 					t,
 					testFs,
-					filepath.Join(mockDlr.fetcher.cacheDir, "pages", makeExerciseID(tt.args.year, tt.args.day)),
+					filepath.Join(testAdder.fetcher.cacheDir, "pages", makeExerciseID(tt.args.year, tt.args.day)),
 				)
 			}
 		})
@@ -120,7 +120,7 @@ func Test_getCachedInput(t *testing.T) {
 			defer teardownSubTest(t)
 
 			if tt.seed != nil {
-				inputsDir := filepath.Join(mockDlr.fetcher.cacheDir, "inputs")
+				inputsDir := filepath.Join(testAdder.fetcher.cacheDir, "inputs")
 				require.NoError(t, testFs.MkdirAll(inputsDir, 0o755))
 				require.NoError(t, afero.WriteFile(
 					testFs,
@@ -130,7 +130,7 @@ func Test_getCachedInput(t *testing.T) {
 				))
 			}
 
-			got, gotOk := mockDlr.fetcher.getCachedInput(tt.args.year, tt.args.day)
+			got, gotOk := testAdder.fetcher.getCachedInput(tt.args.year, tt.args.day)
 
 			tt.wantOk(t, gotOk)
 			if gotOk {
@@ -194,7 +194,7 @@ func Test_downloadInput(t *testing.T) {
 
 			httpmock.RegisterNoResponder(httpmock.NewNotFoundResponder(t.Error))
 
-			got, err := mockDlr.fetcher.downloadInput(tt.args.year, tt.args.day)
+			got, err := testAdder.fetcher.downloadInput(tt.args.year, tt.args.day)
 
 			require.ErrorIs(t, err, tt.wantErr)
 			assert.Equal(t, tt.want, got)
@@ -203,7 +203,7 @@ func Test_downloadInput(t *testing.T) {
 				FileExists(
 					t,
 					testFs,
-					filepath.Join(mockDlr.fetcher.cacheDir, "inputs", makeExerciseID(tt.args.year, tt.args.day)),
+					filepath.Join(testAdder.fetcher.cacheDir, "inputs", makeExerciseID(tt.args.year, tt.args.day)),
 				)
 			}
 		})
@@ -244,7 +244,7 @@ func Test_getCachedPage(t *testing.T) {
 			teardownSubTest := setupSubTest(t)
 			defer teardownSubTest(t)
 
-			got, gotOk := mockDlr.fetcher.getCachedPage(tt.args.year, tt.args.day)
+			got, gotOk := testAdder.fetcher.getCachedPage(tt.args.year, tt.args.day)
 
 			tt.wantOk(t, gotOk)
 			if gotOk {
@@ -308,7 +308,7 @@ func Test_pageFetcher_sendsUserAgent(t *testing.T) {
 		})
 	httpmock.RegisterNoResponder(httpmock.NewNotFoundResponder(t.Error))
 
-	_, err := mockDlr.fetcher.downloadPage(2015, 1)
+	_, err := testAdder.fetcher.downloadPage(2015, 1)
 	require.NoError(t, err)
 
 	assert.Equal(t, userAgent, gotUA)

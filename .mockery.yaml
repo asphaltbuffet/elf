@@ -8,7 +8,7 @@ template-data:
 packages:
   github.com/asphaltbuffet/elf/cmd/download:
     interfaces:
-      Downloader: {}
+      Adder: {}
   github.com/asphaltbuffet/elf/cmd/analyze:
     interfaces:
       Analyzer: {}

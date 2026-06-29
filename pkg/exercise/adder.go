@@ -24,7 +24,7 @@ const (
 	dirPerm = 0o750
 )
 
-// Sentinel errors for downloader construction and HTTP operations.
+// Sentinel errors for Adder construction and HTTP operations.
 var (
 	ErrNotConfigured   = errors.New("not configured")
 	ErrHTTPRequest     = errors.New("http request")
@@ -34,10 +34,10 @@ var (
 	ErrInvalidLanguage = errors.New("invalid language")
 )
 
-// Downloader coordinates fetching a challenge from the AoC website and laying it out on disk. It
+// Adder coordinates fetching a challenge from the AoC website and laying it out on disk. It
 // assembles a finished Exercise value (via the page fetcher or an existing info.json) and hands it
 // to the scaffold to write — it never builds an Exercise up in place.
-type Downloader struct {
+type Adder struct {
 	exerciseBaseDir string
 	cfgDir          string
 	language        string
@@ -49,10 +49,10 @@ type Downloader struct {
 	fetcher  *pageFetcher
 	scaffold *exerciseScaffold
 
-	// path is the resolved exercise directory, set once Download assembles or loads the Exercise.
+	// path is the resolved exercise directory, set once Add assembles or loads the Exercise.
 	path string
 
-	// report is the per-file scaffold outcome, set once Download lays the Exercise out on disk.
+	// report is the per-file scaffold outcome, set once Add lays the Exercise out on disk.
 	report Report
 }
 
@@ -61,14 +61,14 @@ type Overwrites struct {
 	Input bool
 }
 
-// NewDownloader creates a Downloader, applies options, and validates the configuration.
-func NewDownloader(cfg config.Config, options ...func(*Downloader)) (*Downloader, error) {
+// NewAdder creates an Adder, applies options, and validates the configuration.
+func NewAdder(cfg config.Config, options ...func(*Adder)) (*Adder, error) {
 	fetcher, err := newPageFetcher(cfg.GetToken(), cfg.GetCacheDir(), cfg.GetFs(), cfg.GetLogger())
 	if err != nil {
 		return nil, err
 	}
 
-	d := &Downloader{
+	d := &Adder{
 		language:        cfg.GetLanguage(),
 		cfgDir:          cfg.GetConfigDir(),
 		exerciseBaseDir: cfg.GetBaseDir(),
@@ -93,10 +93,10 @@ func NewDownloader(cfg config.Config, options ...func(*Downloader)) (*Downloader
 	return d, nil
 }
 
-// WithDownloadLanguage sets the language for the exercise implementation.
+// WithLanguage sets the language for the exercise implementation.
 // This will override any language set in the configuration.
-func WithDownloadLanguage(lang string) func(*Downloader) {
-	return func(d *Downloader) {
+func WithLanguage(lang string) func(*Adder) {
+	return func(d *Adder) {
 		if lang != "" {
 			// expect to check for valid language later
 			d.language = lang
@@ -105,15 +105,15 @@ func WithDownloadLanguage(lang string) func(*Downloader) {
 }
 
 // WithURL sets the exercise URL to download.
-func WithURL(url string) func(*Downloader) {
-	return func(d *Downloader) {
+func WithURL(url string) func(*Adder) {
+	return func(d *Adder) {
 		d.url = url
 	}
 }
 
 // WithOverwrites sets the files that can be overwritten if already in place.
-func WithOverwrites(o *Overwrites) func(*Downloader) {
-	return func(d *Downloader) {
+func WithOverwrites(o *Overwrites) func(*Adder) {
+	return func(d *Adder) {
 		if o == nil {
 			d.scaffold.overwrites = &Overwrites{}
 		} else {
@@ -122,14 +122,14 @@ func WithOverwrites(o *Overwrites) func(*Downloader) {
 	}
 }
 
-// WithSkipImpl sets the downloader to skip creating implementation files and structure.
-func WithSkipImpl(skip bool) func(*Downloader) {
-	return func(d *Downloader) {
+// WithSkipImpl sets the Adder to skip creating implementation files and structure.
+func WithSkipImpl(skip bool) func(*Adder) {
+	return func(d *Adder) {
 		d.skipImpl = skip
 	}
 }
 
-func (d *Downloader) validate() error {
+func (d *Adder) validate() error {
 	var err []error
 
 	if d.appFs == nil {
@@ -155,8 +155,9 @@ func (d *Downloader) validate() error {
 	return errors.Join(err...)
 }
 
-// Download fetches challenge metadata, puzzle input, and implementation templates from the AoC website.
-func (d *Downloader) Download() error {
+// Add makes the exercise exist in the workspace: it fetches challenge metadata, puzzle input, and
+// implementation templates from the AoC website (on a cache miss) and lays them out on disk.
+func (d *Adder) Add() error {
 	year, day, err := ParseURL(d.url)
 	if err != nil {
 		return err
@@ -198,8 +199,9 @@ func (d *Downloader) Download() error {
 }
 
 // assemble fetches the puzzle page and input and returns a finished Exercise value. It never
-// mutates the Downloader — the result is a fresh value ready for the scaffold.
-func (d *Downloader) assemble(year, day int) (*Exercise, error) {
+// mutates the Adder — the result is a fresh value ready for the scaffold. Construction is delegated
+// to newExerciseFromSource; assemble only does the fetching and title extraction.
+func (d *Adder) assemble(year, day int) (*Exercise, error) {
 	logger := d.logger.With(slog.Int("year", year), slog.Int("day", day), slog.String("fn", "assemble"))
 	logger.Debug("loading exercise")
 
@@ -220,31 +222,23 @@ func (d *Downloader) assemble(year, day int) (*Exercise, error) {
 		return nil, fmt.Errorf("loading input: %w", err)
 	}
 
-	ex := &Exercise{
-		ID:       makeExerciseID(year, day),
-		Title:    title,
-		Language: d.language,
-		Year:     year,
-		Day:      day,
-		URL:      d.url,
-		Path:     makeExercisePath(d.exerciseBaseDir, year, day, title),
-		Data: &Data{
-			InputData:     string(input),
-			InputFileName: d.scaffold.inputFileName,
-			TestCases: TestCase{
-				One: []*Test{{Input: "", Expected: ""}},
-				Two: []*Test{{Input: "", Expected: ""}},
-			},
-			Answers: Answer{One: "", Two: ""},
-		},
-	}
+	ex := newExerciseFromSource(exerciseSource{
+		baseDir:       d.exerciseBaseDir,
+		language:      d.language,
+		url:           d.url,
+		title:         title,
+		input:         string(input),
+		inputFileName: d.scaffold.inputFileName,
+		year:          year,
+		day:           day,
+	})
 
 	logger.Debug("loaded exercise", slog.Any("exercise", ex.LogValue()))
 
 	return ex, nil
 }
 
-func (d *Downloader) getExercisePath(year, day int) (string, bool) {
+func (d *Adder) getExercisePath(year, day int) (string, bool) {
 	logger := d.logger.With(slog.Int("year", year), slog.Int("day", day), slog.String("fn", "getExercisePath"))
 
 	var exPath string
@@ -352,12 +346,12 @@ func makeExercisePath(baseDir string, year, day int, title string) string {
 }
 
 // FilePath returns the local filesystem path where the downloaded exercise will be stored.
-func (d *Downloader) FilePath() string {
+func (d *Adder) FilePath() string {
 	return d.path
 }
 
-// Report returns the per-file scaffold outcome from the most recent Download.
-// It is nil until Download succeeds.
-func (d *Downloader) Report() Report {
+// Report returns the per-file scaffold outcome from the most recent Add.
+// It is nil until Add succeeds.
+func (d *Adder) Report() Report {
 	return d.report
 }

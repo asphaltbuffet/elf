@@ -124,6 +124,44 @@ func makeExerciseID(year, day int) string {
 	return fmt.Sprintf("%d-%02d", year, day)
 }
 
+// exerciseSource carries the already-fetched facts needed to build an Exercise from a downloaded
+// puzzle. It exists so newExerciseFromSource has a readable call site rather than a long argument
+// list; the Adder fills it after fetching the page and input.
+type exerciseSource struct {
+	baseDir       string
+	language      string
+	url           string
+	title         string
+	input         string
+	inputFileName string
+	year          int
+	day           int
+}
+
+// newExerciseFromSource builds a finished Exercise value from already-fetched puzzle data. It is
+// pure construction with no I/O — the caller (the Adder) is responsible for fetching the page and
+// input first. This is the download counterpart to loadInfo, which builds an Exercise from disk.
+func newExerciseFromSource(s exerciseSource) *Exercise {
+	return &Exercise{
+		ID:       makeExerciseID(s.year, s.day),
+		Title:    s.title,
+		Language: s.language,
+		Year:     s.year,
+		Day:      s.day,
+		URL:      s.url,
+		Path:     makeExercisePath(s.baseDir, s.year, s.day, s.title),
+		Data: &Data{
+			InputData:     s.input,
+			InputFileName: s.inputFileName,
+			TestCases: TestCase{
+				One: []*Test{{Input: "", Expected: ""}},
+				Two: []*Test{{Input: "", Expected: ""}},
+			},
+			Answers: Answer{One: "", Two: ""},
+		},
+	}
+}
+
 // GetImplementations returns a list of available implementations for the exercise.
 func (e *Exercise) GetImplementations(fs afero.Fs) ([]string, error) {
 	dirEntries, err := afero.ReadDir(fs, e.Path)
