@@ -282,7 +282,7 @@ func (b *Benchmarker) runBenchmarkTask(
 	// A benchmark iteration's measurement is its duration, not its output
 	// string (ADR-0011): any non-timeout result is a valid sample and must emit
 	// exactly one Finished so the progress bar can reach 100%.
-	r := handleTaskResult(benchResult, "")
+	r := buildResult(benchResult, "")
 	if cb != nil {
 		cb(tasks.FinishedEvent(r, lang))
 	}
