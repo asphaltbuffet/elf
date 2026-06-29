@@ -29,7 +29,7 @@ func testApp(t *testing.T) *app.App {
 func TestApp_Solve_ErrNoExercise(t *testing.T) {
 	a := testApp(t)
 
-	_, err := a.Solve(context.Background(), "exercises/2015/01-not-there", "go", "", io.Discard, nil, false)
+	_, err := a.Solve(context.Background(), "exercises/2015/01-not-there", "go", "", nil, false)
 	require.Error(t, err)
 }
 
@@ -38,7 +38,7 @@ func TestApp_Solve_ErrNoExercise(t *testing.T) {
 func TestApp_Test_ErrNoExercise(t *testing.T) {
 	a := testApp(t)
 
-	_, err := a.Test(context.Background(), "exercises/2015/01-not-there", "go", "", io.Discard, nil)
+	_, err := a.Test(context.Background(), "exercises/2015/01-not-there", "go", "", nil)
 	require.Error(t, err)
 }
 
@@ -47,7 +47,7 @@ func TestApp_Test_ErrNoExercise(t *testing.T) {
 func TestApp_Benchmark_ErrNoExercise(t *testing.T) {
 	a := testApp(t)
 
-	_, err := a.Benchmark(context.Background(), "exercises/2015/01-not-there", "go", io.Discard, nil, 1)
+	_, err := a.Benchmark(context.Background(), "exercises/2015/01-not-there", "go", nil, 1)
 	require.Error(t, err)
 }
 
@@ -56,7 +56,7 @@ func TestApp_Benchmark_ErrNoExercise(t *testing.T) {
 func TestApp_Solve_ErrInvalidLanguage(t *testing.T) {
 	a := testApp(t)
 
-	_, err := a.Solve(context.Background(), "exercises/2015/01-hello", "brainfuck", "", io.Discard, nil, false)
+	_, err := a.Solve(context.Background(), "exercises/2015/01-hello", "brainfuck", "", nil, false)
 	require.Error(t, err)
 	assert.ErrorIs(t, err, exercise.ErrNoRunner)
 }
@@ -68,7 +68,7 @@ func TestApp_Solve_ErrInvalidLanguage(t *testing.T) {
 func TestApp_Solve_ErrEmptyLanguage(t *testing.T) {
 	a := testApp(t)
 
-	_, err := a.Solve(context.Background(), "exercises/2015/01-hello", "", "", io.Discard, nil, false)
+	_, err := a.Solve(context.Background(), "exercises/2015/01-hello", "", "", nil, false)
 	require.Error(t, err)
 	assert.ErrorIs(t, err, exercise.ErrEmptyLanguage)
 }

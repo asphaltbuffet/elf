@@ -113,6 +113,30 @@ One of: PartOne, PartTwo, Visualize. Identifies which sub-problem of a puzzle a 
 
 The outcome of a Task: TaskID, success flag, output string, duration.
 
+## Iteration
+
+One repetition of a benchmark Task. Benchmarking runs each (Runner, Part) `iterations` times to
+gather a duration sample per run; the iteration index is the Task's SubPart. An iteration has
+exactly two outcomes — it **times out** (yielding a timeout Result, after which the Runner is
+restarted) or it **completes with a measured duration** (the duration is the sample, regardless of
+the output string). There is no third "empty output" outcome: for benchmarking the duration is the
+measurement, so a completed iteration always contributes a sample.
+
+_Avoid_: run, repeat, trial, sample (a sample is the *duration* an iteration yields, not the
+iteration itself)
+
+## Progress Bar
+
+The live (TTY) presentation of a benchmark's iterations: one bar per (Runner, Part), advancing one
+tick per completed Iteration until it reaches `iterations/iterations`. Replaces the one-line-per-
+iteration view — a benchmark of 100 iterations across two Runners shows four bars, not 400 lines.
+While running, the bar's trailing metric is live wall-clock elapsed; settled, it shows the sum of
+the iteration durations (Σ). The non-TTY (Plain) renderer shows the same information as one settled
+line per (Runner, Part) rather than an animated bar. The bar is a pure view over the existing
+per-iteration event stream (see [[ADR 0011]]); the Runner is identified by the event's Language.
+
+_Avoid_: spinner, status line, per-iteration row
+
 ## Analysis
 
 Renders run-time graphs from persisted benchmark data. One operation with two scopes, inferred

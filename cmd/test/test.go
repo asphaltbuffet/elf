@@ -8,13 +8,16 @@ import (
 	"github.com/lmittmann/tint"
 	"github.com/spf13/cobra"
 
+	"github.com/asphaltbuffet/elf/internal/render"
 	appPkg "github.com/asphaltbuffet/elf/pkg/app"
 	"github.com/asphaltbuffet/elf/pkg/config"
+	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
 var (
 	testCmd     *cobra.Command
 	language    string
+	plainFlag   bool
 	timeoutFlag time.Duration
 
 	makeConfig = func(cf string) (config.Config, error) {
@@ -42,6 +45,7 @@ func GetTestCmd() *cobra.Command {
 		testCmd.Flags().StringP("config-file", "c", "", "configuration file")
 		testCmd.Flags().
 			DurationVarP(&timeoutFlag, "timeout", "t", 0, "per-task timeout (0 or negative = no timeout; omit to use config default)")
+		testCmd.Flags().BoolVar(&plainFlag, "plain", false, "disable live output (plain renderer)")
 	}
 
 	return testCmd
@@ -72,7 +76,11 @@ func runTestCmd(cmd *cobra.Command, args []string) error {
 		a.SetTaskTimeout(timeoutFlag)
 	}
 
-	_, testErr := a.Test(cmd.Context(), dir, language, "", cmd.OutOrStdout(), nil)
+	h := render.Header{Language: language}
+	_, testErr := render.Run(cmd.Context(), cmd.OutOrStdout(), h, plainFlag,
+		func(cb func(tasks.Event)) ([]tasks.Result, error) {
+			return a.Test(cmd.Context(), dir, language, "", cb)
+		})
 	if testErr != nil {
 		cfg.GetLogger().Error("testing exercise", tint.Err(testErr))
 		cmd.Printf("Failed to run tests: %v\n", testErr)

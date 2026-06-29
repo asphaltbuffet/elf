@@ -3,8 +3,6 @@ package exercise
 import (
 	"context"
 	"errors"
-	"fmt"
-	"io"
 	"log/slog"
 
 	"github.com/lmittmann/tint"
@@ -21,8 +19,7 @@ func (e *Exercise) Solve(
 	fs afero.Fs,
 	logger *slog.Logger,
 	runner runners.Runner,
-	w io.Writer,
-	cb func(tasks.Result),
+	cb func(tasks.Event),
 	skipTests bool,
 ) ([]tasks.Result, error) {
 	logger = logger.With(slog.String("exercise", e.Title))
@@ -51,16 +48,16 @@ func (e *Exercise) Solve(
 		return nil, err
 	}
 
+	if cb != nil {
+		cb(e.metaEvent(runner))
+	}
+
 	results := []tasks.Result{}
 
-	fmt.Fprintln(w, headerStyle(fmt.Sprintf("ADVENT OF CODE %d\nDay %d: %s", e.Year, e.Day, e.Title)))
-
 	if !skipTests {
-		fmt.Fprintf(w, "Testing (%s)...\n", runner)
-
 		var tr []tasks.Result
 
-		tr, err = e.runTests(ctx, runner, w, cb)
+		tr, err = e.runTests(ctx, runner, cb)
 		if err != nil {
 			logger.ErrorContext(ctx, "running tests", tint.Err(err))
 			return nil, err
@@ -69,9 +66,7 @@ func (e *Exercise) Solve(
 		results = append(results, tr...)
 	}
 
-	fmt.Fprintf(w, "Solving (%s)...\n", runner)
-
-	mainResults, err := e.runMainTasks(ctx, runner, w, cb)
+	mainResults, err := e.runMainTasks(ctx, runner, cb)
 	if err != nil {
 		logger.ErrorContext(ctx, "running main tasks", tint.Err(err))
 		return nil, err
@@ -85,22 +80,34 @@ func (e *Exercise) Solve(
 func (e *Exercise) runMainTasks(
 	ctx context.Context,
 	runner runners.Runner,
-	w io.Writer,
-	cb func(tasks.Result),
+	cb func(tasks.Event),
 ) ([]tasks.Result, error) {
 	var solveTasks []testTask
 
 	solveTasks = append(solveTasks, makeMainTasks(protocol.PartOne, e.Data)...)
 	solveTasks = append(solveTasks, makeMainTasks(protocol.PartTwo, e.Data)...)
 
+	// Announce the full task list up front so a renderer can show pending rows.
+	if cb != nil {
+		for _, t := range solveTasks {
+			tt, part, sub := tasks.ParseTaskID(t.task.TaskID)
+			cb(tasks.PlannedEvent(t.task.TaskID, tt, part, sub, ""))
+		}
+	}
+
 	results := make([]tasks.Result, 0, len(solveTasks))
 
 	for _, t := range solveTasks {
+		if cb != nil {
+			tt, part, sub := tasks.ParseTaskID(t.task.TaskID)
+			cb(tasks.StartedEvent(t.task.TaskID, tt, part, sub, ""))
+		}
+
 		result, err := runWithTimeout(ctx, runner, t.task, e.taskTimeout)
 		if errors.Is(err, errTaskTimeout) {
-			r := timeoutResult(w, t.task.TaskID)
+			r := timeoutResult(t.task.TaskID)
 			if cb != nil {
-				cb(r)
+				cb(tasks.FinishedEvent(r, ""))
 			}
 
 			results = append(results, r)
@@ -114,9 +121,9 @@ func (e *Exercise) runMainTasks(
 			return nil, err
 		}
 
-		r := handleTaskResult(w, result, t.expected)
+		r := handleTaskResult(result, t.expected)
 		if cb != nil {
-			cb(r)
+			cb(tasks.FinishedEvent(r, ""))
 		}
 
 		results = append(results, r)

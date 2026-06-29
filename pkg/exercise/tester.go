@@ -3,8 +3,6 @@ package exercise
 import (
 	"context"
 	"errors"
-	"fmt"
-	"io"
 	"log/slog"
 
 	"github.com/lmittmann/tint"
@@ -19,8 +17,7 @@ func (e *Exercise) Test(
 	ctx context.Context,
 	logger *slog.Logger,
 	runner runners.Runner,
-	w io.Writer,
-	cb func(tasks.Result),
+	cb func(tasks.Event),
 ) ([]tasks.Result, error) {
 	if e.Year == 0 && e.Day == 0 && e.Title == "" {
 		return nil, errors.New("exercise is empty")
@@ -52,9 +49,11 @@ func (e *Exercise) Test(
 		return nil, err
 	}
 
-	fmt.Fprintln(w, headerStyle(fmt.Sprintf("ADVENT OF CODE %d\nDay %d: %s", e.Year, e.Day, e.Title)))
+	if cb != nil {
+		cb(e.metaEvent(runner))
+	}
 
-	results, err := e.runTests(ctx, runner, w, cb)
+	results, err := e.runTests(ctx, runner, cb)
 	if err != nil {
 		logger.ErrorContext(ctx, "running tests", tint.Err(err))
 
@@ -67,22 +66,34 @@ func (e *Exercise) Test(
 func (e *Exercise) runTests(
 	ctx context.Context,
 	runner runners.Runner,
-	w io.Writer,
-	cb func(tasks.Result),
+	cb func(tasks.Event),
 ) ([]tasks.Result, error) {
 	var testTasks []testTask
 
 	testTasks = append(testTasks, makeTestTasks(protocol.PartOne, e.Data.TestCases.One)...)
 	testTasks = append(testTasks, makeTestTasks(protocol.PartTwo, e.Data.TestCases.Two)...)
 
+	// Announce the full task list up front so a renderer can show pending rows.
+	if cb != nil {
+		for _, t := range testTasks {
+			tt, part, sub := tasks.ParseTaskID(t.task.TaskID)
+			cb(tasks.PlannedEvent(t.task.TaskID, tt, part, sub, ""))
+		}
+	}
+
 	results := make([]tasks.Result, 0, len(testTasks))
 
 	for _, t := range testTasks {
+		if cb != nil {
+			tt, part, sub := tasks.ParseTaskID(t.task.TaskID)
+			cb(tasks.StartedEvent(t.task.TaskID, tt, part, sub, ""))
+		}
+
 		result, err := runWithTimeout(ctx, runner, t.task, e.taskTimeout)
 		if errors.Is(err, errTaskTimeout) {
-			r := timeoutResult(w, t.task.TaskID)
+			r := timeoutResult(t.task.TaskID)
 			if cb != nil {
-				cb(r)
+				cb(tasks.FinishedEvent(r, ""))
 			}
 
 			results = append(results, r)
@@ -96,9 +107,9 @@ func (e *Exercise) runTests(
 			return nil, err
 		}
 
-		r := handleTaskResult(w, result, t.expected)
+		r := handleTaskResult(result, t.expected)
 		if cb != nil {
-			cb(r)
+			cb(tasks.FinishedEvent(r, ""))
 		}
 
 		results = append(results, r)

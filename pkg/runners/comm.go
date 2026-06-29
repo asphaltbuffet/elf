@@ -7,13 +7,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"strings"
 	"sync"
 	"syscall"
 	"time"
-
-	"github.com/charmbracelet/lipgloss"
 )
 
 type customWriter struct {
@@ -123,9 +122,7 @@ func readJSONFromCommand(ctx context.Context, res any, cmd *exec.Cmd, exited <-c
 		err = json.Unmarshal(inp, res)
 		if err != nil {
 			// anything returned as an error is considered a debug message
-			style := lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
-			//nolint:forbidigo // intentional debug output to user
-			fmt.Printf("[%s] %v\n", style.Render("DBG"), strings.TrimSpace(string(inp)))
+			fmt.Fprintf(os.Stderr, "[DBG] %s\n", strings.TrimSpace(string(inp)))
 		} else {
 			break
 		}

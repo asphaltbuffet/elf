@@ -5,14 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"math"
 	"path/filepath"
 	"time"
 
 	"github.com/lmittmann/tint"
-	"github.com/schollz/progressbar/v3"
 	"github.com/spf13/afero"
 
 	"github.com/asphaltbuffet/elf/pkg/protocol"
@@ -37,8 +35,7 @@ func (b *Benchmarker) Benchmark(
 	ctx context.Context,
 	fs afero.Fs,
 	logger *slog.Logger,
-	w io.Writer,
-	cb func(tasks.Result),
+	cb func(tasks.Event),
 	iterations int,
 ) ([]tasks.Result, error) {
 	normFactor := NormalizationFactor()
@@ -61,6 +58,12 @@ func (b *Benchmarker) Benchmark(
 
 	results := []tasks.Result{}
 
+	if cb != nil {
+		// Benchmark spans multiple implementations, so there is no single runner
+		// name; the header carries the exercise identity only.
+		cb(tasks.MetaEvent(tasks.Meta{Year: b.Year, Day: b.Day, Title: b.Title}))
+	}
+
 	for _, impl := range impls {
 		logger.DebugContext(ctx, "running benchmark", slog.String("impl", impl))
 
@@ -78,11 +81,24 @@ func (b *Benchmarker) Benchmark(
 			Key:   impl,
 		})
 
+		// Plan this impl's tasks now that its display name is known, so each
+		// progress bar is labelled with the human-readable runner name.
+		emitPlannedForImpl(cb, runner.String(), iterations)
+
 		var implData *ImplementationData
 
 		var implResults []tasks.Result
-		implResults, implData, err = b.runBenchmark(ctx, logger, runner, w, cb, iterations)
+		implResults, implData, err = b.runBenchmark(ctx, logger, runner, cb, iterations)
 		if err != nil {
+			// A runner that fails to start is skipped, not fatal: the other
+			// implementations are still worth benchmarking.
+			if errors.Is(err, ErrRunnerStart) {
+				logger.WarnContext(ctx, "skipping runner that failed to start",
+					slog.String("impl", impl), tint.Err(err))
+
+				continue
+			}
+
 			return nil, err
 		}
 
@@ -90,7 +106,6 @@ func (b *Benchmarker) Benchmark(
 		benchmarks = append(benchmarks, implData)
 
 		logger.DebugContext(ctx, "benchmarking complete", "lang", impl, "iterations", iterations)
-		_, _ = fmt.Fprintln(w, "") // blank line between implementations
 	}
 
 	var benchmarkData []BenchmarkData
@@ -139,8 +154,7 @@ func (b *Benchmarker) runBenchmark(
 	ctx context.Context,
 	logger *slog.Logger,
 	runner runners.Runner,
-	w io.Writer,
-	cb func(tasks.Result),
+	cb func(tasks.Event),
 	iterations int,
 ) ([]tasks.Result, *ImplementationData, error) {
 	const numParts int = 2
@@ -166,37 +180,26 @@ func (b *Benchmarker) runBenchmark(
 			})
 	}
 
-	progBar := progressbar.NewOptions(
-		len(benchmarkTasks),
-		progressbar.OptionSetPredictTime(true),
-		progressbar.OptionSetDescription(
-			fmt.Sprintf("Benchmarking %q (%s)", b.Title, runner),
-		),
-		progressbar.OptionSetWriter(w),
-	)
-
 	defer func() {
 		_ = runner.Close(ctx)
 		_ = runner.Cleanup()
 	}()
 
+	// Prepare/Open failures are runner-setup failures (e.g. a missing
+	// interpreter), wrapped in ErrRunnerStart so the caller can skip this
+	// runner and benchmark the rest rather than aborting the whole run.
 	if err := runner.Prepare(ctx); err != nil {
 		logger.ErrorContext(ctx, "prepare runner", tint.Err(err))
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("%w: %w", ErrRunnerStart, err)
 	}
 
 	if err := runner.Open(ctx); err != nil {
 		logger.ErrorContext(ctx, "open runner", tint.Err(err))
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("%w: %w", ErrRunnerStart, err)
 	}
 
 	for _, t := range benchmarkTasks {
-		if err := b.runBenchmarkTask(ctx, logger, runner, w, cb, t, metricsResults, &results); err != nil {
-			return nil, nil, err
-		}
-
-		if err := progBar.Add(1); err != nil {
-			logger.ErrorContext(ctx, "updating progress bar", tint.Err(err))
+		if err := b.runBenchmarkTask(ctx, logger, runner, cb, t, metricsResults, &results); err != nil {
 			return nil, nil, err
 		}
 	}
@@ -215,23 +218,53 @@ func (b *Benchmarker) runBenchmark(
 		}, nil
 }
 
+// emitPlannedForImpl announces every iteration's tasks for a single
+// implementation, tagging each event with the runner's display name so a
+// renderer can group them into one progress bar per (runner, Part). Emitted
+// per-impl (not as an up-front batch) because the display name only exists once
+// the runner is constructed; ADR-0010 events are incremental, so a bar appears
+// when its first Planned arrives.
+func emitPlannedForImpl(cb func(tasks.Event), lang string, iterations int) {
+	if cb == nil {
+		return
+	}
+
+	for i := range iterations {
+		cb(tasks.PlannedEvent(
+			tasks.MakeTaskID(tasks.Benchmark, protocol.PartOne, i),
+			tasks.Benchmark, protocol.PartOne, i, lang,
+		))
+		cb(tasks.PlannedEvent(
+			tasks.MakeTaskID(tasks.Benchmark, protocol.PartTwo, i),
+			tasks.Benchmark, protocol.PartTwo, i, lang,
+		))
+	}
+}
+
 // runBenchmarkTask executes one benchmark task and records its result.
 // Returns a non-nil error only on fatal runner failure; timeout is handled inline.
 func (b *Benchmarker) runBenchmarkTask(
 	ctx context.Context,
 	logger *slog.Logger,
 	runner runners.Runner,
-	w io.Writer,
-	cb func(tasks.Result),
+	cb func(tasks.Event),
 	t *protocol.Task,
 	metricsResults map[protocol.Part][]float64,
 	results *[]tasks.Result,
 ) error {
+	taskType, taskPart, taskSubPart := tasks.ParseTaskID(t.TaskID)
+
+	lang := runner.String()
+
+	if cb != nil {
+		cb(tasks.StartedEvent(t.TaskID, taskType, taskPart, taskSubPart, lang))
+	}
+
 	benchResult, runErr := runWithTimeout(ctx, runner, t, b.taskTimeout)
 	if errors.Is(runErr, errTaskTimeout) {
-		r := timeoutResult(w, t.TaskID)
+		r := timeoutResult(t.TaskID)
 		if cb != nil {
-			cb(r)
+			cb(tasks.FinishedEvent(r, lang))
 		}
 
 		*results = append(*results, r)
@@ -246,16 +279,17 @@ func (b *Benchmarker) runBenchmarkTask(
 		return runErr
 	}
 
-	if benchResult.Ok && benchResult.Output != "" {
-		r := handleTaskResult(w, benchResult, "")
-		if cb != nil {
-			cb(r)
-		}
-
-		*results = append(*results, r)
-
-		metricsResults[r.Part] = append(metricsResults[r.Part], benchResult.Duration)
+	// A benchmark iteration's measurement is its duration, not its output
+	// string (ADR-0011): any non-timeout result is a valid sample and must emit
+	// exactly one Finished so the progress bar can reach 100%.
+	r := handleTaskResult(benchResult, "")
+	if cb != nil {
+		cb(tasks.FinishedEvent(r, lang))
 	}
+
+	*results = append(*results, r)
+
+	metricsResults[r.Part] = append(metricsResults[r.Part], benchResult.Duration)
 
 	return nil
 }

@@ -1,6 +1,7 @@
 package exercise
 
 import (
+	"context"
 	"errors"
 	"io"
 	"log/slog"
@@ -29,7 +30,7 @@ func Test_runMainTasks(t *testing.T) {
 		Data: &Data{InputData: "FAKE INPUT"},
 	}
 
-	_, err := e.runMainTasks(t.Context(), mockRunner, io.Discard, nil)
+	_, err := e.runMainTasks(t.Context(), mockRunner, nil)
 
 	require.NoError(t, err)
 
@@ -42,11 +43,76 @@ func Test_runMainTasks(t *testing.T) {
 		Duration: 0.666,
 	}, errors.New("FAKE ERROR")).Once()
 
-	_, err = e.runMainTasks(t.Context(), mockRunner, io.Discard, nil)
+	_, err = e.runMainTasks(t.Context(), mockRunner, nil)
 
 	require.Error(t, err)
 
 	_ = logger // used in TestSolve
+}
+
+func TestExercise_Solve_EmitsSolveAndTestEvents(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+
+	f, err := testFs.Create("input.fake")
+	require.NoError(t, err)
+	_, err = f.WriteString("fake input data")
+	require.NoError(t, err)
+	f.Close()
+
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	mockRunner := mocks.NewMockRunner(t)
+	mockRunner.EXPECT().Prepare(mock.Anything).Return(nil)
+	mockRunner.EXPECT().Open(mock.Anything).Return(nil)
+	// Echo the submitted task's ID back so the result Type matches the task type
+	// (Test vs Solve); buildResult derives Type from the runner result's TaskID.
+	mockRunner.EXPECT().Run(mock.Anything, mock.Anything).
+		RunAndReturn(func(_ context.Context, task *protocol.Task) (*protocol.Result, error) {
+			return &protocol.Result{
+				TaskID:   task.TaskID,
+				Ok:       true,
+				Output:   "FAKE OUTPUT",
+				Duration: 0.042,
+			}, nil
+		})
+	mockRunner.EXPECT().String().Return("fakeRunner").Maybe()
+	mockRunner.EXPECT().Close(mock.Anything).Return(nil)
+	mockRunner.EXPECT().Cleanup().Return(nil)
+
+	e := &Exercise{
+		ID:       "1111-22",
+		Title:    "Fake Title",
+		Language: "fakeLang",
+		Year:     1111,
+		Day:      22,
+		Data: &Data{
+			InputData:     "",
+			InputFileName: "input.fake",
+			TestCases: TestCase{
+				One: []*Test{
+					{Input: "fake test 1.1", Expected: "FAKE OUTPUT"},
+				},
+			},
+			Answers: Answer{},
+		},
+		Path: "",
+	}
+
+	var types []tasks.TaskType
+	cb := func(ev tasks.Event) {
+		if ev.Kind == tasks.EventFinished {
+			types = append(types, ev.Type)
+		}
+	}
+
+	_, solveErr := e.Solve(context.Background(), testFs, logger, mockRunner, cb, false)
+	require.NoError(t, solveErr)
+	assert.Contains(t, types, tasks.Test)
+	assert.Contains(t, types, tasks.Solve)
 }
 
 func TestSolve(t *testing.T) {
@@ -101,7 +167,6 @@ func TestSolve(t *testing.T) {
 				_m.EXPECT().Prepare(mock.Anything).Return(nil)
 				_m.EXPECT().Open(mock.Anything).Return(nil)
 				_m.EXPECT().Run(mock.Anything, mock.Anything).Return(nil, errors.New("FAKE ERROR"))
-				_m.EXPECT().String().Return("fakeRunner")
 				_m.EXPECT().Close(mock.Anything).Return(nil)
 				_m.EXPECT().Cleanup().Return(nil)
 			},
@@ -160,7 +225,7 @@ func TestSolve(t *testing.T) {
 			}
 
 			// skipTests == false
-			got, err := e.Solve(t.Context(), testFs, logger, mockRunner, io.Discard, nil, false)
+			got, err := e.Solve(t.Context(), testFs, logger, mockRunner, nil, false)
 
 			tt.assertion(t, err)
 			if err == nil {
@@ -168,7 +233,7 @@ func TestSolve(t *testing.T) {
 			}
 
 			// skipTests == true
-			got, err = e.Solve(t.Context(), testFs, logger, mockRunner, io.Discard, nil, true)
+			got, err = e.Solve(t.Context(), testFs, logger, mockRunner, nil, true)
 
 			tt.assertion(t, err)
 			if err == nil {

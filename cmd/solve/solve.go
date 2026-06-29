@@ -7,8 +7,10 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/asphaltbuffet/elf/internal/render"
 	appPkg "github.com/asphaltbuffet/elf/pkg/app"
 	"github.com/asphaltbuffet/elf/pkg/config"
+	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
 var (
@@ -16,6 +18,7 @@ var (
 	language    string
 	input       string
 	noTest      bool
+	plainFlag   bool
 	timeoutFlag time.Duration
 
 	makeConfig = func(cf string) (config.Config, error) {
@@ -47,6 +50,7 @@ func GetSolveCmd() *cobra.Command {
 		solveCmd.Flags().StringVarP(&input, "input-file", "i", "", "override input file")
 		solveCmd.Flags().
 			DurationVarP(&timeoutFlag, "timeout", "t", 0, "per-task timeout (0 or negative = no timeout; omit to use config default)")
+		solveCmd.Flags().BoolVar(&plainFlag, "plain", false, "disable live output (plain renderer)")
 	}
 
 	return solveCmd
@@ -81,7 +85,11 @@ func runSolveCmd(cmd *cobra.Command, args []string) error {
 		a.SetTaskTimeout(timeoutFlag)
 	}
 
-	_, solveErr := a.Solve(cmd.Context(), dir, language, filepath.Clean(input), cmd.OutOrStdout(), nil, noTest)
+	h := render.Header{Language: language}
+	_, solveErr := render.Run(cmd.Context(), cmd.OutOrStdout(), h, plainFlag,
+		func(cb func(tasks.Event)) ([]tasks.Result, error) {
+			return a.Solve(cmd.Context(), dir, language, filepath.Clean(input), cb, noTest)
+		})
 	if solveErr != nil {
 		cmd.PrintErrln("Failed to solve: ", solveErr)
 	}
