@@ -56,13 +56,15 @@ func TestRunInstallCmd_WritesFiles(t *testing.T) {
 	require.NoError(t, err)
 
 	runnersDir := filepath.Join(tmpDir, "elf", "runners")
-	assert.FileExists(t, filepath.Join(runnersDir, "python.templ"))
+	assert.FileExists(t, filepath.Join(runnersDir, "python.tmpl"))
 	assert.FileExists(t, filepath.Join(runnersDir, "go.tmpl"))
 	assert.FileExists(t, filepath.Join(runnersDir, "bash.tmpl"))
 	assert.FileExists(t, filepath.Join(runnersDir, "f77.tmpl"))
+	assert.FileExists(t, filepath.Join(runnersDir, "lua.tmpl"))
 	assert.Contains(t, out.String(), "[[runner]]")
 	assert.Contains(t, out.String(), "YOUR_MODULE")
 	assert.Contains(t, out.String(), "gfortran")
+	assert.Contains(t, out.String(), "dkjson")
 }
 
 func TestRunInstallCmd_SkipsExistingFiles(t *testing.T) {
@@ -72,7 +74,7 @@ func TestRunInstallCmd_SkipsExistingFiles(t *testing.T) {
 	// Pre-create the runners dir and one file
 	runnersDir := filepath.Join(tmpDir, "elf", "runners")
 	require.NoError(t, os.MkdirAll(runnersDir, 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(runnersDir, "python.templ"), []byte("existing"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(runnersDir, "python.tmpl"), []byte("existing"), 0o644))
 
 	runners.ResetForTest()
 	cmd := runners.GetRunnersCmd()
@@ -85,8 +87,8 @@ func TestRunInstallCmd_SkipsExistingFiles(t *testing.T) {
 	err := installCmd.RunE(installCmd, nil)
 	require.NoError(t, err)
 
-	// python.templ should be skipped (still has old content)
-	content, readErr := os.ReadFile(filepath.Join(runnersDir, "python.templ"))
+	// python.tmpl should be skipped (still has old content)
+	content, readErr := os.ReadFile(filepath.Join(runnersDir, "python.tmpl"))
 	require.NoError(t, readErr)
 	assert.Equal(t, "existing", string(content))
 

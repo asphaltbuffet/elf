@@ -63,7 +63,11 @@
             done
           '';
 
-          nativeBuildInputs = [ pkgs.installShellFiles ];
+          nativeBuildInputs = [ pkgs.installShellFiles pkgs.gotools ];
+
+          preBuild = ''
+            go generate ./...
+          '';
 
           meta = with lib; {
             description = "A CLI helper for programming exercises";

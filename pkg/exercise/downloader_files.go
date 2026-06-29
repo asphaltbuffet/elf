@@ -34,6 +34,9 @@ var rsSolutionTemplate []byte
 //go:embed templates/f77.tmpl
 var f77Template []byte
 
+//go:embed templates/lua.tmpl
+var luaTemplate []byte
+
 type tmplFile struct {
 	Name     string
 	Path     string
@@ -147,6 +150,11 @@ func languageTemplates(lang string) ([]tmplFile, error) {
 	case "f77":
 		return []tmplFile{
 			{Name: "f77", Path: "f77", Data: f77Template, FileName: "solution.f"},
+		}, nil
+
+	case "lua":
+		return []tmplFile{
+			{Name: "lua", Path: "lua", Data: luaTemplate, FileName: "exercise.lua"},
 		}, nil
 
 	default:

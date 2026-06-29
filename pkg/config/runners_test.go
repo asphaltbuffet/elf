@@ -17,7 +17,7 @@ key = "py"
 name = "Python"
 
 [runner.prepare]
-template_path = "/home/user/.config/elf/runners/python.templ"
+template_path = "/home/user/.config/elf/runners/python.tmpl"
 
 [runner.open]
 interpreter = "python3"
@@ -52,7 +52,7 @@ binary = "{binary_file}"
 
 	assert.Equal(t, "py", runners[0].Key)
 	assert.Equal(t, "Python", runners[0].Name)
-	assert.Equal(t, "/home/user/.config/elf/runners/python.templ", runners[0].Prepare.TemplatePath)
+	assert.Equal(t, "/home/user/.config/elf/runners/python.tmpl", runners[0].Prepare.TemplatePath)
 	assert.Equal(t, "python3", runners[0].Open.Interpreter)
 	assert.Equal(t, []string{"-B", "{wrapper_file}"}, runners[0].Open.Args)
 

@@ -72,7 +72,7 @@ func TestRunnerDescriptor_ToCreator(t *testing.T) {
 		Key:  "py",
 		Name: "Python",
 		Prepare: PrepareSpec{
-			TemplatePath: "/tmp/python.templ",
+			TemplatePath: "/tmp/python.tmpl",
 		},
 		Open: OpenSpec{
 			Interpreter: "python3",

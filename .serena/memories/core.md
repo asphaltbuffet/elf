@@ -1,31 +1,21 @@
-# Core
+# elf — Core
 
-**elf** is a Go CLI tool (cobra) for managing programming challenge exercises (Advent of Code). It downloads challenges, runs solutions in multiple languages, and benchmarks implementations.
+CLI tool for managing programming challenge exercises (Advent of Code, Exercism).
 
-## Top-level commands
+## Package map
+- `cmd/` — Cobra commands (solve, test, benchmark, download, analyze)
+- `pkg/exercise/` — exercise lifecycle (download, solve, test, benchmark, scaffold)
+- `pkg/tasks/` — task types (Solve/Test/Benchmark/Visualize), result, status
+- `pkg/runners/` — language runner abstraction (Go, Python)
+- `pkg/config/` — Viper config (file + ELF_* env vars)
+- `pkg/analyze/` — benchmark analysis + graph gen
+- `internal/render/` — event-stream renderers (Plain + Live/bubbletea)
+- `internal/utilities/` — internal string helpers
 
-| Command | Short | Purpose |
-|---|---|---|
-| `solve` | `s` | Run solution + optional tests |
-| `test` | `t` | Run test cases only |
-| `benchmark` | `b` | Benchmark all implementations |
-| `visualize` | `vis`, `v` | Run visualization output to disk |
-| `download` | `d` | Download challenge from URL |
-| `analyze` | `a`, `analyse` | Graph benchmark run-time data |
-| `config` | — | Manage config (init, check, update-token) |
-| `runners` | — | Manage runner plugins (list, install) |
-| `version` | — | Print version |
-| `man` | — | Generate man pages |
+## Key invariants
+- VCS is jujutsu (jj), not git. Do not use `git` commands.
+- Build system: Nix flake with gomod2nix (`buildGoApplication`, not `buildGoModule`).
+- Tool runner: mise (see `mem:suggested_commands`).
+- Three stringer-generated files are gitignored / untracked; nix build fails without them (see `mem:nix`).
 
-## Source layout
-
-- `cmd/` — Cobra commands (one subdir per command)
-- `pkg/exercise/` — Download, solve, test, benchmark logic
-- `pkg/runners/` — Language runner abstraction (descriptor-driven plugin system)
-- `pkg/config/` — Viper-based config (file + env)
-- `pkg/tasks/` — Task types and result handling
-- `pkg/analyze/` — Benchmark graph generation
-- `internal/render/` — Event-stream rendering (Plain + Live bubbletea renderers)
-- `internal/utilities/` — Internal string helpers
-
-See `mem:conventions` for code patterns. See `mem:tech_stack` for build tools.
+References: `mem:tech_stack`, `mem:nix`, `mem:conventions`, `mem:suggested_commands`, `mem:task_completion`

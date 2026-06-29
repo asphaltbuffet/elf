@@ -1,27 +1,21 @@
 # Conventions
 
-## cmd/ pattern
-- Factory variable pattern for testability: package-level `var make* = func(...)` wraps constructors
-- Internal tests (`package solve`, not `package solve_test`) for access to unexported vars
-- `resetState` helper + `t.Cleanup` to restore factory vars between tests
-- `pflag` gotcha: `StringVarP` sets default immediately — set flag vars AFTER `GetXxxCmd()` in tests
+## Code style
+- Factory variable pattern in `cmd/` packages for testability (package-level `var` funcs swapped in tests)
+- Internal tests (`package foo`, not `package foo_test`) for access to unexported vars
+- `resetState` helper in each cmd test restores factory vars via `t.Cleanup`
+- pflag `StringVarP` sets default immediately — always set flag vars AFTER `GetXxxCmd()` in tests
 
-## Error handling
-- `noctx`: always `exec.CommandContext(ctx, ...)` even with `context.Background()`
-- No `func` fields in structs compared with `==` — use field-level zero checks
-- `govet shadow`: rename inner `:=` err to avoid shadowing (e.g. `graphErr`)
-- `mnd`: magic numbers → named constants
+## Linter gotchas
+- `noctx`: use `exec.CommandContext(ctx, ...)` not `exec.Command(...)`
+- `mnd`: extract magic numbers to named constants
+- `govet shadow`: rename inner `:=` vars that shadow outer `err`
+- Adding `func` fields to structs breaks `==` — use field-level zero checks instead
 
-## sd (in-place substitution)
-- Does NOT match across newlines — patterns with `\n` silently no-op
-- To remove a whole line including newline, use the Edit tool
+## sd limitations
+- `sd` does not match across newlines — patterns with `\n` silently no-op
+- To remove entire lines (including newline), use Edit tool instead
 
-## Runner system
-- `RunnerDescriptor` struct drives language execution via config-declared `[[runner]]` blocks
-- Built-in templates: Go, Python, Bash, Rust, Fortran 77
-- `runners install` writes templates + prints config blocks to add to elf.toml
-
-## Rendering
-- Domain emits `tasks.Event` via `cb func(tasks.Event)` callback
-- `render.Run` feeds events into renderer, returns `([]tasks.Result, error)`
-- `render.New(w, h, plain)`: `plain==true` or non-TTY → Plain; otherwise → Live
+## Mocks
+- mockery-generated mocks in `mocks/` for major interfaces
+- Prefer hand-rolled fakes for interfaces defined within this codebase

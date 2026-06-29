@@ -37,7 +37,7 @@ func TestRunListCmd_NoRunners(t *testing.T) {
 func TestRunListCmd_WithRunners(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	tmplPath := filepath.Join(tmpDir, "python.templ")
+	tmplPath := filepath.Join(tmpDir, "python.tmpl")
 	require.NoError(t, os.WriteFile(tmplPath, []byte("# template"), 0o644))
 
 	cfgContent := "language = \"go\"\n\n[[runner]]\nkey = \"py\"\nname = \"Python\"\n\n[runner.prepare]\ntemplate_path = \"" + tmplPath + "\"\n\n[runner.open]\ninterpreter = \"python3\"\nargs = [\"-B\", \"{wrapper_file}\"]\n"
