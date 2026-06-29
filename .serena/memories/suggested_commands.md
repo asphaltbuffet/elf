@@ -1,28 +1,24 @@
 # Suggested Commands
 
-## Development
-```
-mise run dev         # Full pipeline: generate, mock, lint, test, snapshot
-mise run test        # Run tests with coverage (bin/coverage.out)
-mise run lint        # Lint read-only (CI)
-mise run lint-fix    # Lint with auto-fix (local)
-mise run generate    # go generate (stringer)
-mise run mock        # Generate mocks (mockery)
-mise run build       # Build to dist/
-mise run snapshot    # goreleaser snapshot
-mise run update-deps # Update direct deps → mod-tidy → nix-hash
-```
+## Build / Dev
+- `mise run dev` — full pipeline: generate, mock, lint, test, snapshot
+- `mise run build` — build to dist/
+- `mise run generate` — go generate (stringer)
+- `mise run mock` — mockery mocks
+- `mise run lint` — golangci-lint (read-only)
+- `mise run lint-fix` — golangci-lint with auto-fix
+- `mise run test` — gotestsum (coverage → bin/coverage.out)
+- `mise run snapshot` — goreleaser snapshot
+- `mise run nix-hash` — gomod2nix generate
+- `mise run mod-tidy` — go mod tidy + nix-hash
 
 ## Single test
-```
-go test -run TestFunctionName ./path/to/package
-```
+`go test -run TestFunctionName ./path/to/package`
 
 ## Nix
-```
-mise run nix-hash    # Regenerate gomod2nix.toml + update vendorHash
-nix build            # Verify flake build
-```
+- `nix build` — build elf binary via flake
+- `nix develop` — enter dev shell
 
-## VCS (jujutsu)
-Use `jj` not `git`. `jj file track` only needed for new `.nix` files (nix flake visibility).
+## VCS (jj)
+- `jj file track <path>` — only for new .nix files (flake visibility)
+- Never use `git` commands directly

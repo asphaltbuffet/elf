@@ -1,15 +1,10 @@
 # Task Completion
 
-Run before committing any change:
+Run before committing any phase:
+1. `mise run lint` — must pass clean
+2. `mise run test` — must pass clean
 
-```
-mise run lint   # must pass clean
-mise run test   # must pass with coverage
-```
+Full verification (preferred):
+- `mise run dev` — generate + mock + lint + test + snapshot
 
-For a full verification (including generate, mock, snapshot):
-```
-mise run dev
-```
-
-For auto-fixable lint issues, run `mise run lint-fix` first, then `mise run lint` to confirm clean.
+Do NOT use bare `go test` or `go build` as the sole check — nix build and lint can catch things they miss.

@@ -1,0 +1,5 @@
+kind: Fixed
+body: Nix build includes required generated files
+time: 2026-06-29T00:17:29.780183545-04:00
+custom:
+    Issue: '#149'
