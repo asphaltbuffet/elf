@@ -282,6 +282,18 @@ linters:
       # Default: false
       allow-empty-returns: true
 
+    forbidigo:
+      # Forbid direct t.Error*/t.Fatal* calls in tests; use testify assert/require instead.
+      forbid:
+        - pattern: '^t\.Errorf?\b'
+          msg: "use require.Errorf/assert.Errorf (testify) instead of t.Errorf/t.Error"
+        - pattern: '^t\.Fatalf?\b'
+          msg: "use require.Fatalf/assert.Fatalf (testify) instead of t.Fatalf/t.Fatal"
+        - pattern: '^t\.Failf?\b'
+          msg: "use require.Failf/assert.Failf (testify) instead of t.Failf/t.Fail"
+        - pattern: '^t\.FailNow\b'
+          msg: "use require.FailNow (testify) instead of t.FailNow"
+
     funcorder:
       # Checks if the exported methods of a structure are placed before the non-exported ones.
       # Default: true
@@ -470,6 +482,11 @@ linters:
           - gosec
           - noctx
           - wrapcheck
+      # t.Error passed as a function value to httpmock.NewNotFoundResponder — not a direct call.
+      - text: 'use of `t\.Error` forbidden'
+        source: 'NewNotFoundResponder\(t\.Error\)'
+        linters:
+          - forbidigo
       # Package naming - these names are intentional for internal utilities
       - path: 'internal/common/'
         text: 'var-naming: avoid meaningless package names'

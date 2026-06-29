@@ -19,9 +19,7 @@ func TestLiveShowsNotStartedThenSettles(t *testing.T) {
 	mi, _ := m.Update(eventMsg{tasks.PlannedEvent("Test.1.1", tasks.Test, protocol.PartOne, 1, "")})
 	m = mi.(*Live)
 
-	if !strings.Contains(m.View().Content, "not started") {
-		t.Fatalf("expected '<not started>' row, got:\n%s", m.View().Content)
-	}
+	require.Contains(t, m.View().Content, "not started", "expected '<not started>' row")
 
 	// Finished -> row settles to PASS.
 	mi, _ = m.Update(eventMsg{tasks.FinishedEvent(tasks.Result{
@@ -30,19 +28,12 @@ func TestLiveShowsNotStartedThenSettles(t *testing.T) {
 	}, "")})
 	m = mi.(*Live)
 
-	if !strings.Contains(m.View().Content, "PASS") {
-		t.Fatalf("expected PASS after Finished, got:\n%s", m.View().Content)
-	}
+	require.Contains(t, m.View().Content, "PASS", "expected PASS after Finished")
 }
 
 func TestFormatElapsed(t *testing.T) {
-	if got := formatElapsed(23100 * time.Millisecond); got != "23.1s" {
-		t.Errorf("got %q want 23.1s", got)
-	}
-
-	if got := formatElapsed(65 * time.Second); got != "1m05s" {
-		t.Errorf("got %q want 1m05s", got)
-	}
+	assert.Equal(t, "23.1s", formatElapsed(23100*time.Millisecond))
+	assert.Equal(t, "1m05s", formatElapsed(65*time.Second))
 }
 
 func TestLiveMetaEventSetsHeaderAndLanguage(t *testing.T) {
@@ -55,12 +46,8 @@ func TestLiveMetaEventSetsHeaderAndLanguage(t *testing.T) {
 	m = mi.(*Live)
 
 	out := m.View().Content
-	if !strings.Contains(out, "2015 Day 11: Corporate Policy") {
-		t.Errorf("live header missing/wrong:\n%s", out)
-	}
-	if !strings.Contains(out, "Testing (Rust)") {
-		t.Errorf("live section label should use pretty name 'Rust':\n%s", out)
-	}
+	assert.Contains(t, out, "2015 Day 11: Corporate Policy", "live header missing/wrong")
+	assert.Contains(t, out, "Testing (Rust)", "live section label should use pretty name 'Rust'")
 }
 
 // Benchmark iterations collapse into one progress bar per (runner, Part): the
@@ -183,10 +170,6 @@ func TestLiveDoneRowShowsNewAnswer(t *testing.T) {
 	m = mi.(*Live)
 
 	out := m.View().Content
-	if !strings.Contains(out, "NEW") {
-		t.Errorf("expected NEW status:\n%s", out)
-	}
-	if !strings.Contains(out, "1321131112") {
-		t.Errorf("expected the NEW answer to be shown so the user can submit it:\n%s", out)
-	}
+	assert.Contains(t, out, "NEW", "expected NEW status")
+	assert.Contains(t, out, "1321131112", "expected the NEW answer to be shown so the user can submit it")
 }
