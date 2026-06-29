@@ -1,5 +1,0 @@
-kind: Fixed
-body: Termination of runner no longer leaves orphaned subprocesses
-time: 2026-06-27T20:29:37.134580646-04:00
-custom:
-    Issue: ""

@@ -1,5 +1,0 @@
-kind: Fixed
-body: Download failure will no longer write an empty input file.
-time: 2026-06-18T21:18:21.726435762-04:00
-custom:
-    Issue: ""

@@ -1,5 +1,0 @@
-kind: Fixed
-body: Protection against panic if benchmark data is missing "part-one"
-time: 2026-06-19T13:55:25.261143865-04:00
-custom:
-    Issue: ""

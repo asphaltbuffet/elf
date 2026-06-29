@@ -1,5 +1,0 @@
-kind: Added
-body: Added new timeout functionality for 'test', 'solve', and 'benchmark'; default of 2m can be overridden by '--timeout'/'-t' flag
-time: 2026-06-27T17:02:55.409751661-04:00
-custom:
-    Issue: '#49'
