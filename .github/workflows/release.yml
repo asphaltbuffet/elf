@@ -60,7 +60,7 @@ jobs:
         with:
           distribution: goreleaser-pro
           version: "~> v2"
-          args: release --clean --release-notes=".changes/${{ steps.version.outputs.version }}.md"
+          args: release --clean --release-notes=".changes/v${{ steps.version.outputs.version }}.md"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GORELEASER_KEY: ${{ secrets.GORELEASER_KEY }}
