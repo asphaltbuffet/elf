@@ -1,6 +1,16 @@
 {
   description = "elf - A CLI helper for programming exercises";
 
+  # Advertise the project's Cachix cache so consumers substitute prebuilt
+  # builds (pushed by the release workflow) instead of compiling from source.
+  # `extra-` prefixes append to the user's config rather than replacing it.
+  nixConfig = {
+    extra-substituters = [ "https://asphaltbuffet.cachix.org" ];
+    extra-trusted-public-keys = [
+      "asphaltbuffet.cachix.org-1:X7blz7HiaFpaq9Om6pYaKHWAaq7jAbjdQdareQQpJmU="
+    ];
+  };
+
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     flake-utils.url = "github:numtide/flake-utils";
