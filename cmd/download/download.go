@@ -24,7 +24,7 @@ var (
 )
 
 const exampleDownloadText = `elf download https://example.com --lang=go
-elf download https://example.com --force --lang=py
+elf download https://example.com --force-input --lang=py
 elf download https://example.com`
 
 // GetDownloadCmd returns the cobra command for downloading a challenge from a URL.
