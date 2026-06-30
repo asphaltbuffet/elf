@@ -144,7 +144,7 @@ jobs:
           name: asphaltbuffet
 
       - name: Build flake
-        run: nix build .#default --print-build-logs
+        run: nix build .#default --print-build-logs --accept-flake-config
 
   lint:
     name: Lint

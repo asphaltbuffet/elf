@@ -3,13 +3,10 @@ package analyze
 import (
 	"bytes"
 	"errors"
-	"log/slog"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
-	mocks "github.com/asphaltbuffet/elf/mocks/analyze"
 	"github.com/asphaltbuffet/elf/pkg/config"
 )
 
@@ -26,29 +23,19 @@ func TestGetAnalyzeCmd(t *testing.T) {
 	})
 }
 
-// resetState restores package-level variables and factory functions to defaults.
-func resetState(
-	t *testing.T,
-	origMakeConfig func(string) (config.Config, error),
-	origMakeAnalyzer func(*slog.Logger, string, string) (Analyzer, error),
-) {
-	t.Helper()
+// Test_runAnalyzeCmd covers the cmd-level concerns: config construction and arg
+// handling. The analysis operation itself (load + graph) is exercised in pkg/app
+// (App.Analyze) and pkg/analyze (Analyzer); see ADR-0005.
+func Test_runAnalyzeCmd(t *testing.T) {
+	origMakeConfig := makeConfig
 
 	t.Cleanup(func() {
 		analyzeCmd = nil
 		outFile = ""
 		makeConfig = origMakeConfig
-		makeAnalyzer = origMakeAnalyzer
 	})
-}
-
-func Test_runAnalyzeCmd(t *testing.T) {
-	origMakeConfig := makeConfig
-	origMakeAnalyzer := makeAnalyzer
 
 	t.Run("config error", func(t *testing.T) {
-		resetState(t, origMakeConfig, origMakeAnalyzer)
-
 		makeConfig = func(_ string) (config.Config, error) {
 			return config.Config{}, errors.New("bad config")
 		}
@@ -59,123 +46,5 @@ func Test_runAnalyzeCmd(t *testing.T) {
 
 		err := runAnalyzeCmd(cmd, []string{"."})
 		assert.ErrorContains(t, err, "bad config")
-	})
-
-	t.Run("analyzer creation error", func(t *testing.T) {
-		resetState(t, origMakeConfig, origMakeAnalyzer)
-
-		makeConfig = func(_ string) (config.Config, error) {
-			return config.NewConfig()
-		}
-		makeAnalyzer = func(_ *slog.Logger, _, _ string) (Analyzer, error) {
-			return nil, errors.New("bad analyzer config")
-		}
-
-		cmd := GetAnalyzeCmd()
-		cmd.SetOut(&bytes.Buffer{})
-		cmd.SetErr(&bytes.Buffer{})
-
-		err := runAnalyzeCmd(cmd, []string{"."})
-		require.ErrorContains(t, err, "creating grapher")
-		assert.ErrorContains(t, err, "bad analyzer config")
-	})
-
-	t.Run("graph error", func(t *testing.T) {
-		resetState(t, origMakeConfig, origMakeAnalyzer)
-
-		makeConfig = func(_ string) (config.Config, error) {
-			return config.NewConfig()
-		}
-
-		mockAn := mocks.NewMockAnalyzer(t)
-		mockAn.EXPECT().Graph().Return(errors.New("render failed"))
-
-		makeAnalyzer = func(_ *slog.Logger, _, _ string) (Analyzer, error) {
-			return mockAn, nil
-		}
-
-		cmd := GetAnalyzeCmd()
-		cmd.SetOut(&bytes.Buffer{})
-		cmd.SetErr(&bytes.Buffer{})
-
-		err := runAnalyzeCmd(cmd, []string{"."})
-		assert.ErrorContains(t, err, "render failed")
-	})
-
-	t.Run("happy path", func(t *testing.T) {
-		resetState(t, origMakeConfig, origMakeAnalyzer)
-
-		makeConfig = func(_ string) (config.Config, error) {
-			return config.NewConfig()
-		}
-
-		mockAn := mocks.NewMockAnalyzer(t)
-		mockAn.EXPECT().Graph().Return(nil)
-
-		makeAnalyzer = func(_ *slog.Logger, _, _ string) (Analyzer, error) {
-			return mockAn, nil
-		}
-
-		cmd := GetAnalyzeCmd()
-		cmd.SetOut(&bytes.Buffer{})
-		cmd.SetErr(&bytes.Buffer{})
-
-		err := runAnalyzeCmd(cmd, []string{"."})
-		assert.NoError(t, err)
-	})
-
-	t.Run("graph flag passed to analyzer", func(t *testing.T) {
-		resetState(t, origMakeConfig, origMakeAnalyzer)
-
-		makeConfig = func(_ string) (config.Config, error) {
-			return config.NewConfig()
-		}
-
-		var gotOut string
-
-		mockAn := mocks.NewMockAnalyzer(t)
-		mockAn.EXPECT().Graph().Return(nil)
-
-		makeAnalyzer = func(_ *slog.Logger, _, out string) (Analyzer, error) {
-			gotOut = out
-			return mockAn, nil
-		}
-
-		cmd := GetAnalyzeCmd()
-		cmd.SetOut(&bytes.Buffer{})
-		cmd.SetErr(&bytes.Buffer{})
-
-		// Set outFile AFTER GetAnalyzeCmd() — flag creation resets the variable.
-		outFile = "/tmp/custom-graph.png"
-
-		err := runAnalyzeCmd(cmd, []string{"."})
-		require.NoError(t, err)
-		assert.Equal(t, "/tmp/custom-graph.png", gotOut)
-	})
-
-	t.Run("no graph flag passes empty output to analyzer", func(t *testing.T) {
-		resetState(t, origMakeConfig, origMakeAnalyzer)
-
-		makeConfig = func(_ string) (config.Config, error) {
-			return config.NewConfig()
-		}
-
-		var gotOut string
-
-		mockAn := mocks.NewMockAnalyzer(t)
-		mockAn.EXPECT().Graph().Return(nil)
-
-		makeAnalyzer = func(_ *slog.Logger, _, out string) (Analyzer, error) {
-			gotOut = out
-			return mockAn, nil
-		}
-
-		cmd := GetAnalyzeCmd()
-		cmd.SetOut(&bytes.Buffer{})
-		cmd.SetErr(&bytes.Buffer{})
-
-		err := runAnalyzeCmd(cmd, []string{"."})
-		require.NoError(t, err)
-		assert.Empty(t, gotOut)
 	})
 }

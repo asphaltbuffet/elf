@@ -3,32 +3,23 @@ package analyze
 
 import (
 	"fmt"
-	"log/slog"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
 
-	analyzer "github.com/asphaltbuffet/elf/pkg/analyze"
 	appPkg "github.com/asphaltbuffet/elf/pkg/app"
 	"github.com/asphaltbuffet/elf/pkg/config"
 )
-
-// Analyzer is the interface for benchmark analysis.
-type Analyzer interface {
-	Graph() error
-}
 
 var (
 	analyzeCmd *cobra.Command
 
 	outFile string
 
-	// Factory variables for testing.
+	// makeConfig is the sanctioned config seam tests stub to avoid touching the real
+	// filesystem/env; the analysis operation itself is exercised in pkg/app (see ADR-0005).
 	makeConfig = func(cf string) (config.Config, error) {
 		return config.NewConfig(config.WithFile(cf))
-	}
-	makeAnalyzer = func(logger *slog.Logger, dir, out string) (Analyzer, error) {
-		return analyzer.NewAnalyzer(logger, analyzer.WithDirectory(dir), analyzer.WithOutput(out))
 	}
 )
 
@@ -78,10 +69,5 @@ func runAnalyzeCmd(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	aa, err := makeAnalyzer(cfg.GetLogger(), dir, out)
-	if err != nil {
-		return fmt.Errorf("creating grapher: %w", err)
-	}
-
-	return aa.Graph()
+	return appPkg.New(cfg).Analyze(dir, out)
 }
