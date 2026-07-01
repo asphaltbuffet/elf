@@ -175,7 +175,7 @@ func (f *pageFetcher) downloadInput(year, day int) ([]byte, error) {
 		return nil, fmt.Errorf("%w: %s", ErrHTTPResponse, resp.Status())
 	}
 
-	data := bytes.TrimSpace(resp.Body())
+	data := bytes.TrimRight(resp.Body(), "\r\n")
 
 	// A 200 with an empty body means the request was unauthenticated (e.g. a
 	// missing or expired token); fail loudly instead of caching an empty input.
