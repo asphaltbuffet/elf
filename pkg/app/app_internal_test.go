@@ -29,6 +29,6 @@ func TestApp_Analyze_ErrNoData(t *testing.T) {
 
 	a := New(cfg)
 
-	err = a.Analyze("does/not/exist", "")
+	_, err = a.Analyze("does/not/exist", "")
 	require.Error(t, err)
 }

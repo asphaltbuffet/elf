@@ -229,4 +229,5 @@ data is an error that names the benchmark command as the fix, rather than produc
 The graph is written into the target directory by default (next to the data it describes): the
 exercise folder for Exercise scope, the year folder for Year scope. Year scope produces exactly
 one year-level graph — it does not descend into day folders. An explicit override may redirect the
-output elsewhere.
+output elsewhere. On success, the resolved filepath of the written image is returned to the caller
+and printed to stdout by the CLI.

@@ -176,15 +176,15 @@ func (a *App) Add(url, lang string, forced *exercise.Overwrites) (exercise.Repor
 // Analyze renders run-time graphs from persisted benchmark data under dir, writing the graph to
 // out (or a default location when out is empty). It is the App-level entry point for the `analyze`
 // command: it builds an analyze.Analyzer and runs it.
-func (a *App) Analyze(dir, out string) error {
+func (a *App) Analyze(dir, out string) (string, error) {
 	az, err := analyze.NewAnalyzer(a.Logger, analyze.WithDirectory(dir), analyze.WithOutput(out))
 	if err != nil {
-		return fmt.Errorf("creating analyzer: %w", err)
+		return "", fmt.Errorf("creating analyzer: %w", err)
 	}
 
 	if err = az.Graph(); err != nil {
-		return fmt.Errorf("generating graph: %w", err)
+		return "", fmt.Errorf("generating graph: %w", err)
 	}
 
-	return nil
+	return az.Output, nil
 }

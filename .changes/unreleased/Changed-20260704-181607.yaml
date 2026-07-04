@@ -1,0 +1,5 @@
+kind: Changed
+body: '`analyze` subcommand returns filepath of generated images on success'
+time: 2026-07-04T18:16:07.639557111-04:00
+custom:
+    Issue: ""
