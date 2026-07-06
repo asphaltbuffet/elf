@@ -139,7 +139,7 @@ jobs:
 
       # Pull from the cache to speed the build; no push on PRs (no authToken).
       - name: Set up Cachix
-        uses: cachix/cachix-action@v16
+        uses: cachix/cachix-action@v17
         with:
           name: asphaltbuffet
 
