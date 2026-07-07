@@ -131,7 +131,7 @@ The outcome of a Task: TaskID, success flag, output string, duration.
 
 ## Visualization
 
-The artifact produced by running a Visualize Task against an exercise. Always a file on disk; the exercise implementation decides the filename and format (SVG, HTML, PNG, etc.). The output directory is passed to the exercise via `Task.OutputDir`; the exercise returns the full path of the file it wrote as the Result output string. The `elf visualize` command defaults `OutputDir` to the current working directory and exposes `--outdir`/`-o` to override it. A Visualization Result carries `StatusUnverified` (no expected answer exists). The file path is reported to the user; elf never opens it automatically.
+The artifact produced by running a Visualize Task against an exercise. Always a file on disk; the exercise implementation decides the filename and format (SVG, HTML, PNG, etc.). The output directory is passed to the exercise via `Task.OutputDir`; the exercise returns the full path of the file it wrote as the Result output string. The `elf visualize` command defaults `OutputDir` to the exercise's own directory (see [[ADR 0015]]) and exposes `--outdir`/`-o` to override it. A Visualization Result carries `StatusUnverified` (no expected answer exists). The file path is reported to the user; elf never opens it automatically.
 
 _Avoid_: visualization output, vis output, render
 
@@ -158,6 +158,25 @@ line per (Runner, Part) rather than an animated bar. The bar is a pure view over
 per-iteration event stream (see [[ADR 0011]]); the Runner is identified by the event's Language.
 
 _Avoid_: spinner, status line, per-iteration row
+
+## Presentation Mode
+
+How a run's [[Result]]s are surfaced to whoever invoked it. Every mode is a view over the same
+lifecycle event stream (see [[ADR 0010]]); the domain formats nothing itself. Modes:
+
+- **Live** — the animated TTY view (spinner, live timer, [[Progress Bar]]s). The default when
+  stdout is a terminal.
+- **Plain** — settled human text for non-TTY sinks (pipes, files, CI). Buffers results and emits
+  aligned columns on close. Selected automatically off-TTY, or forced with `--plain`.
+- **Machine** — a structured, stable rendering intended for programmatic consumers (agents,
+  scripts). *Not yet implemented.* A caller today reconstructs answers, pass/fail, and runner
+  errors by grepping Plain text, which is why Machine exists as a named gap: it is the same
+  buffer-then-emit shape as Plain, marshalled as data rather than formatted as columns.
+
+The distinction is *audience*, not *content*: all three carry identical [[Result]] information.
+Live and Plain optimise for a human reader; Machine optimises for a parser.
+
+_Avoid_: format, output style, JSON dump (the mode is named by audience, not by wire format)
 
 ## Analysis
 
