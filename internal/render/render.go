@@ -34,10 +34,14 @@ func isTTY(w io.Writer) bool {
 	return term.IsTerminal(f.Fd())
 }
 
-// New returns the appropriate [Renderer] for w. When plain is true or w is not
-// a TTY, a [Plain] renderer is returned. Otherwise a live-backed [Live] renderer
-// is returned.
-func New(w io.Writer, h Header, plain bool) Renderer {
+// New returns the appropriate [Renderer] for w. Precedence: jsonOut selects the
+// machine-output [JSON] renderer (even if plain is also set). Otherwise, when
+// plain is true or w is not a TTY, a [Plain] renderer is returned; else [Live].
+func New(w io.Writer, h Header, plain, jsonOut bool) Renderer {
+	if jsonOut {
+		return NewJSON(w, h)
+	}
+
 	if plain || !isTTY(w) {
 		return NewPlain(w, h)
 	}

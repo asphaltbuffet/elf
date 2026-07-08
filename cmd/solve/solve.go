@@ -19,6 +19,7 @@ var (
 	input       string
 	noTest      bool
 	plainFlag   bool
+	jsonFlag    bool
 	timeoutFlag time.Duration
 
 	makeConfig = func(cf string) (config.Config, error) {
@@ -51,6 +52,8 @@ func GetSolveCmd() *cobra.Command {
 		solveCmd.Flags().
 			DurationVarP(&timeoutFlag, "timeout", "t", 0, "per-task timeout (0 or negative = no timeout; omit to use config default)")
 		solveCmd.Flags().BoolVar(&plainFlag, "plain", false, "disable live output (plain renderer)")
+		solveCmd.Flags().BoolVar(&jsonFlag, "json", false, "emit machine-readable JSON output")
+		solveCmd.MarkFlagsMutuallyExclusive("plain", "json")
 	}
 
 	return solveCmd
@@ -86,7 +89,7 @@ func runSolveCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	h := render.Header{Language: language}
-	_, solveErr := render.Run(cmd.Context(), cmd.OutOrStdout(), h, plainFlag,
+	_, solveErr := render.Run(cmd.Context(), cmd.OutOrStdout(), h, plainFlag, jsonFlag,
 		func(cb func(tasks.Event)) ([]tasks.Result, error) {
 			return a.Solve(cmd.Context(), dir, language, filepath.Clean(input), cb, noTest)
 		})

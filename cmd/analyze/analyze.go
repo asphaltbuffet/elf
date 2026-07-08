@@ -69,5 +69,12 @@ func runAnalyzeCmd(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	return appPkg.New(cfg).Analyze(dir, out)
+	path, err := appPkg.New(cfg).Analyze(dir, out)
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintln(cmd.OutOrStdout(), path)
+
+	return nil
 }

@@ -30,6 +30,7 @@ func resetState(t *testing.T, origMakeConfig func(string) (config.Config, error)
 	t.Cleanup(func() {
 		testCmd = nil
 		language = ""
+		jsonFlag = false
 		makeConfig = origMakeConfig
 	})
 }

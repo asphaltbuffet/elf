@@ -18,6 +18,7 @@ var (
 	testCmd     *cobra.Command
 	language    string
 	plainFlag   bool
+	jsonFlag    bool
 	timeoutFlag time.Duration
 
 	makeConfig = func(cf string) (config.Config, error) {
@@ -46,6 +47,8 @@ func GetTestCmd() *cobra.Command {
 		testCmd.Flags().
 			DurationVarP(&timeoutFlag, "timeout", "t", 0, "per-task timeout (0 or negative = no timeout; omit to use config default)")
 		testCmd.Flags().BoolVar(&plainFlag, "plain", false, "disable live output (plain renderer)")
+		testCmd.Flags().BoolVar(&jsonFlag, "json", false, "emit machine-readable JSON output")
+		testCmd.MarkFlagsMutuallyExclusive("plain", "json")
 	}
 
 	return testCmd
@@ -77,7 +80,7 @@ func runTestCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	h := render.Header{Language: language}
-	_, testErr := render.Run(cmd.Context(), cmd.OutOrStdout(), h, plainFlag,
+	_, testErr := render.Run(cmd.Context(), cmd.OutOrStdout(), h, plainFlag, jsonFlag,
 		func(cb func(tasks.Event)) ([]tasks.Result, error) {
 			return a.Test(cmd.Context(), dir, language, "", cb)
 		})

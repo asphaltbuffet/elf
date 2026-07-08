@@ -19,6 +19,7 @@ var (
 	language     string
 	outdir       string
 	plainFlag    bool
+	jsonFlag     bool
 	timeoutFlag  time.Duration
 
 	makeConfig = func(cf string) (config.Config, error) {
@@ -43,11 +44,16 @@ func GetVisualizeCmd() *cobra.Command {
 		}
 
 		visualizeCmd.Flags().StringVarP(&language, "lang", "l", "", "implementation language")
-		visualizeCmd.Flags().StringVarP(&outdir, "outdir", "o", "", "output directory (default: current directory)")
+		visualizeCmd.Flags().StringVarP(
+			&outdir, "outdir", "o", "",
+			"output directory (default: the exercise directory)")
+
 		visualizeCmd.Flags().StringP("config-file", "c", "", "configuration file")
 		visualizeCmd.Flags().
 			DurationVarP(&timeoutFlag, "timeout", "t", 0, "per-task timeout (0 or negative = no timeout; omit to use config default)")
 		visualizeCmd.Flags().BoolVar(&plainFlag, "plain", false, "disable live output (plain renderer)")
+		visualizeCmd.Flags().BoolVar(&jsonFlag, "json", false, "emit machine-readable JSON output")
+		visualizeCmd.MarkFlagsMutuallyExclusive("plain", "json")
 	}
 
 	return visualizeCmd
@@ -72,11 +78,7 @@ func runVisualizeCmd(cmd *cobra.Command, args []string) error {
 		language = cfg.GetLanguage()
 	}
 
-	if outdir == "" {
-		outdir = "."
-	}
-
-	outdir, err = filepath.Abs(outdir)
+	outdir, err = resolveOutdir(outdir, dir)
 	if err != nil {
 		return err
 	}
@@ -88,7 +90,7 @@ func runVisualizeCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	h := render.Header{Language: language}
-	_, visErr := render.Run(cmd.Context(), cmd.OutOrStdout(), h, plainFlag,
+	_, visErr := render.Run(cmd.Context(), cmd.OutOrStdout(), h, plainFlag, jsonFlag,
 		func(cb func(tasks.Event)) ([]tasks.Result, error) {
 			return a.Visualize(cmd.Context(), dir, language, outdir, cb)
 		})
@@ -98,4 +100,16 @@ func runVisualizeCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
+}
+
+// resolveOutdir returns the directory visualization artifacts are written to.
+// When the user did not pass --outdir, it defaults to the exercise's own
+// directory (dir, already absolute) rather than the current working directory
+// (see ADR-0015). An explicit --outdir is resolved to an absolute path.
+func resolveOutdir(outdir, dir string) (string, error) {
+	if outdir == "" {
+		return dir, nil
+	}
+
+	return filepath.Abs(outdir)
 }

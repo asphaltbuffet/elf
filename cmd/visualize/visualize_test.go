@@ -3,9 +3,11 @@ package visualize
 import (
 	"bytes"
 	"errors"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/asphaltbuffet/elf/pkg/config"
 )
@@ -31,6 +33,7 @@ func resetState(t *testing.T, origMakeConfig func(string) (config.Config, error)
 		language = ""
 		outdir = ""
 		plainFlag = false
+		jsonFlag = false
 		makeConfig = origMakeConfig
 	})
 }
@@ -51,5 +54,26 @@ func Test_runVisualizeCmd(t *testing.T) {
 
 		err := runVisualizeCmd(cmd, []string{"."})
 		assert.ErrorContains(t, err, "bad config")
+	})
+}
+
+func Test_resolveOutdir(t *testing.T) {
+	t.Run("empty outdir defaults to exercise dir", func(t *testing.T) {
+		got, err := resolveOutdir("", "/abs/exercises/2015/01-notQuiteLisp")
+		require.NoError(t, err)
+		assert.Equal(t, "/abs/exercises/2015/01-notQuiteLisp", got)
+	})
+
+	t.Run("explicit absolute outdir is used as-is", func(t *testing.T) {
+		got, err := resolveOutdir("/tmp/out", "/abs/exercises/2015/01-notQuiteLisp")
+		require.NoError(t, err)
+		assert.Equal(t, "/tmp/out", got)
+	})
+
+	t.Run("explicit relative outdir is made absolute", func(t *testing.T) {
+		got, err := resolveOutdir("sub/out", "/abs/exercises/2015/01-notQuiteLisp")
+		require.NoError(t, err)
+		assert.True(t, filepath.IsAbs(got), "expected absolute path, got %q", got)
+		assert.Equal(t, "out", filepath.Base(got))
 	})
 }
