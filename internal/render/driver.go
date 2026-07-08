@@ -11,39 +11,35 @@ import (
 
 // Run orchestrates a domain operation op while feeding its events to a [Renderer].
 //
-// op receives a callback cb; each call to cb emits one [tasks.Event]. When op
-// returns its (results, error), Run closes the renderer and propagates the
-// values to the caller. Exit-code logic is the caller's responsibility.
-//
-// Plain path (plain=true or w is not a TTY): op runs synchronously on the
-// calling goroutine. Events are delivered directly via [Plain.Handle].
-//
-// Live path: a [tea.Program] is started on the calling goroutine. op runs in a
-// separate goroutine and delivers events via [tea.Program.Send] — never by
-// calling [Live.Handle] directly, which is not goroutine-safe. When op returns
-// it signals the program to quit; Run waits for the program to exit before
-// returning.
+// Selection: jsonOut runs the synchronous machine-output path (a [JSON]
+// renderer). Otherwise, plain=true or a non-TTY w runs the synchronous [Plain]
+// path; a TTY runs the [Live] bubbletea path. op receives a callback that emits
+// one [tasks.Event] per call; Run returns op's (results, error).
 func Run(
 	ctx context.Context,
 	w io.Writer,
 	h Header,
-	plain bool,
+	plain, jsonOut bool,
 	op func(cb func(tasks.Event)) ([]tasks.Result, error),
 ) ([]tasks.Result, error) {
+	if jsonOut {
+		return runSync(NewJSON(w, h), op)
+	}
+
 	if plain || !isTTY(w) {
-		return runPlain(w, h, op)
+		return runSync(NewPlain(w, h), op)
 	}
 
 	return runLive(ctx, w, h, op)
 }
 
-// runPlain executes the operation synchronously using a [Plain] renderer.
-func runPlain(
-	w io.Writer,
-	h Header,
+// runSync executes op synchronously, delivering events directly to r.Handle and
+// closing r afterward. Used by the Plain and JSON paths (both are buffer-then-
+// emit renderers that are not goroutine-driven).
+func runSync(
+	r Renderer,
 	op func(cb func(tasks.Event)) ([]tasks.Result, error),
 ) ([]tasks.Result, error) {
-	r := NewPlain(w, h)
 	results, err := op(r.Handle)
 	_ = r.Close()
 
