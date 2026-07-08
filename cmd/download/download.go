@@ -24,18 +24,18 @@ var (
 	}
 )
 
-const exampleDownloadText = `elf download https://example.com --lang=go
-elf download https://example.com --force-input --lang=py
-elf download https://example.com`
+const exampleDownloadText = `elf download https://adventofcode.com/2015/day/1 --lang=go
+elf download 2015 1 --lang=go
+elf download 2015 1 --force-input`
 
 // GetDownloadCmd returns the cobra command for downloading a challenge from a URL.
 func GetDownloadCmd() *cobra.Command {
 	if downloadCmd == nil {
 		downloadCmd = &cobra.Command{
-			Use:     "download",
+			Use:     "download (<url> | <year> <day>)",
 			Aliases: []string{"d"},
 			Example: exampleDownloadText,
-			Args:    cobra.ExactArgs(1),
+			Args:    cobra.RangeArgs(1, maxDownload),
 			Short:   "download challenge info from url",
 			RunE:    runDownloadCmd,
 		}
@@ -50,6 +50,11 @@ func GetDownloadCmd() *cobra.Command {
 }
 
 func runDownloadCmd(cmd *cobra.Command, args []string) error {
+	target, err := resolveTarget(args)
+	if err != nil {
+		return err
+	}
+
 	cf, _ := cmd.Flags().GetString("config-file")
 
 	cfg, err := makeConfig(cf)
@@ -63,7 +68,7 @@ func runDownloadCmd(cmd *cobra.Command, args []string) error {
 		Input: forceInput,
 	}
 
-	report, path, err := appPkg.New(cfg).Add(args[0], language, forced)
+	report, path, err := appPkg.New(cfg).Add(target, language, forced)
 	if err != nil {
 		return err
 	}
@@ -76,9 +81,10 @@ func runDownloadCmd(cmd *cobra.Command, args []string) error {
 }
 
 const (
-	minAoCYear = 2015 // Advent of Code's first year
-	minAoCDay  = 1
-	maxAoCDay  = 25 // AoC runs Dec 1–25
+	minAoCYear  = 2015 // Advent of Code's first year
+	minAoCDay   = 1
+	maxAoCDay   = 25 // AoC runs Dec 1–25
+	maxDownload = 2  // max positional args: <url> or <year> <day>
 )
 
 // resolveTarget turns the command's positional args into a puzzle URL. One arg

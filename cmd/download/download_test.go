@@ -52,6 +52,57 @@ func Test_runDownloadCmd(t *testing.T) {
 	})
 }
 
+func Test_downloadAcceptsTwoArgs(t *testing.T) {
+	origMakeConfig := makeConfig
+	t.Cleanup(func() {
+		downloadCmd = nil
+		language = ""
+		forceInput = false
+		makeConfig = origMakeConfig
+	})
+
+	makeConfig = func(_ string) (config.Config, error) {
+		return config.Config{}, errors.New("stub config error")
+	}
+
+	cmd := GetDownloadCmd()
+	cmd.SetArgs([]string{"2015", "1"})
+	cmd.SetOut(&bytes.Buffer{})
+	cmd.SetErr(&bytes.Buffer{})
+
+	err := cmd.Execute()
+	// Two args are now accepted by Args, so we reach RunE and hit the stubbed
+	// config error — NOT a cobra "accepts 1 arg(s)" argument-count error.
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "stub config error")
+}
+
+func Test_downloadRejectsOutOfRangeDay(t *testing.T) {
+	origMakeConfig := makeConfig
+	t.Cleanup(func() {
+		downloadCmd = nil
+		language = ""
+		forceInput = false
+		makeConfig = origMakeConfig
+	})
+
+	// A zero-value config constructs without error, so control passes
+	// RegisterRunners/New and reaches resolveTarget. resolveTarget rejects the
+	// day before Add touches the config, so the empty config never matters.
+	makeConfig = func(_ string) (config.Config, error) {
+		return config.Config{}, nil
+	}
+
+	cmd := GetDownloadCmd()
+	cmd.SetArgs([]string{"2015", "26"})
+	cmd.SetOut(&bytes.Buffer{})
+	cmd.SetErr(&bytes.Buffer{})
+
+	err := cmd.Execute()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "out of range")
+}
+
 func Test_resolveTarget_URLPassThrough(t *testing.T) {
 	got, err := resolveTarget([]string{"https://adventofcode.com/2015/day/1"})
 	require.NoError(t, err)
