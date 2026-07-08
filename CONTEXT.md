@@ -88,6 +88,12 @@ variables, optional ordered build commands, and an open spec (interpreter or com
 Populated into the runner registry at startup. The key is the only required field that must be
 unique across all descriptors.
 
+Some compiled languages are **manifest-based** (Rust, C#): the Exercise Scaffold writes a project
+manifest (`Cargo.toml`, `.csproj`) alongside the solution file, pinning a fixed package/assembly
+name so the descriptor's build/open tokens resolve to a static path. Others are **bare-file**
+(Go, C): the compiler runs directly against the wrapper and solution files, no manifest involved.
+See [ADR-0016](docs/adr/0016-per-exercise-project-manifest.md).
+
 _Avoid_: plugin descriptor, runner config, runner definition
 
 ## Runner Registry
