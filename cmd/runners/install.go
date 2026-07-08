@@ -54,6 +54,7 @@ func runInstallCmd(cmd *cobra.Command, _ []string) error {
 		{"rust.tmpl", elfrunners.RustTemplate},
 		{"f77.tmpl", elfrunners.F77Template},
 		{"lua.tmpl", elfrunners.LuaTemplate},
+		{"csharp.tmpl", elfrunners.CSharpTemplate},
 	}
 
 	for _, tmpl := range templates {
@@ -189,6 +190,28 @@ args = ["{wrapper_file}"]
 `, p)
 }
 
+func csharpBlock(p string) string {
+	return fmt.Sprintf(`[[runner]]
+key = "cs"
+name = "C#"
+
+[runner.prepare]
+template_path = %q
+# Harness renders to {lang_dir}/runtime-wrapper.cs; the SDK-style .csproj globs
+# all *.cs in the project dir, so no wrapper_subdir is needed.
+wrapper_ext = ".cs"
+build_commands = [
+  ["dotnet", "build", "-c", "Release", "-o", "{lang_dir}/bin", "{lang_dir}"],
+]
+
+[runner.open]
+# AssemblyName is pinned to "wrapper" in the scaffolded .csproj, so the built
+# DLL is always at this path regardless of year/day.
+interpreter = "dotnet"
+args = ["{lang_dir}/bin/wrapper.dll"]
+`, p)
+}
+
 func runnerConfigBlocks() []runnerConfigBlock {
 	return []runnerConfigBlock{
 		{"python.tmpl", pythonBlock},
@@ -197,6 +220,7 @@ func runnerConfigBlocks() []runnerConfigBlock {
 		{"rust.tmpl", rustBlock},
 		{"f77.tmpl", f77Block},
 		{"lua.tmpl", luaBlock},
+		{"csharp.tmpl", csharpBlock},
 	}
 }
 
