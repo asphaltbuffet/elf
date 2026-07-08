@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Project manifest for Advent of Code {{ .Year }} day {{ .Day }}.
+       AssemblyName is pinned to "wrapper" so elf's runner finds the built DLL at
+       a fixed path (bin/wrapper.dll) regardless of year/day. Add NuGet packages
+       under an <ItemGroup><PackageReference .../></ItemGroup> as needed; elf's
+       harness (runtime-wrapper.cs) uses only System.Text.Json from the BCL and
+       will not conflict. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>wrapper</AssemblyName>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+</Project>

@@ -31,6 +31,12 @@ var rsCargoTemplate []byte
 //go:embed templates/rs-solution.tmpl
 var rsSolutionTemplate []byte
 
+//go:embed templates/cs-project.tmpl
+var csProjectTemplate []byte
+
+//go:embed templates/cs-solution.tmpl
+var csSolutionTemplate []byte
+
 //go:embed templates/f77.tmpl
 var f77Template []byte
 
@@ -145,6 +151,16 @@ func languageTemplates(lang string) ([]tmplFile, error) {
 		return []tmplFile{
 			{Name: "rs-cargo", Path: "rs", Data: rsCargoTemplate, FileName: "Cargo.toml"},
 			{Name: "rs-solution", Path: filepath.Join("rs", "src"), Data: rsSolutionTemplate, FileName: "solution.rs"},
+		}, nil
+
+	case "cs":
+		// A dotnet project per exercise: Solution.csproj + Solution.cs in the cs/
+		// dir (flat — no nested src/ unlike rs). The harness (runtime-wrapper.cs) is
+		// rendered by the C# runner's PrepareSpec, not scaffolded here; the
+		// SDK-style project globs it in automatically.
+		return []tmplFile{
+			{Name: "cs-project", Path: "cs", Data: csProjectTemplate, FileName: "Solution.csproj"},
+			{Name: "cs-solution", Path: "cs", Data: csSolutionTemplate, FileName: "Solution.cs"},
 		}, nil
 
 	case "f77":
