@@ -1,0 +1,5 @@
+kind: Changed
+body: download command allows 'year' and 'day' positional arguments
+time: 2026-07-07T22:29:52.1846488-04:00
+custom:
+    Issue: '#172'

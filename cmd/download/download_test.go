@@ -86,9 +86,8 @@ func Test_downloadRejectsOutOfRangeDay(t *testing.T) {
 		makeConfig = origMakeConfig
 	})
 
-	// A zero-value config constructs without error, so control passes
-	// RegisterRunners/New and reaches resolveTarget. resolveTarget rejects the
-	// day before Add touches the config, so the empty config never matters.
+	// resolveTarget runs first in runDownloadCmd, before makeConfig. An out-of-range
+	// day is rejected before the stub config is invoked, so makeConfig never runs.
 	makeConfig = func(_ string) (config.Config, error) {
 		return config.Config{}, nil
 	}
