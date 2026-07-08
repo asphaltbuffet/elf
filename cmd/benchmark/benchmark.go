@@ -17,6 +17,7 @@ var (
 	benchmarkCmd *cobra.Command
 	iterations   int
 	plainFlag    bool
+	jsonFlag     bool
 	timeoutFlag  time.Duration
 
 	makeConfig = func(cf string) (config.Config, error) {
@@ -48,6 +49,8 @@ func GetBenchmarkCmd() *cobra.Command {
 		benchmarkCmd.Flags().
 			DurationVarP(&timeoutFlag, "timeout", "t", 0, "per-task timeout (0 or negative = no timeout; omit to use config default)")
 		benchmarkCmd.Flags().BoolVar(&plainFlag, "plain", false, "disable live output (plain renderer)")
+		benchmarkCmd.Flags().BoolVar(&jsonFlag, "json", false, "emit machine-readable JSON output")
+		benchmarkCmd.MarkFlagsMutuallyExclusive("plain", "json")
 	}
 
 	return benchmarkCmd
@@ -75,7 +78,7 @@ func runBenchmarkCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	h := render.Header{Language: cfg.GetLanguage()}
-	_, benchErr := render.Run(cmd.Context(), cmd.OutOrStdout(), h, plainFlag,
+	_, benchErr := render.Run(cmd.Context(), cmd.OutOrStdout(), h, plainFlag, jsonFlag,
 		func(cb func(tasks.Event)) ([]tasks.Result, error) {
 			return a.Benchmark(cmd.Context(), dir, cfg.GetLanguage(), cb, iterations)
 		})

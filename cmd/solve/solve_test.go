@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/asphaltbuffet/elf/pkg/config"
 )
@@ -31,8 +32,31 @@ func resetState(t *testing.T, origMakeConfig func(string) (config.Config, error)
 		language = ""
 		input = ""
 		noTest = false
+		jsonFlag = false
 		makeConfig = origMakeConfig
 	})
+}
+
+func Test_solveHasJSONFlag(t *testing.T) {
+	t.Cleanup(func() { solveCmd = nil })
+
+	cmd := GetSolveCmd()
+	f := cmd.Flags().Lookup("json")
+	require.NotNil(t, f, "solve should register a --json flag")
+	assert.Equal(t, "false", f.DefValue)
+}
+
+func Test_solvePlainAndJSONMutuallyExclusive(t *testing.T) {
+	t.Cleanup(func() { solveCmd = nil; plainFlag = false; jsonFlag = false })
+
+	cmd := GetSolveCmd()
+	cmd.SetArgs([]string{"--plain", "--json", "somepath"})
+	cmd.SetOut(&bytes.Buffer{})
+	cmd.SetErr(&bytes.Buffer{})
+
+	err := cmd.Execute()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "if any flags in the group [plain json] are set none of the others can be")
 }
 
 func Test_runSolveCmd(t *testing.T) {

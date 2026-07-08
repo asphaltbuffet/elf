@@ -33,6 +33,7 @@ func resetState(t *testing.T, origMakeConfig func(string) (config.Config, error)
 		language = ""
 		outdir = ""
 		plainFlag = false
+		jsonFlag = false
 		makeConfig = origMakeConfig
 	})
 }

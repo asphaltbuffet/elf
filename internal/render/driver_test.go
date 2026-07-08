@@ -26,7 +26,14 @@ func TestRunPlainPathEmitsOutputAndReturnsResults(t *testing.T) {
 		return want, nil
 	}
 
-	got, err := Run(context.Background(), &buf, Header{Year: 2015, Day: 4, Title: "Day 4", Language: "Go"}, false, false, op)
+	got, err := Run(
+		context.Background(),
+		&buf,
+		Header{Year: 2015, Day: 4, Title: "Day 4", Language: "Go"},
+		false,
+		false,
+		op,
+	)
 	require.NoError(t, err)
 	assert.Equal(t, want, got)
 	assert.Contains(t, buf.String(), "PASS", buf.String())

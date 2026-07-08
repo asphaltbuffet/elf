@@ -36,7 +36,7 @@ func TestRun_JSONPath(t *testing.T) {
 	want := []tasks.Result{{Part: 1, Status: tasks.StatusPassed, Output: "7", Duration: 0.002}}
 
 	got, err := Run(context.Background(), &buf, Header{Year: 2015, Day: 1, Title: "X"},
-		false /*plain*/, true /*jsonOut*/,
+		false /*plain*/, true, /*jsonOut*/
 		func(cb func(tasks.Event)) ([]tasks.Result, error) {
 			cb(tasks.Event{Kind: tasks.EventFinished, Type: tasks.Solve, Language: "Go", Result: &want[0]})
 			return want, nil
