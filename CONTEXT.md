@@ -169,9 +169,11 @@ lifecycle event stream (see [[ADR 0010]]); the domain formats nothing itself. Mo
 - **Plain** — settled human text for non-TTY sinks (pipes, files, CI). Buffers results and emits
   aligned columns on close. Selected automatically off-TTY, or forced with `--plain`.
 - **Machine** — a structured, stable rendering intended for programmatic consumers (agents,
-  scripts). *Not yet implemented.* A caller today reconstructs answers, pass/fail, and runner
-  errors by grepping Plain text, which is why Machine exists as a named gap: it is the same
-  buffer-then-emit shape as Plain, marshalled as data rather than formatted as columns.
+  scripts). Selected with `--json`, which is mutually exclusive with `--plain`. Emits one JSON
+  summary object per run: exercise metadata (omitted when absent) plus a `results` array;
+  benchmark results aggregate per (runner, part). It is the same buffer-then-emit shape as Plain,
+  marshalled as data rather than formatted as columns — so a caller reads answers, pass/fail, and
+  runner errors as fields instead of grepping Plain text.
 
 The distinction is *audience*, not *content*: all three carry identical [[Result]] information.
 Live and Plain optimise for a human reader; Machine optimises for a parser.

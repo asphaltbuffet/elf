@@ -1,0 +1,5 @@
+kind: Added
+body: solve/test/benchmark/visualize commands have json output option
+time: 2026-07-07T22:28:56.536448755-04:00
+custom:
+    Issue: '#170'
