@@ -296,5 +296,30 @@ func (r *descriptorRunner) Cleanup() error {
 		}
 	}
 
-	return nil
+	return r.removeCleanupPaths()
+}
+
+// removeCleanupPaths removes the descriptor's declared cleanup_paths (e.g. build-output
+// trees such as bin/obj or target), resolved against the lang dir. A missing path is not
+// an error since [os.RemoveAll] is a no-op in that case.
+func (r *descriptorRunner) removeCleanupPaths() error {
+	var errs []error
+
+	for _, p := range r.desc.Prepare.CleanupPaths {
+		if p == "" {
+			continue
+		}
+
+		resolved := substituteTokens(p, r.meta, r.wrapperExt(), r.desc.Prepare.WrapperSubdir)
+		// Relative cleanup paths are resolved against the lang dir.
+		if !filepath.IsAbs(resolved) {
+			resolved = filepath.Join(r.meta.LangDir(), resolved)
+		}
+
+		if rmErr := os.RemoveAll(resolved); rmErr != nil {
+			errs = append(errs, fmt.Errorf("removing cleanup path %q: %w", resolved, rmErr))
+		}
+	}
+
+	return errors.Join(errs...)
 }

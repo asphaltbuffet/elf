@@ -31,6 +31,7 @@ while ((line = Console.In.ReadLine()) != null)
     string output;
     double duration = 0;
 
+    var sw = Stopwatch.StartNew();
     try
     {
         // Catch exceptions so malformed input or a throwing solution reports
@@ -45,7 +46,6 @@ while ((line = Console.In.ReadLine()) != null)
         string input = GetString(root, "input");
         string outputDir = GetString(root, "output_dir");
 
-        var sw = Stopwatch.StartNew();
         output = part switch
         {
             1 => Solution.PartOne(input),
@@ -54,12 +54,15 @@ while ((line = Console.In.ReadLine()) != null)
             _ => throw new ArgumentException("unknown task part: " + part),
         };
         ok = true;
-        duration = sw.Elapsed.TotalSeconds;
     }
     catch (Exception ex)
     {
         output = ex.Message;
         ok = false;
+    }
+    finally
+    {
+        duration = sw.Elapsed.TotalSeconds;
     }
 
     WriteResult(taskId, ok, output, duration);

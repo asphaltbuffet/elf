@@ -148,6 +148,7 @@ wrapper_ext = ".rs"
 build_commands = [
   ["cargo", "build", "--release", "--manifest-path", "{lang_dir}/Cargo.toml"],
 ]
+cleanup_paths = ["target"]
 
 [runner.open]
 # Crate name is pinned to "solution" in the scaffolded Cargo.toml, so the built
@@ -203,6 +204,7 @@ wrapper_ext = ".cs"
 build_commands = [
   ["dotnet", "build", "-c", "Release", "-o", "{lang_dir}/bin", "{lang_dir}"],
 ]
+cleanup_paths = ["bin", "obj"]
 
 [runner.open]
 # AssemblyName is pinned to "wrapper" in the scaffolded .csproj, so the built
