@@ -9,29 +9,98 @@ Runner, writer, result callback — are explicit method parameters, not fields o
 
 ## Exercise
 
-A puzzle — its identity, input data, and test cases. A value type *produced from a source*:
-either read from disk (an existing `info.json`) or assembled from a download. Either way it is a
-finished value before anything writes it to disk — it is never built up in place across stages.
+A challenge — its identity, optional input data, and test cases. A value type *produced from a
+source*: either read from disk (an existing `info.json`) or assembled from a download. Either way
+it is a finished value before anything writes it to disk — it is never built up in place across
+stages.
 
-**Fields:** year, day, title, URL, input data, test cases, expected answers, filesystem path.
+An Exercise comes in one of two [[Kind]]s — a [[Puzzle]] (Advent of Code) or a [[Problem]]
+(Project Euler) — which differ only in *identity and origin*, not in how they are executed. The
+shared machinery below identity (input data, test cases, expected answers, Runner, Task, Result,
+benchmarking, analysis) is kind-agnostic.
+
+**Fields common to both kinds:** kind, title, the [[Part]]s it declares, input data (optional),
+test cases, expected answers, filesystem path.
 
 **Not** a session or runner context. An Exercise has no opinion about how it is executed, fetched,
 or scaffolded.
 
+## Kind
+
+Which family of challenge an [[Exercise]] belongs to. Exactly one of:
+
+- **[[Puzzle]]** — Advent of Code. Identified by year + day; has a source URL and a per-user input
+  file; always declares two [[Part]]s.
+- **[[Problem]]** — Project Euler. Identified by a bare problem number; has no URL and no input by
+  default; declares a single [[Part]].
+
+Kind is a discriminator stored in `info.json` and drives per-kind validation when an Exercise is
+loaded from disk (a Puzzle requires year/day/url; a Problem requires a number). It does **not**
+change execution: `solve`, `test`, `benchmark`, and `analyze` operate on any Kind.
+
+_Avoid_: type, category, source
+
+## Puzzle
+
+The Advent of Code [[Kind]] of [[Exercise]]. Identity is year + day; carries a source URL and a
+per-user `input.txt`. Always declares [[Part]]s One and Two. Laid out at
+`exercises/<year>/<day>-<title>/<language>/`. This is the kind the [[Exercise Adder]] and
+[[Page Fetcher]] produce.
+
+_Avoid_: AoC exercise, advent puzzle (redundant), day
+
+## Problem
+
+The Project Euler [[Kind]] of [[Exercise]]. Identity is a single **problem number** (e.g. 42) — no
+year, no day, no URL. Declares exactly one [[Part]] (reusing Part One). Input is **optional** and
+defaults to none: most Euler problems are self-contained in their prose, so no `input.txt` is
+written; the minority that reference a data file get one supplied manually via the custom-input
+mechanism. Laid out at `euler/<number>/<language>/` with the number **unpadded** (`euler/42/`,
+`euler/100/`) — so anything enumerating problems must sort *numerically*, not lexically. Its
+`info.json` carries kind, number, title, and declared parts; it is never downloaded (the user
+reads the prompt on the Project Euler site themselves). `euler/` as a whole behaves like a year for
+[[Analysis]] Year scope: a cross-problem comparison.
+
+_Avoid_: puzzle, exercise (too generic), euler day, kata
+
 ## Exercise Adder
 
-Makes an Exercise exist in the workspace. Given a puzzle URL, it produces an Exercise — fetching
+Makes a [[Puzzle]] exist in the workspace. Given a puzzle URL, it produces an Exercise — fetching
 the puzzle page and input via the [[Page Fetcher]] on a cache miss, or reading an existing
 `info.json` from disk — and then lays it out via the [[Exercise Scaffold]]. Owns the puzzle URL,
 the implementation language, and the overwrite policy; holds the resulting filesystem path and the
 scaffold report once it has run. Surface: `Add() → error`, then `FilePath()` and `Report()`.
 
+It is the AoC-kind orchestrator; its Euler-kind sibling is the [[Problem Adder]]. Both produce a
+finished Exercise and hand it to the *same* [[Exercise Scaffold]] — the difference is entirely in
+*how they obtain the Exercise* (network fetch vs. a number and a title the user supplies), never in
+how it is laid out.
+
 The name is deliberately *not* "download": on a cache hit nothing is fetched, and the durable
-result is an exercise on disk ready to solve, not a network transfer. `download` survives only as
-the user-facing CLI verb (`elf download <url>`), not as a domain noun. The per-file results of an
+result is an exercise on disk ready to solve, not a network transfer. The per-file results of an
 Add are [[Scaffold Outcome]]s (Added / Skipped / Replaced).
 
 _Avoid_: downloader, fetcher, getter
+
+## Problem Adder
+
+Makes a [[Problem]] exist in the workspace. Given a problem number and a language, it builds a
+Problem-kind Exercise in memory (no network, no [[Page Fetcher]] — the user supplies the title;
+the prose lives on the Project Euler site) and lays it out via the *same* [[Exercise Scaffold]] as
+the [[Exercise Adder]]. Writes no `input.txt` by default (a Problem's input is optional). The
+Euler-kind counterpart to the [[Exercise Adder]].
+
+_Avoid_: downloader (nothing is downloaded), euler fetcher, problem creator
+
+## Add (CLI verb)
+
+The user-facing command that makes an Exercise exist, one subcommand per [[Kind]]:
+`elf add aoc <url>` (routes to the [[Exercise Adder]]) and `elf add euler <number>` (routes to the
+[[Problem Adder]]). `add` is now the umbrella verb, matching the domain name "[[Exercise Adder]]".
+`elf download <url>` is retained as a **deprecated alias** for `elf add aoc <url>` so existing
+usage and the AoC solving workflow keep working. See [[ADR 0017]].
+
+_Avoid_: download (deprecated as the primary verb), new, create, fetch
 
 ## Page Fetcher
 
@@ -130,7 +199,14 @@ A unit of work sent to a Runner: a (Part, input) pair with a TaskID. Maps to one
 
 ## Part
 
-One of: PartOne, PartTwo, Visualize. Identifies which sub-problem of a puzzle a Task addresses.
+One of: PartOne, PartTwo, Visualize. Identifies which sub-problem of an [[Exercise]] a Task
+addresses. The wire values are fixed (1=PartOne, 2=PartTwo, 3=Visualize; see ADR-0002) and shared
+by every language solution.
+
+Which parts an Exercise *has* is per-[[Kind]] and **declared by the Exercise**, not universal: a
+[[Puzzle]] declares One and Two; a [[Problem]] declares only One. The solve/test/benchmark driver
+iterates the declared set rather than assuming two, so a Problem never runs a phantom Part Two.
+Visualize is orthogonal — a separate, opt-in Task, not a declared solve part.
 
 ## Result
 
