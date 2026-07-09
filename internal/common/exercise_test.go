@@ -34,7 +34,6 @@ func TestBaseExercise_Vis(t *testing.T) {
 
 	e := BaseExercise{}
 
-	got, err := e.Vis("fake", "/tmp")
+	err := e.Vis("fake", "/tmp")
 	require.Error(t, err)
-	assert.Empty(t, got)
 }

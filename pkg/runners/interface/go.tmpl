@@ -76,7 +76,10 @@ func run() error {
 		case 2:
 			solve = func() (any, error) { return (ex.Exercise{}).Two(t.Input) }
 		case 3:
-			solve = func() (any, error) { return (ex.Exercise{}).Vis(t.Input, t.OutputDir) }
+			// Vis writes its artifact into t.OutputDir and returns only an error
+			// (the Go Exercise convention). elf reports this output string to the
+			// user but never opens it, so we surface the directory the file landed in.
+			solve = func() (any, error) { return t.OutputDir, (ex.Exercise{}).Vis(t.Input, t.OutputDir) }
 		default:
 			sendResult(t.TaskID, false, fmt.Sprintf("unknown task part %d", t.Part), 0)
 			continue

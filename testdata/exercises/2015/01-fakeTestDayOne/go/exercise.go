@@ -35,8 +35,8 @@ func (e Exercise) Two(in string) (any, error) {
 
 // Visualize returns the visualization of the exercise.
 // Visualize returns the visualization of the exercise.
-func (e Exercise) Vis(in string, outdir string) (string, error) {
+func (e Exercise) Vis(in string, outdir string) error {
 	outfile := outdir + "/vis.txt"
 	// the test exercise writes the input as-is
-	return outfile, os.WriteFile(outfile, []byte(in), 0o600)
+	return os.WriteFile(outfile, []byte(in), 0o600)
 }

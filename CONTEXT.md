@@ -138,7 +138,7 @@ The outcome of a Task: TaskID, success flag, output string, duration.
 
 ## Visualization
 
-The artifact produced by running a Visualize Task against an exercise. Always a file on disk; the exercise implementation decides the filename and format (SVG, HTML, PNG, etc.). The output directory is passed to the exercise via `Task.OutputDir`; the exercise returns the full path of the file it wrote as the Result output string. The `elf visualize` command defaults `OutputDir` to the exercise's own directory (see [[ADR 0015]]) and exposes `--outdir`/`-o` to override it. A Visualization Result carries `StatusUnverified` (no expected answer exists). The file path is reported to the user; elf never opens it automatically.
+The artifact produced by running a Visualize Task against an exercise. Always a file on disk; the exercise implementation decides the filename and format (SVG, HTML, PNG, etc.). The output directory is passed to the exercise via `Task.OutputDir`; the exercise writes its artifact there. The Result output string is informational only and its meaning is per-runner (the Go runner reports the output directory; other runners may report a status string) — elf displays it but never opens or resolves it as a path. The `elf visualize` command defaults `OutputDir` to the exercise's own directory (see [[ADR 0015]]) and exposes `--outdir`/`-o` to override it. A Visualization Result carries `StatusUnverified` (no expected answer exists). The file path is reported to the user; elf never opens it automatically.
 
 _Avoid_: visualization output, vis output, render
 
