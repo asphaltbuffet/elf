@@ -120,6 +120,23 @@ func Test_resolveTarget_AssemblesURL(t *testing.T) {
 	assert.Equal(t, 1, day)
 }
 
+var errStub = errors.New("stub")
+
+func TestDownload_PrintsDeprecationNotice(t *testing.T) {
+	cmd := GetDownloadCmd()
+	var errBuf bytes.Buffer
+	cmd.SetErr(&errBuf)
+
+	// stub makeConfig so we do not touch the real filesystem/network; restore after.
+	orig := makeConfig
+	t.Cleanup(func() { makeConfig = orig })
+	makeConfig = func(string) (config.Config, error) { return config.Config{}, errStub }
+
+	_ = runDownloadCmd(cmd, []string{"https://adventofcode.com/2015/day/1"})
+
+	assert.Contains(t, errBuf.String(), `use "elf add aoc" instead`)
+}
+
 func Test_resolveTarget_InvalidInputs(t *testing.T) {
 	cases := []struct {
 		name    string

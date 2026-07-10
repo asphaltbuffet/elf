@@ -32,12 +32,13 @@ elf download 2015 1 --force-input`
 func GetDownloadCmd() *cobra.Command {
 	if downloadCmd == nil {
 		downloadCmd = &cobra.Command{
-			Use:     "download (<url> | <year> <day>)",
-			Aliases: []string{"d"},
-			Example: exampleDownloadText,
-			Args:    cobra.RangeArgs(1, maxDownload),
-			Short:   "download challenge info from url",
-			RunE:    runDownloadCmd,
+			Use:        "download (<url> | <year> <day>)",
+			Aliases:    []string{"d"},
+			Example:    exampleDownloadText,
+			Args:       cobra.RangeArgs(1, maxDownload),
+			Short:      "download challenge info from url",
+			Deprecated: `use "elf add aoc" instead`,
+			RunE:       runDownloadCmd,
 		}
 
 		downloadCmd.Flags().StringVarP(&language, "lang", "l", "", "solution language")
@@ -50,6 +51,8 @@ func GetDownloadCmd() *cobra.Command {
 }
 
 func runDownloadCmd(cmd *cobra.Command, args []string) error {
+	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), `download is deprecated; use "elf add aoc" instead`)
+
 	target, err := resolveTarget(args)
 	if err != nil {
 		return err
