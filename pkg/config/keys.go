@@ -18,6 +18,10 @@ const (
 	AdventUserKey  Key = "advent.user"  // Configuration key for the Advent of Code user name.
 	AdventDirKey   Key = "advent.dir"   // Configuration key for the Advent of Code exercise directory.
 
+	// Project Euler configuration keys.
+
+	EulerDirKey Key = "euler.dir" // Configuration key for the Project Euler problem directory.
+
 	// Runner configuration keys.
 
 	RunnersKey Key = "runner" // Configuration key for the [[runner]] table array.

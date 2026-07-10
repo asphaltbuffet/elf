@@ -108,7 +108,16 @@ name = "Go"
 
 [runner.prepare]
 template_path = %q
-template_vars = { import_path = "YOUR_MODULE/{year}/{day}-{title}/go" }
+# The harness is package main and imports your solution package by module path.
+# import_path must be the module path of the exercise's language dir. Replace
+# YOUR_MODULE with your module (from go.mod) and match your exercise layout:
+#   Advent of Code:  YOUR_MODULE/exercises/{year}/{day}-{title}/go
+#   Project Euler:   YOUR_MODULE/euler/{dir_name}/go   ({dir_name} = the number)
+template_vars = { import_path = "YOUR_MODULE/euler/{dir_name}/go" }
+# The wrapper is rendered to {lang_dir}/cmd/runtime-wrapper.go — its own subdir so
+# the package main harness does not clash with your solution package in {lang_dir}.
+wrapper_subdir = "cmd"
+wrapper_ext = ".go"
 build_commands = [
   ["go", "mod", "tidy"],
   ["go", "build", "-tags", "runtime", "-o", "{binary_file}", "{wrapper_file}"],

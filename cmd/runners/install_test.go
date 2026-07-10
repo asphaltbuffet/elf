@@ -69,6 +69,34 @@ func TestRunInstallCmd_WritesFiles(t *testing.T) {
 	assert.Contains(t, out.String(), "dotnet")
 }
 
+// TestRunInstallCmd_GoBlockIsBuildable guards the fix for #178: the shipped Go
+// runner block must set wrapper_ext and wrapper_subdir so the rendered
+// package-main harness gets a .go extension and its own subdir (otherwise it
+// clashes with the solution package in the same lang dir and go build fails).
+func TestRunInstallCmd_GoBlockIsBuildable(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
+
+	runners.ResetForTest()
+
+	cmd := runners.GetRunnersCmd()
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+
+	installCmd, _, findErr := cmd.Find([]string{"install"})
+	require.NoError(t, findErr)
+	installCmd.SetOut(&out)
+
+	require.NoError(t, installCmd.RunE(installCmd, nil))
+
+	cfg := out.String()
+	assert.Contains(t, cfg, `wrapper_ext = ".go"`,
+		"go block must set wrapper_ext so the harness is written as .go source")
+	assert.Contains(t, cfg, `wrapper_subdir = "cmd"`,
+		"go block must set wrapper_subdir so package main does not clash with the solution package")
+}
+
 func TestRunInstallCmd_SkipsExistingFiles(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", tmpDir)

@@ -139,3 +139,49 @@ func TestExerciseScaffold_writeInputFile_respectsOverwrite(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "original", string(got), "existing input must be preserved when overwrite is off")
 }
+
+// TestScaffold_ProblemSkipsInputAndUsesEulerStub verifies that a Project Euler Problem with no
+// fetched input gets no input.txt at all, and that its Go stub uses the Euler package name rather
+// than the AoC template.
+func TestScaffold_ProblemSkipsInputAndUsesEulerStub(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	s := &exerciseScaffold{
+		fs:            fs,
+		inputFileName: "input.txt",
+		overwrites:    &Overwrites{},
+		logger:        logger,
+	}
+
+	ex := newProblemFromSource(problemSource{baseDir: "/w", language: "go", title: "T", number: 42})
+
+	_, err := s.write(ex)
+	require.NoError(t, err)
+
+	// no input.txt written for an input-less Problem
+	inExists, _ := afero.Exists(fs, filepath.Join(ex.Path, "input.txt"))
+	assert.False(t, inExists, "problem with no input must not get an input.txt")
+
+	// the Go stub uses the Euler package name, not AoC's "package exercises"
+	body, err := afero.ReadFile(fs, filepath.Join(ex.Path, "go", "exercise.go"))
+	require.NoError(t, err)
+	assert.Contains(t, string(body), "package euler")
+	assert.NotContains(t, string(body), "advent-of-code")
+
+	// the Go stub includes a Vis stub to satisfy elf's shared runner harness
+	assert.Contains(t, string(body), "func (e Exercise) Vis(")
+
+	// the README is the Euler one: titled by problem number, linking projecteuler.net,
+	// embedding the problem's own Exercise-scope graph
+	readme, err := afero.ReadFile(fs, filepath.Join(ex.Path, "README.md"))
+	require.NoError(t, err)
+	assert.Contains(t, string(readme), "# [Problem 42: T](https://projecteuler.net/problem=42)")
+	assert.Contains(t, string(readme), "## Problem 42 Run Times")
+	assert.Contains(t, string(readme), "](run-times.png)")
+
+	// ...and carries nothing from the AoC README
+	assert.NotContains(t, string(readme), "adventofcode.com")
+	assert.NotContains(t, string(readme), "## Python")
+	assert.NotContains(t, string(readme), "](../run-times.png)")
+}

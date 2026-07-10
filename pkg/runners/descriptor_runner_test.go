@@ -10,6 +10,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/asphaltbuffet/elf/pkg/protocol"
 )
 
 func TestDescriptorRunner_Prepare_WritesTemplate(t *testing.T) {
@@ -356,4 +358,61 @@ func TestDescriptorRunner_Close_TimeoutKilledProcess(t *testing.T) {
 	cancel()
 
 	require.NoError(t, runner.Close(ctx))
+}
+
+// TestDescriptorRunner_Run_PanicInExerciseDoesNotHang is the regression guard for
+// issue #48 ("panics in exercise code hang the entire application"). A panic in a
+// runner's exercise code terminates the subprocess: it writes a stack trace to
+// stderr, writes NO result to stdout, and exits non-zero (verified: a Go panic
+// exits with status 2). Historically the host spun forever waiting for a result
+// from a process that had already died; the single-reaper + `exited` channel now
+// makes Run observe the exit and return an error instead of hanging.
+//
+// The `sh` wrapper below reproduces exactly that I/O signature — read the task,
+// emit a crash message on stderr, exit non-zero, never touch stdout — without
+// depending on a compiled Go toolchain. The select-with-timeout fails loudly if
+// Run ever hangs again.
+func TestDescriptorRunner_Run_PanicInExerciseDoesNotHang(t *testing.T) {
+	// Mimics a panicking exercise: consume the task line, crash to stderr, exit 2,
+	// write nothing to stdout.
+	scriptFile := filepath.Join(t.TempDir(), "panic.sh")
+	require.NoError(t, os.WriteFile(scriptFile,
+		[]byte("#!/bin/sh\nread task\necho 'panic: boom in exercise code' >&2\nexit 2\n"), 0o700))
+
+	exerciseDir := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(exerciseDir, "sh"), 0o755))
+
+	desc := RunnerDescriptor{
+		Key:  "sh",
+		Name: "Shell",
+		Open: OpenSpec{Interpreter: "sh", Args: []string{scriptFile}},
+	}
+	runner := &descriptorRunner{desc: desc, meta: ExerciseMeta{Dir: exerciseDir, Key: "sh"}}
+
+	require.NoError(t, runner.Open(context.Background()))
+	t.Cleanup(func() { _ = runner.Close(context.Background()) })
+
+	type runResult struct {
+		res *protocol.Result
+		err error
+	}
+	done := make(chan runResult, 1)
+
+	go func() {
+		// A raw context (no deadline) proves Run returns on subprocess exit alone,
+		// not merely because a timeout fired.
+		res, err := runner.Run(context.Background(),
+			&protocol.Task{TaskID: "1", Part: protocol.PartOne, Input: "irrelevant"})
+		done <- runResult{res: res, err: err}
+	}()
+
+	select {
+	case got := <-done:
+		require.Error(t, got.err, "Run must surface the crash as an error, not a result")
+		assert.Nil(t, got.res)
+		assert.Contains(t, got.err.Error(), "exit code 2")
+		assert.Contains(t, got.err.Error(), "boom in exercise code")
+	case <-time.After(5 * time.Second):
+		require.Fail(t, "Run hung after the exercise subprocess panicked and exited (issue #48 regression)")
+	}
 }

@@ -242,6 +242,11 @@ func (c Config) GetBaseDir() string {
 	return c.viper.GetString(string(AdventDirKey))
 }
 
+// GetEulerDir returns the root directory where Project Euler problems are stored.
+func (c Config) GetEulerDir() string {
+	return c.viper.GetString(string(EulerDirKey))
+}
+
 // GetInputFilename returns the configured default puzzle input file name.
 func (c Config) GetInputFilename() string {
 	return c.viper.GetString(string(InputFileKey))

@@ -1,0 +1,5 @@
+kind: Changed
+body: Project configuration sets euler-specific values separate from advent of code exercises
+time: 2026-07-10T10:03:10.217040471-04:00
+custom:
+    Issue: '#180'

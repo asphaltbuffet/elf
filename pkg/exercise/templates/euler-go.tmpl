@@ -1,0 +1,30 @@
+// Package euler is the solution for Project Euler Problem {{ .Number }}
+package euler
+
+import (
+  "errors"
+)
+
+// Exercise for Project Euler problem {{ .Number }}: {{ .Title }}.
+//
+// Project Euler problems have a single answer. Implement One. Two and Vis
+// exist only to satisfy elf's shared runner harness and are never invoked
+// for a Problem.
+type Exercise struct{}
+
+// One returns the answer to problem {{ .Number }}.
+func (e Exercise) One(input string) (any, error) {
+	return nil, errors.New("problem {{ .Number }} not implemented")
+}
+
+// Two is unused for Project Euler problems.
+func (e Exercise) Two(_ string) (any, error) {
+	return nil, errors.New("project euler problems have a single part")
+}
+
+// Vis is unused for Project Euler problems; it exists only to satisfy elf's
+// shared runner harness, which references it statically for the Visualize
+// dispatch branch. It is never invoked for a Problem.
+func (e Exercise) Vis(_, _ string) error {
+	return errors.New("project euler problems have no visualization")
+}

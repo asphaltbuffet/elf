@@ -204,3 +204,32 @@ func Test_runTests(t *testing.T) {
 
 	_ = logger
 }
+
+func TestRunTests_ProblemRunsOnePartTestOnly(t *testing.T) {
+	mockRunner := mocks.NewMockRunner(t)
+	mockRunner.EXPECT().Run(mock.Anything, mock.Anything).Return(&protocol.Result{
+		TaskID:   "test.1.1",
+		Ok:       true,
+		Output:   "FAKE OUTPUT",
+		Duration: 0.042,
+	}, nil).Once()
+
+	e := &Exercise{
+		Kind: KindProblem,
+		Data: &Data{
+			TestCases: TestCase{
+				One: []*Test{{Input: "10", Expected: "23"}},
+				Two: nil,
+			},
+		},
+	}
+
+	results, err := e.runTests(t.Context(), mockRunner, nil)
+
+	require.NoError(t, err)
+	assert.Len(t, results, 1)
+
+	for _, r := range results {
+		assert.NotEqual(t, protocol.PartTwo, r.Part, "problem must not emit Part Two test tasks")
+	}
+}

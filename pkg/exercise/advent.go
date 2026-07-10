@@ -25,6 +25,11 @@ var (
 	ErrInvalidData       = errors.New("invalid data")
 	ErrNoImplementations = errors.New("no implementations found")
 	ErrLoadInfo          = errors.New("load info")
+
+	// ErrEulerUnsupported marks an operation not yet implemented for Project
+	// Euler Problems. Benchmark and analyze remain two-part-shaped; see
+	// ADR-0017.
+	ErrEulerUnsupported = errors.New("not yet supported for Project Euler problems")
 )
 
 // errNoRunner builds the user-facing error for an unregistered language, wrapping
@@ -80,6 +85,22 @@ func Load(
 	return e, nil
 }
 
+// KindAt probes dir for an info.json and, if present, returns the Kind it
+// declares. The second return value reports whether an info.json was found;
+// callers use it to distinguish "not a Problem" from "not an exercise dir at
+// all" (e.g. a year directory), both of which should fall through to normal
+// handling. Errors reading or parsing info.json are treated the same as
+// "not present" — KindAt is a lightweight probe, not a full load.
+func KindAt(fs afero.Fs, logger *slog.Logger, dir string) (Kind, bool) {
+	probe := &Exercise{Path: dir}
+
+	if err := probe.loadInfo(fs, logger); err != nil {
+		return "", false
+	}
+
+	return probe.Kind, true
+}
+
 func (e *Exercise) loadInfo(fs afero.Fs, logger *slog.Logger) error {
 	logger.Debug("populating exercise from info file", "path", e.Path)
 
@@ -96,12 +117,31 @@ func (e *Exercise) loadInfo(fs afero.Fs, logger *slog.Logger) error {
 		return fmt.Errorf("%w: %w", ErrLoadInfo, err)
 	}
 
-	if e.Day == 0 || e.Year == 0 || e.Title == "" || e.URL == "" {
+	if e.Kind == "" {
+		e.Kind = KindPuzzle
+	}
+
+	var incomplete bool
+	switch e.Kind {
+	case KindProblem:
+		incomplete = e.Number == 0 || e.Title == ""
+	case KindPuzzle:
+		incomplete = e.Day == 0 || e.Year == 0 || e.Title == "" || e.URL == ""
+	default:
+		incomplete = e.Day == 0 || e.Year == 0 || e.Title == "" || e.URL == ""
+	}
+
+	if incomplete {
 		logger.Error("incomplete info data", slog.Any("data", e.LogValue()))
 		return fmt.Errorf("%w: %w", ErrLoadInfo, ErrInvalidData)
 	}
 
-	if e.customInput != "" {
+	// A Project Euler Problem may legitimately declare no input file. Don't let a
+	// caller's *defaulted* input filename (the CLI always supplies one) override
+	// that intentional emptiness — otherwise every Problem solve fails trying to
+	// read a nonexistent input.txt. A Problem that DOES declare an input file
+	// (Data.InputFileName already set from info.json) still honors the override.
+	if e.customInput != "" && (e.Kind != KindProblem || e.Data.InputFileName != "") {
 		e.Data.InputFileName = e.customInput
 	}
 
@@ -191,7 +231,15 @@ func (e *Exercise) GetImplementations(fs afero.Fs) ([]string, error) {
 }
 
 // readInput reads the exercise input file from fs.
+//
+// A Project Euler Problem may declare no input file at all (Data.InputFileName
+// == ""); in that case there is nothing to read, so this returns an empty
+// string with no error rather than trying to read the exercise directory itself.
 func (e *Exercise) readInput(fs afero.Fs) (string, error) {
+	if e.Data.InputFileName == "" {
+		return "", nil
+	}
+
 	inputFile := filepath.Join(e.Path, e.Data.InputFileName)
 
 	data, err := afero.ReadFile(fs, inputFile)

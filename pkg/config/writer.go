@@ -93,5 +93,9 @@ token = ""
 
 # Directory for Advent of Code exercises
 dir = %q
-`, defaults[LanguageKey], configDir, cacheDir, defaults[InputFileKey], defaults[AdventDirKey])
+
+[euler]
+# Directory for Project Euler problems (sibling of the AoC exercise directory)
+dir = %q
+`, defaults[LanguageKey], configDir, cacheDir, defaults[InputFileKey], defaults[AdventDirKey], defaults[EulerDirKey])
 }

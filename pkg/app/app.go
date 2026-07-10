@@ -124,6 +124,10 @@ func (a *App) Benchmark(
 		return nil, err
 	}
 
+	if ex.Kind == exercise.KindProblem {
+		return nil, fmt.Errorf("benchmark: %w", exercise.ErrEulerUnsupported)
+	}
+
 	bmk := exercise.NewBenchmarker(ex)
 
 	return bmk.Benchmark(ctx, a.FS, a.Logger, cb, iterations)
@@ -173,10 +177,37 @@ func (a *App) Add(url, lang string, forced *exercise.Overwrites) (exercise.Repor
 	return adder.Report(), adder.FilePath(), nil
 }
 
+// AddProblem scaffolds a Project Euler Problem in the workspace: it builds a
+// ProblemAdder and runs it. The App-level entry point for `elf add euler`.
+func (a *App) AddProblem(number int, lang, title string) (exercise.Report, string, error) {
+	adder, err := exercise.NewProblemAdder(a.cfg,
+		exercise.WithProblemNumber(number),
+		exercise.WithProblemLanguage(lang),
+		exercise.WithProblemTitle(title),
+	)
+	if err != nil {
+		return nil, "", fmt.Errorf("creating problem adder: %w", err)
+	}
+
+	if err = adder.Add(); err != nil {
+		return nil, "", fmt.Errorf("adding problem: %w", err)
+	}
+
+	return adder.Report(), adder.FilePath(), nil
+}
+
 // Analyze renders run-time graphs from persisted benchmark data under dir, writing the graph to
 // out (or a default location when out is empty). It is the App-level entry point for the `analyze`
 // command: it builds an analyze.Analyzer and runs it.
 func (a *App) Analyze(dir, out string) (string, error) {
+	// Euler analyze is deferred; refuse an explicit Problem target rather than
+	// rendering a misleading Part Two column. A non-Problem or a directory
+	// without info.json (e.g. a year directory) falls through to the normal
+	// analyzer unchanged.
+	if kind, ok := exercise.KindAt(a.FS, a.Logger, dir); ok && kind == exercise.KindProblem {
+		return "", fmt.Errorf("analyze: %w", exercise.ErrEulerUnsupported)
+	}
+
 	az, err := analyze.NewAnalyzer(a.Logger, analyze.WithDirectory(dir), analyze.WithOutput(out))
 	if err != nil {
 		return "", fmt.Errorf("creating analyzer: %w", err)

@@ -26,6 +26,6 @@ func (e BaseExercise) Two(in string) (any, error) {
 //
 //nolint:revive // this is a stub
 //nolint:revive // this is a stub
-func (e BaseExercise) Vis(in string, outdir string) (string, error) {
-	return "", errors.New("not implemented")
+func (e BaseExercise) Vis(in string, outdir string) error {
+	return errors.New("not implemented")
 }
