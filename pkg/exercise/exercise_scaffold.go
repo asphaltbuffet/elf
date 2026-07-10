@@ -14,7 +14,10 @@ import (
 )
 
 //go:embed templates/readme.tmpl
-var readmeTemplate []byte
+var readmeData []byte
+
+//go:embed templates/euler-readme.tmpl
+var eulerReadmeData []byte
 
 //go:embed templates/go.tmpl
 var goTemplate []byte
@@ -113,15 +116,7 @@ func (s *exerciseScaffold) write(ex *Exercise) (Report, error) {
 		return nil, err
 	}
 
-	tmpls := append([]tmplFile{
-		{
-			Name:     "readme",
-			Path:     "",
-			Data:     readmeTemplate,
-			FileName: "README.md",
-			Replace:  false,
-		},
-	}, langTmpls...)
+	tmpls := append([]tmplFile{readmeTemplate(ex.Kind)}, langTmpls...)
 
 	for _, t := range tmpls {
 		logger.Debug("add template file", slog.Any("template", t.LogValue()))
@@ -134,6 +129,28 @@ func (s *exerciseScaffold) write(ex *Exercise) (Report, error) {
 	}
 
 	return report, nil
+}
+
+// readmeTemplate selects the README for an Exercise's Kind. The two READMEs differ in structure,
+// not just values: a Puzzle's indexes into its year, a Problem's stands alone.
+//
+// The README is written with Replace=false, so the first `add` wins and later ones skip it. Its
+// template may therefore only reference exercise *identity* (Number, Title, Year, Day) — never
+// per-invocation state such as .Language, which would permanently misname the exercise once a
+// second language is added to it. That is why the language headings are hardcoded.
+func readmeTemplate(kind Kind) tmplFile {
+	data := readmeData
+	if kind == KindProblem {
+		data = eulerReadmeData
+	}
+
+	return tmplFile{
+		Name:     "readme",
+		Path:     "",
+		Data:     data,
+		FileName: "README.md",
+		Replace:  false,
+	}
 }
 
 func languageTemplates(lang string, kind Kind) ([]tmplFile, error) {

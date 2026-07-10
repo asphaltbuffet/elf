@@ -171,4 +171,17 @@ func TestScaffold_ProblemSkipsInputAndUsesEulerStub(t *testing.T) {
 
 	// the Go stub includes a Vis stub to satisfy elf's shared runner harness
 	assert.Contains(t, string(body), "func (e Exercise) Vis(")
+
+	// the README is the Euler one: titled by problem number, linking projecteuler.net,
+	// embedding the problem's own Exercise-scope graph
+	readme, err := afero.ReadFile(fs, filepath.Join(ex.Path, "README.md"))
+	require.NoError(t, err)
+	assert.Contains(t, string(readme), "# [Problem 42: T](https://projecteuler.net/problem=42)")
+	assert.Contains(t, string(readme), "## Problem 42 Run Times")
+	assert.Contains(t, string(readme), "](run-times.png)")
+
+	// ...and carries nothing from the AoC README
+	assert.NotContains(t, string(readme), "adventofcode.com")
+	assert.NotContains(t, string(readme), "## Python")
+	assert.NotContains(t, string(readme), "](../run-times.png)")
 }
