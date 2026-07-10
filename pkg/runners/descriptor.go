@@ -25,6 +25,7 @@ type PrepareSpec struct {
 	WrapperSubdir string            `mapstructure:"wrapper_subdir"` // subdirectory within lang_dir to write the wrapper; affects {wrapper_file} and {binary_file} tokens
 	TemplateVars  map[string]string `mapstructure:"template_vars"`  // user-defined variables substituted into the template
 	BuildCommands [][]string        `mapstructure:"build_commands"` // ordered build commands; tokens substituted at Prepare time
+	CleanupPaths  []string          `mapstructure:"cleanup_paths"`  // dirs/files (token-substitutable, relative to lang_dir) removed by Cleanup; for build-output trees like bin/obj (C#) or target (Rust)
 }
 
 // RunnerDescriptor is a config entry that fully specifies how to build and launch a Runner.

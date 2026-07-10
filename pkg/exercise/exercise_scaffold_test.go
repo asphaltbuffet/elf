@@ -59,6 +59,24 @@ func TestExerciseScaffold_write(t *testing.T) {
 			},
 		},
 		{
+			name: "writes csharp project and solution",
+			ex: &Exercise{
+				ID:       "2015-01",
+				Title:    "Not Quite Lisp",
+				Language: "cs",
+				Year:     2015,
+				Day:      1,
+				Path:     filepath.Join("exercises", "2015", "01-csharp"),
+				Data:     &Data{InputData: "((()))", InputFileName: "input.txt"},
+			},
+			assertion: require.NoError,
+			wantFiles: []string{
+				"input.txt", "info.json", "README.md",
+				filepath.Join("cs", "Solution.csproj"),
+				filepath.Join("cs", "Solution.cs"),
+			},
+		},
+		{
 			name: "unknown language errors",
 			ex: &Exercise{
 				Language: "ruby",

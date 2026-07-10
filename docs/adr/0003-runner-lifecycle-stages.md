@@ -10,3 +10,7 @@ stop), `Cleanup` (remove artifacts — no-op where not applicable). All stages e
 accept a `context.Context` for cancellation and timeout. `Open`/`Close` mirrors the standard
 Go resource lifecycle idiom (`os.File`, `sql.DB`, `net.Conn`). This also fixes the hardcoded
 `context.Background()` calls in the original implementation.
+
+`Cleanup` also removes any paths declared in the descriptor's `cleanup_paths` (build-output
+trees such as C#'s `bin/`+`obj/` or Rust's `target/`) via `os.RemoveAll`, in addition to the
+wrapper/binary point files.

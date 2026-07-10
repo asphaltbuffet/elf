@@ -233,6 +233,23 @@ func TestDescriptorRunner_Cleanup_FileErrorIncludesSubdirPath(t *testing.T) {
 	assert.Contains(t, err.Error(), "manually")
 }
 
+func TestDescriptorRunner_Cleanup_RemovesBuildDirs(t *testing.T) {
+	root := t.TempDir()
+	meta := ExerciseMeta{Dir: root, Key: "cs"}
+	langDir := meta.LangDir()
+	for _, d := range []string{"bin", "obj"} {
+		require.NoError(t, os.MkdirAll(filepath.Join(langDir, d), 0o750))
+		require.NoError(t, os.WriteFile(filepath.Join(langDir, d, "f"), []byte("x"), 0o600))
+	}
+	r := &descriptorRunner{
+		desc: RunnerDescriptor{Prepare: PrepareSpec{CleanupPaths: []string{"bin", "obj"}}},
+		meta: meta,
+	}
+	require.NoError(t, r.Cleanup())
+	assert.NoDirExists(t, filepath.Join(langDir, "bin"))
+	assert.NoDirExists(t, filepath.Join(langDir, "obj"))
+}
+
 func TestDescriptorRunner_Open_Interpreter(t *testing.T) {
 	// Use a real interpreter that just echoes JSON back — "cat" reads stdin and writes stdout
 	// We simulate the runner protocol with a shell script

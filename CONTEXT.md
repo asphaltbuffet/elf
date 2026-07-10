@@ -84,9 +84,16 @@ _Avoid_: plugin, language runner, implementation
 A config entry (`[[runner]]` in `elf.toml`) that fully specifies how to build and launch a
 Runner for one language. Contains: a key (used as both the registry key and the exercise
 subdirectory name), a display name, an optional wrapper template path, optional static template
-variables, optional ordered build commands, and an open spec (interpreter or compiled binary).
-Populated into the runner registry at startup. The key is the only required field that must be
-unique across all descriptors.
+variables, optional ordered build commands, optional `cleanup_paths` (build-output trees removed
+by `Cleanup`, e.g. `bin`/`obj` for C# or `target` for Rust), and an open spec (interpreter or
+compiled binary). Populated into the runner registry at startup. The key is the only required
+field that must be unique across all descriptors.
+
+Some compiled languages are **manifest-based** (Rust, C#): the Exercise Scaffold writes a project
+manifest (`Cargo.toml`, `.csproj`) alongside the solution file, pinning a fixed package/assembly
+name so the descriptor's build/open tokens resolve to a static path. Others are **bare-file**
+(Go, C): the compiler runs directly against the wrapper and solution files, no manifest involved.
+See [ADR-0016](docs/adr/0016-per-exercise-project-manifest.md).
 
 _Avoid_: plugin descriptor, runner config, runner definition
 
