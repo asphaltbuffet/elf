@@ -1,11 +1,16 @@
 package exercise
 
 import (
+	"io"
+	"log/slog"
 	"path/filepath"
 	"testing"
 
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
+	"github.com/asphaltbuffet/elf/pkg/config"
 	"github.com/asphaltbuffet/elf/pkg/protocol"
 )
 
@@ -51,4 +56,82 @@ func TestNewProblemFromSource(t *testing.T) {
 	assert.Zero(t, ex.Year)
 	assert.Zero(t, ex.Day)
 	assert.Empty(t, ex.URL)
+}
+
+func TestProblemAdder_Add(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	cfg, err := config.NewConfig(config.WithFs(fs))
+	require.NoError(t, err)
+
+	adder, err := NewProblemAdder(cfg,
+		WithProblemNumber(42),
+		WithProblemLanguage("go"),
+		WithProblemTitle("Test Problem"),
+	)
+	require.NoError(t, err)
+
+	require.NoError(t, adder.Add())
+
+	assert.Contains(t, adder.FilePath(), filepath.Join("euler", "42"))
+	assert.NotEmpty(t, adder.Report())
+
+	// info.json exists and reloads as a Problem
+	ex := &Exercise{Path: adder.FilePath()}
+	require.NoError(t, ex.loadInfo(fs, slog.New(slog.NewTextHandler(io.Discard, nil))))
+	assert.Equal(t, KindProblem, ex.Kind)
+	assert.Equal(t, 42, ex.Number)
+}
+
+func TestNewProblemAdder_ValidationErrors(t *testing.T) {
+	tests := []struct {
+		name    string
+		opts    []func(*ProblemAdder)
+		wantErr error
+	}{
+		{
+			name: "empty language",
+			opts: []func(*ProblemAdder){
+				WithProblemNumber(42),
+				WithProblemTitle("Test Problem"),
+			},
+			wantErr: ErrEmptyLanguage,
+		},
+		{
+			name: "zero number",
+			opts: []func(*ProblemAdder){
+				WithProblemLanguage("go"),
+				WithProblemNumber(0),
+				WithProblemTitle("Test Problem"),
+			},
+			wantErr: ErrInvalidData,
+		},
+		{
+			name: "negative number",
+			opts: []func(*ProblemAdder){
+				WithProblemLanguage("go"),
+				WithProblemNumber(-1),
+				WithProblemTitle("Test Problem"),
+			},
+			wantErr: ErrInvalidData,
+		},
+		{
+			name: "empty title",
+			opts: []func(*ProblemAdder){
+				WithProblemLanguage("go"),
+				WithProblemNumber(42),
+			},
+			wantErr: ErrInvalidData,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg, err := config.NewConfig(config.WithFs(afero.NewMemMapFs()))
+			require.NoError(t, err)
+
+			adder, err := NewProblemAdder(cfg, tt.opts...)
+			require.ErrorIs(t, err, tt.wantErr)
+			assert.Nil(t, adder)
+		})
+	}
 }
