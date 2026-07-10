@@ -11,7 +11,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/asphaltbuffet/elf/pkg/app"
+	"github.com/asphaltbuffet/elf/pkg/config"
 	"github.com/asphaltbuffet/elf/pkg/exercise"
+	"github.com/asphaltbuffet/elf/pkg/runners"
 )
 
 // testApp builds a minimal App for unit tests.
@@ -71,4 +73,43 @@ func TestApp_Solve_ErrEmptyLanguage(t *testing.T) {
 	_, err := a.Solve(context.Background(), "exercises/2015/01-hello", "", "", nil, false)
 	require.Error(t, err)
 	assert.ErrorIs(t, err, exercise.ErrEmptyLanguage)
+}
+
+// TestApp_Benchmark_RejectsEuler verifies that Benchmark refuses to run
+// against a Project Euler Problem, since benchmark remains structurally
+// two-part-shaped (see exercise.ErrEulerUnsupported).
+func TestApp_Benchmark_RejectsEuler(t *testing.T) {
+	restore := runners.ResetRegistry(map[string]runners.RunnerCreator{
+		"go": func(_ runners.ExerciseMeta) runners.Runner { return nil },
+	})
+	defer restore()
+
+	cfg, err := config.NewConfig(config.WithFs(afero.NewMemMapFs()))
+	require.NoError(t, err)
+
+	a := app.New(cfg)
+
+	_, path, err := a.AddProblem(1, "go", "Test")
+	require.NoError(t, err)
+
+	_, err = a.Benchmark(context.Background(), path, "go", nil, 1)
+
+	require.ErrorIs(t, err, exercise.ErrEulerUnsupported)
+}
+
+// TestApp_Analyze_RejectsEuler verifies that Analyze refuses to run against a
+// Project Euler Problem, since the analyze grid renders a Part Two column
+// (see exercise.ErrEulerUnsupported).
+func TestApp_Analyze_RejectsEuler(t *testing.T) {
+	cfg, err := config.NewConfig(config.WithFs(afero.NewMemMapFs()))
+	require.NoError(t, err)
+
+	a := app.New(cfg)
+
+	_, path, err := a.AddProblem(1, "go", "Test")
+	require.NoError(t, err)
+
+	_, err = a.Analyze(path, "")
+
+	require.ErrorIs(t, err, exercise.ErrEulerUnsupported)
 }

@@ -119,3 +119,27 @@ func TestLoadInfo_PerKind(t *testing.T) {
 		require.ErrorIs(t, err, ErrInvalidData)
 	})
 }
+
+func TestKindAt(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	t.Run("returns KindProblem for a scaffolded problem dir", func(t *testing.T) {
+		fs := afero.NewMemMapFs()
+		require.NoError(t, afero.WriteFile(fs, "euler/42/info.json",
+			[]byte(`{"kind":"euler","number":42,"title":"Test","data":{"inputFile":"input.txt"}}`), 0o600))
+
+		kind, ok := KindAt(fs, logger, "euler/42")
+
+		require.True(t, ok)
+		assert.Equal(t, KindProblem, kind)
+	})
+
+	t.Run("returns false for a dir with no info.json", func(t *testing.T) {
+		fs := afero.NewMemMapFs()
+
+		kind, ok := KindAt(fs, logger, "exercises/2015")
+
+		require.False(t, ok)
+		assert.Empty(t, kind)
+	})
+}

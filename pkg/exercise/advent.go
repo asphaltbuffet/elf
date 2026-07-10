@@ -25,6 +25,11 @@ var (
 	ErrInvalidData       = errors.New("invalid data")
 	ErrNoImplementations = errors.New("no implementations found")
 	ErrLoadInfo          = errors.New("load info")
+
+	// ErrEulerUnsupported marks an operation not yet implemented for Project
+	// Euler Problems. Benchmark and analyze remain two-part-shaped; see
+	// ADR-0017.
+	ErrEulerUnsupported = errors.New("not yet supported for Project Euler problems")
 )
 
 // errNoRunner builds the user-facing error for an unregistered language, wrapping
@@ -78,6 +83,22 @@ func Load(
 	}
 
 	return e, nil
+}
+
+// KindAt probes dir for an info.json and, if present, returns the Kind it
+// declares. The second return value reports whether an info.json was found;
+// callers use it to distinguish "not a Problem" from "not an exercise dir at
+// all" (e.g. a year directory), both of which should fall through to normal
+// handling. Errors reading or parsing info.json are treated the same as
+// "not present" — KindAt is a lightweight probe, not a full load.
+func KindAt(fs afero.Fs, logger *slog.Logger, dir string) (Kind, bool) {
+	probe := &Exercise{Path: dir}
+
+	if err := probe.loadInfo(fs, logger); err != nil {
+		return "", false
+	}
+
+	return probe.Kind, true
 }
 
 func (e *Exercise) loadInfo(fs afero.Fs, logger *slog.Logger) error {
