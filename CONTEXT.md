@@ -55,8 +55,11 @@ The Project Euler [[Kind]] of [[Exercise]]. Identity is a single **problem numbe
 year, no day, no URL. Declares exactly one [[Part]] (reusing Part One). Input is **optional** and
 defaults to none: most Euler problems are self-contained in their prose, so no `input.txt` is
 written; the minority that reference a data file get one supplied manually via the custom-input
-mechanism. Laid out at `euler/<number>/<language>/` with the number **unpadded** (`euler/42/`,
-`euler/100/`) — so anything enumerating problems must sort *numerically*, not lexically. Its
+mechanism. Laid out at `<euler-dir>/<number>/<language>/` with the number **unpadded**
+(`euler/42/`, `euler/100/`) — so anything enumerating problems must sort *numerically*, not
+lexically. The Euler directory is configured **independently** of the AoC exercise directory (its
+own `euler.dir` key, default `euler`), so the two trees are siblings a user places as they like —
+they are not derived from a shared base path. Its
 `info.json` carries kind, number, title, and declared parts; it is never downloaded (the user
 reads the prompt on the Project Euler site themselves). `euler/` as a whole behaves like a year for
 [[Analysis]] Year scope: a cross-problem comparison.
@@ -87,8 +90,11 @@ _Avoid_: downloader, fetcher, getter
 Makes a [[Problem]] exist in the workspace. Given a problem number and a language, it builds a
 Problem-kind Exercise in memory (no network, no [[Page Fetcher]] — the user supplies the title;
 the prose lives on the Project Euler site) and lays it out via the *same* [[Exercise Scaffold]] as
-the [[Exercise Adder]]. Writes no `input.txt` by default (a Problem's input is optional). The
-Euler-kind counterpart to the [[Exercise Adder]].
+the [[Exercise Adder]]. Writes no `input.txt` by default (a Problem's input is optional). Resolves
+the target directory from its **own** `euler.dir` config key (default `euler`), independent of the
+AoC exercise directory, and falls back to the configured default language when none is given on the
+CLI — mirroring how the [[Exercise Adder]] seeds its language. The Euler-kind counterpart to the
+[[Exercise Adder]].
 
 _Avoid_: downloader (nothing is downloaded), euler fetcher, problem creator
 

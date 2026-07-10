@@ -24,6 +24,9 @@
         // lib.optionalAttrs (cfg.settings.advent.token != "") {token = cfg.settings.advent.token;}
         // lib.optionalAttrs (cfg.settings.advent.dir != null) {dir = cfg.settings.advent.dir;};
     }
+    // lib.optionalAttrs (cfg.settings.euler.dir != null) {
+      euler = {dir = cfg.settings.euler.dir;};
+    }
     // lib.optionalAttrs (cfg.settings.runners != []) {
       runner = map (r:
         {inherit (r) key name;}
@@ -111,6 +114,14 @@ in {
           type = lib.types.nullOr lib.types.str;
           default = "exercises";
           description = "Directory for Advent of Code exercises.";
+        };
+      };
+
+      euler = {
+        dir = lib.mkOption {
+          type = lib.types.nullOr lib.types.str;
+          default = "euler";
+          description = "Directory for Project Euler problems (sibling of the AoC exercise directory).";
         };
       };
 

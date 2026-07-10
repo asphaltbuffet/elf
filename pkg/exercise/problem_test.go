@@ -49,7 +49,7 @@ func TestNewProblemFromSource(t *testing.T) {
 	assert.Equal(t, 1, ex.Number)
 	assert.Equal(t, "euler-1", ex.ID)
 	assert.Equal(t, "go", ex.Language)
-	assert.Equal(t, filepath.Join("/work", "euler", "1"), ex.Path)
+	assert.Equal(t, filepath.Join("/work", "1"), ex.Path)
 	assert.Empty(t, ex.Data.InputData)
 	assert.Empty(t, ex.Data.InputFileName)
 	assert.Nil(t, ex.Data.TestCases.Two)
@@ -84,9 +84,10 @@ func TestProblemAdder_Add(t *testing.T) {
 
 func TestNewProblemAdder_ValidationErrors(t *testing.T) {
 	tests := []struct {
-		name    string
-		opts    []func(*ProblemAdder)
-		wantErr error
+		name         string
+		opts         []func(*ProblemAdder)
+		wantErr      error
+		emptyCfgLang bool
 	}{
 		{
 			name: "empty language",
@@ -94,7 +95,8 @@ func TestNewProblemAdder_ValidationErrors(t *testing.T) {
 				WithProblemNumber(42),
 				WithProblemTitle("Test Problem"),
 			},
-			wantErr: ErrEmptyLanguage,
+			wantErr:      ErrEmptyLanguage,
+			emptyCfgLang: true,
 		},
 		{
 			name: "zero number",
@@ -128,6 +130,14 @@ func TestNewProblemAdder_ValidationErrors(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg, err := config.NewConfig(config.WithFs(afero.NewMemMapFs()))
 			require.NoError(t, err)
+
+			if tt.emptyCfgLang {
+				// Drive the language default empty so the "no language" guard is
+				// reachable: omitting the -l flag alone now falls back to the
+				// config default (see ADR-0018 language fallback), so the guard
+				// only fires when the config default is itself empty.
+				cfg.SetValue(config.LanguageKey, "")
+			}
 
 			adder, err := NewProblemAdder(cfg, tt.opts...)
 			require.ErrorIs(t, err, tt.wantErr)

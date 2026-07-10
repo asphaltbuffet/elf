@@ -48,7 +48,7 @@ func newProblemFromSource(s problemSource) *Exercise {
 		Title:    s.title,
 		Language: s.language,
 		Number:   s.number,
-		Path:     filepath.Join(s.baseDir, "euler", strconv.Itoa(s.number)),
+		Path:     filepath.Join(s.baseDir, strconv.Itoa(s.number)),
 		Data: &Data{
 			InputData:     "",
 			InputFileName: "",
@@ -83,7 +83,11 @@ func WithProblemNumber(n int) func(*ProblemAdder) {
 
 // WithProblemLanguage sets the implementation language.
 func WithProblemLanguage(lang string) func(*ProblemAdder) {
-	return func(p *ProblemAdder) { p.language = lang }
+	return func(p *ProblemAdder) {
+		if lang != "" {
+			p.language = lang
+		}
+	}
 }
 
 // WithProblemTitle sets the human-readable problem title.
@@ -94,7 +98,8 @@ func WithProblemTitle(title string) func(*ProblemAdder) {
 // NewProblemAdder builds a ProblemAdder from config and options, then validates.
 func NewProblemAdder(cfg config.Config, opts ...func(*ProblemAdder)) (*ProblemAdder, error) {
 	p := &ProblemAdder{
-		exerciseBaseDir: cfg.GetBaseDir(),
+		exerciseBaseDir: cfg.GetEulerDir(),
+		language:        cfg.GetLanguage(),
 		logger:          cfg.GetLogger(),
 		scaffold: &exerciseScaffold{
 			fs:            cfg.GetFs(),

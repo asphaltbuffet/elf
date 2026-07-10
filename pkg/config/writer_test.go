@@ -150,6 +150,7 @@ func TestGenerateDefaultConfig(t *testing.T) {
 	assert.Contains(t, config, "input-file")
 	assert.Contains(t, config, "[advent]")
 	assert.Contains(t, config, "token")
+	assert.Contains(t, config, "[euler]")
 }
 
 func TestGenerateDefaultConfig_ContainsDefaults(t *testing.T) {
@@ -159,6 +160,7 @@ func TestGenerateDefaultConfig_ContainsDefaults(t *testing.T) {
 	assert.Contains(t, config, defaults[LanguageKey])
 	assert.Contains(t, config, defaults[InputFileKey])
 	assert.Contains(t, config, defaults[AdventDirKey])
+	assert.Contains(t, config, defaults[EulerDirKey])
 }
 
 func TestWriteConfig_PersistsValues(t *testing.T) {

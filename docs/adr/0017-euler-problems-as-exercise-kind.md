@@ -23,7 +23,8 @@ and title the user supplies). `elf download <url>` is kept as a **deprecated ali
 `elf add aoc <url>`.
 
 Euler solutions live in the *same solutions repo* as AoC, in a sibling `euler/<number>/<language>/`
-tree (unpadded number). Because they share the repo's Go module but sit in different directories,
+tree (unpadded number). *(The exact location — originally derived from the AoC base dir — is
+superseded by ADR-0018, which makes the Euler directory an independent `euler.dir` config key.)* Because they share the repo's Go module but sit in different directories,
 compiled-language stubs need Euler-specific templates that do not borrow AoC's `common` base and
 pick a valid per-exercise package/crate identity. Go (bare-file) and Rust (manifest-based) are the
 first two languages scaffolded, deliberately exercising both scaffolding shapes from ADR-0016
