@@ -6,14 +6,26 @@ import (
 	"time"
 )
 
+// Kind is which family of challenge an Exercise belongs to.
+type Kind string
+
+const (
+	// KindPuzzle is an Advent of Code puzzle (year+day identity, two parts).
+	KindPuzzle Kind = "aoc"
+	// KindProblem is a Project Euler problem (bare-number identity, one part).
+	KindProblem Kind = "euler"
+)
+
 // Exercise represents a single programming challenge with its metadata, runner, and I/O configuration.
 type Exercise struct {
 	ID       string `json:"id"`
+	Kind     Kind   `json:"kind,omitempty"`
 	Title    string `json:"title"`
 	Language string `json:"-"`
-	Year     int    `json:"year"`
-	Day      int    `json:"day"`
-	URL      string `json:"url"`
+	Number   int    `json:"number,omitempty"`
+	Year     int    `json:"year,omitempty"`
+	Day      int    `json:"day,omitempty"`
+	URL      string `json:"url,omitempty"`
 	Data     *Data  `json:"data"`
 	Path     string `json:"-"`
 

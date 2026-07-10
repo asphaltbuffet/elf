@@ -1,9 +1,11 @@
 package exercise
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestExercise_String(t *testing.T) {
@@ -107,4 +109,35 @@ func TestExercise_String(t *testing.T) {
 			assert.Equal(t, tt.want, tt.e.String())
 		})
 	}
+}
+
+func TestExercise_KindAndNumberJSON(t *testing.T) {
+	t.Run("problem marshals kind and number, omits year/day/url", func(t *testing.T) {
+		ex := Exercise{Kind: KindProblem, Number: 42, Title: "Test", Data: &Data{}}
+
+		b, err := json.Marshal(ex)
+		require.NoError(t, err)
+
+		var got map[string]any
+		require.NoError(t, json.Unmarshal(b, &got))
+
+		assert.Equal(t, "euler", got["kind"])
+		assert.EqualValues(t, 42, got["number"])
+		assert.NotContains(t, got, "year")
+		assert.NotContains(t, got, "day")
+		assert.NotContains(t, got, "url")
+	})
+
+	t.Run("puzzle omits kind and number when zero", func(t *testing.T) {
+		ex := Exercise{Year: 2015, Day: 1, Title: "Test", URL: "u", Data: &Data{}}
+
+		b, err := json.Marshal(ex)
+		require.NoError(t, err)
+
+		var got map[string]any
+		require.NoError(t, json.Unmarshal(b, &got))
+
+		assert.NotContains(t, got, "kind")
+		assert.NotContains(t, got, "number")
+	})
 }
