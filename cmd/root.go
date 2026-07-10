@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/fang"
 	"github.com/spf13/cobra"
 
+	"github.com/asphaltbuffet/elf/cmd/add"
 	"github.com/asphaltbuffet/elf/cmd/analyze"
 	"github.com/asphaltbuffet/elf/cmd/benchmark"
 	"github.com/asphaltbuffet/elf/cmd/config"
@@ -45,6 +46,7 @@ func GetRootCommand() *cobra.Command {
 
 		rootCmd.Flags().StringVarP(&cfgFile, "config-file", "c", "", "configuration file")
 
+		rootCmd.AddCommand(add.GetAddCmd())
 		rootCmd.AddCommand(analyze.GetAnalyzeCmd())
 		rootCmd.AddCommand(benchmark.GetBenchmarkCmd())
 		rootCmd.AddCommand(config.GetConfigCmd())
