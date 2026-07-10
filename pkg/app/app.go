@@ -173,6 +173,25 @@ func (a *App) Add(url, lang string, forced *exercise.Overwrites) (exercise.Repor
 	return adder.Report(), adder.FilePath(), nil
 }
 
+// AddProblem scaffolds a Project Euler Problem in the workspace: it builds a
+// ProblemAdder and runs it. The App-level entry point for `elf add euler`.
+func (a *App) AddProblem(number int, lang, title string) (exercise.Report, string, error) {
+	adder, err := exercise.NewProblemAdder(a.cfg,
+		exercise.WithProblemNumber(number),
+		exercise.WithProblemLanguage(lang),
+		exercise.WithProblemTitle(title),
+	)
+	if err != nil {
+		return nil, "", fmt.Errorf("creating problem adder: %w", err)
+	}
+
+	if err = adder.Add(); err != nil {
+		return nil, "", fmt.Errorf("adding problem: %w", err)
+	}
+
+	return adder.Report(), adder.FilePath(), nil
+}
+
 // Analyze renders run-time graphs from persisted benchmark data under dir, writing the graph to
 // out (or a default location when out is empty). It is the App-level entry point for the `analyze`
 // command: it builds an analyze.Analyzer and runs it.
