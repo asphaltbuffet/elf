@@ -50,6 +50,26 @@ func Test_runMainTasks(t *testing.T) {
 	_ = logger // used in TestSolve
 }
 
+func TestRunMainTasks_ProblemRunsOnePart(t *testing.T) {
+	mockRunner := mocks.NewMockRunner(t)
+	mockRunner.EXPECT().Run(mock.Anything, mock.Anything).Return(&protocol.Result{
+		TaskID:   "solve.1",
+		Ok:       true,
+		Output:   "233168",
+		Duration: 0.042,
+	}, nil).Once()
+
+	e := &Exercise{
+		Kind: KindProblem,
+		Data: &Data{InputData: "FAKE INPUT", Answers: Answer{One: "233168"}},
+	}
+
+	results, err := e.runMainTasks(t.Context(), mockRunner, nil)
+
+	require.NoError(t, err)
+	assert.Len(t, results, 1)
+}
+
 func TestExercise_Solve_EmitsSolveAndTestEvents(t *testing.T) {
 	teardownTestCase := setupTestCase(t)
 	defer teardownTestCase(t)

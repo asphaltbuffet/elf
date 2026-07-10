@@ -104,7 +104,9 @@ func (e *Exercise) loadInfo(fs afero.Fs, logger *slog.Logger) error {
 	switch e.Kind {
 	case KindProblem:
 		incomplete = e.Number == 0 || e.Title == ""
-	default: // KindPuzzle
+	case KindPuzzle:
+		incomplete = e.Day == 0 || e.Year == 0 || e.Title == "" || e.URL == ""
+	default:
 		incomplete = e.Day == 0 || e.Year == 0 || e.Title == "" || e.URL == ""
 	}
 

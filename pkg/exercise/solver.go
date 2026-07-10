@@ -84,8 +84,9 @@ func (e *Exercise) runMainTasks(
 ) ([]tasks.Result, error) {
 	var solveTasks []testTask
 
-	solveTasks = append(solveTasks, makeMainTasks(protocol.PartOne, e.Data)...)
-	solveTasks = append(solveTasks, makeMainTasks(protocol.PartTwo, e.Data)...)
+	for _, part := range e.declaredParts() {
+		solveTasks = append(solveTasks, makeMainTasks(part, e.Data)...)
+	}
 
 	// Announce the full task list up front so a renderer can show pending rows.
 	if cb != nil {
