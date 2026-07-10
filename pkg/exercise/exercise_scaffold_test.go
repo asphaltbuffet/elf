@@ -166,7 +166,7 @@ func TestScaffold_ProblemSkipsInputAndUsesEulerStub(t *testing.T) {
 	// the Go stub uses the Euler package name, not AoC's "package exercises"
 	body, err := afero.ReadFile(fs, filepath.Join(ex.Path, "go", "exercise.go"))
 	require.NoError(t, err)
-	assert.Contains(t, string(body), "package euler42")
+	assert.Contains(t, string(body), "package euler")
 	assert.NotContains(t, string(body), "advent-of-code")
 
 	// the Go stub includes a Vis stub to satisfy elf's shared runner harness
