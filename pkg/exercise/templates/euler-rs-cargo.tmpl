@@ -1,0 +1,18 @@
+# Cargo manifest for Project Euler problem {{ .Number }}: {{ .Title }}.
+#
+# The crate name is pinned to "solution" so elf's runner finds the built binary
+# at target/release/solution regardless of the problem number.
+
+[package]
+name = "solution"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "solution"
+path = "src/runtime-wrapper.rs"
+
+[dependencies]
+
+[profile.release]
+opt-level = 3

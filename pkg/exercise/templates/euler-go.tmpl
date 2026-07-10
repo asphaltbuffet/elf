@@ -1,0 +1,21 @@
+package euler{{ .Number }}
+
+import (
+	"fmt"
+)
+
+// Exercise for Project Euler problem {{ .Number }}: {{ .Title }}.
+//
+// Project Euler problems have a single answer. Implement One. Two exists only
+// to satisfy elf's shared runner harness and is never invoked for a Problem.
+type Exercise struct{}
+
+// One returns the answer to problem {{ .Number }}.
+func (e Exercise) One(input string) (any, error) {
+	return nil, fmt.Errorf("problem {{ .Number }} not implemented")
+}
+
+// Two is unused for Project Euler problems.
+func (e Exercise) Two(input string) (any, error) {
+	return nil, fmt.Errorf("project euler problems have a single part")
+}
