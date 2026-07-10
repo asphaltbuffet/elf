@@ -143,3 +143,75 @@ func TestKindAt(t *testing.T) {
 		assert.Empty(t, kind)
 	})
 }
+
+func TestLoadInfo_ProblemIgnoresDefaultedInputOverride(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	fs := afero.NewMemMapFs()
+	require.NoError(t, afero.WriteFile(fs, "euler/1/info.json",
+		[]byte(`{"kind":"euler","number":1,"title":"T","data":{"inputFile":""}}`), 0o600))
+
+	// customInput is the CLI's default filename; it must NOT override a Problem's empty input.
+	ex := &Exercise{Path: "euler/1", customInput: "input.txt"}
+	require.NoError(t, ex.loadInfo(fs, logger))
+	assert.Empty(
+		t,
+		ex.Data.InputFileName,
+		"problem with no declared input must stay empty despite defaulted customInput",
+	)
+}
+
+func TestLoadInfo_ProblemWithDeclaredInputHonorsOverride(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	fs := afero.NewMemMapFs()
+	require.NoError(t, afero.WriteFile(fs, "euler/2/info.json",
+		[]byte(`{"kind":"euler","number":2,"title":"T","data":{"inputFile":"data.txt"}}`), 0o600))
+
+	ex := &Exercise{Path: "euler/2", customInput: "other.txt"}
+	require.NoError(t, ex.loadInfo(fs, logger))
+	assert.Equal(
+		t,
+		"other.txt",
+		ex.Data.InputFileName,
+		"a problem that declares an input still honors an explicit override",
+	)
+}
+
+func TestReadInput_EmptyFileNameReturnsEmptyNoError(t *testing.T) {
+	fs := afero.NewMemMapFs()
+
+	ex := &Exercise{Path: "euler/1", Data: &Data{InputFileName: ""}}
+
+	got, err := ex.readInput(fs)
+
+	require.NoError(t, err)
+	assert.Empty(t, got, "a Problem with no declared input file must read as empty, not error")
+}
+
+func TestReadInput_DeclaredFileNameIsRead(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	require.NoError(t, afero.WriteFile(fs, "exercises/2015/01-test/input.txt", []byte("puzzle input"), 0o600))
+
+	ex := &Exercise{Path: "exercises/2015/01-test", Data: &Data{InputFileName: "input.txt"}}
+
+	got, err := ex.readInput(fs)
+
+	require.NoError(t, err)
+	assert.Equal(t, "puzzle input", got)
+}
+
+func TestLoadInfo_PuzzleHonorsCustomInputOverride(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	fs := afero.NewMemMapFs()
+	require.NoError(t, afero.WriteFile(
+		fs,
+		"exercises/2015/01-test/info.json",
+		[]byte(
+			`{"kind":"aoc","title":"Test","year":2015,"day":1,"url":"https://example.com","data":{"inputFile":"input.txt"}}`,
+		),
+		0o600,
+	))
+
+	ex := &Exercise{Path: "exercises/2015/01-test", customInput: "custom.txt"}
+	require.NoError(t, ex.loadInfo(fs, logger))
+	assert.Equal(t, "custom.txt", ex.Data.InputFileName, "AoC puzzle customInput override must still apply")
+}

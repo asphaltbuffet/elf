@@ -136,7 +136,12 @@ func (e *Exercise) loadInfo(fs afero.Fs, logger *slog.Logger) error {
 		return fmt.Errorf("%w: %w", ErrLoadInfo, ErrInvalidData)
 	}
 
-	if e.customInput != "" {
+	// A Project Euler Problem may legitimately declare no input file. Don't let a
+	// caller's *defaulted* input filename (the CLI always supplies one) override
+	// that intentional emptiness — otherwise every Problem solve fails trying to
+	// read a nonexistent input.txt. A Problem that DOES declare an input file
+	// (Data.InputFileName already set from info.json) still honors the override.
+	if e.customInput != "" && (e.Kind != KindProblem || e.Data.InputFileName != "") {
 		e.Data.InputFileName = e.customInput
 	}
 
@@ -226,7 +231,15 @@ func (e *Exercise) GetImplementations(fs afero.Fs) ([]string, error) {
 }
 
 // readInput reads the exercise input file from fs.
+//
+// A Project Euler Problem may declare no input file at all (Data.InputFileName
+// == ""); in that case there is nothing to read, so this returns an empty
+// string with no error rather than trying to read the exercise directory itself.
 func (e *Exercise) readInput(fs afero.Fs) (string, error) {
+	if e.Data.InputFileName == "" {
+		return "", nil
+	}
+
 	inputFile := filepath.Join(e.Path, e.Data.InputFileName)
 
 	data, err := afero.ReadFile(fs, inputFile)

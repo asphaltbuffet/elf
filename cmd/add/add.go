@@ -71,6 +71,11 @@ func eulerCmd() *cobra.Command {
 	c.Flags().StringVarP(&language, "lang", "l", "", "solution language")
 	c.Flags().StringVarP(&title, "title", "t", "", "problem title")
 
+	// A Project Euler problem's title is user-supplied and mandatory (there is no
+	// page to scrape it from). Mark it required so cobra surfaces a clean error
+	// rather than the domain rejecting an empty title deep in NewProblemAdder.
+	_ = c.MarkFlagRequired("title")
+
 	return c
 }
 

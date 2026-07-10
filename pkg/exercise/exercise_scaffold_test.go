@@ -168,4 +168,7 @@ func TestScaffold_ProblemSkipsInputAndUsesEulerStub(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, string(body), "package euler42")
 	assert.NotContains(t, string(body), "advent-of-code")
+
+	// the Go stub includes a Vis stub to satisfy elf's shared runner harness
+	assert.Contains(t, string(body), "func (e Exercise) Vis(")
 }
