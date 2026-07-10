@@ -70,8 +70,9 @@ func (e *Exercise) runTests(
 ) ([]tasks.Result, error) {
 	var testTasks []testTask
 
-	testTasks = append(testTasks, makeTestTasks(protocol.PartOne, e.Data.TestCases.One)...)
-	testTasks = append(testTasks, makeTestTasks(protocol.PartTwo, e.Data.TestCases.Two)...)
+	for _, part := range e.declaredParts() {
+		testTasks = append(testTasks, makeTestTasks(part, e.testCasesFor(part))...)
+	}
 
 	// Announce the full task list up front so a renderer can show pending rows.
 	if cb != nil {
@@ -116,6 +117,16 @@ func (e *Exercise) runTests(
 	}
 
 	return results, nil
+}
+
+// testCasesFor returns the test cases for the given part. declaredParts only
+// ever yields PartOne or PartTwo, so PartTwo is the sole special case.
+func (e *Exercise) testCasesFor(part protocol.Part) []*Test {
+	if part == protocol.PartTwo {
+		return e.Data.TestCases.Two
+	}
+
+	return e.Data.TestCases.One
 }
 
 func makeTestTasks(p protocol.Part, tests []*Test) []testTask {
