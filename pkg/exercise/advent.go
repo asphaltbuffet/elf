@@ -96,7 +96,19 @@ func (e *Exercise) loadInfo(fs afero.Fs, logger *slog.Logger) error {
 		return fmt.Errorf("%w: %w", ErrLoadInfo, err)
 	}
 
-	if e.Day == 0 || e.Year == 0 || e.Title == "" || e.URL == "" {
+	if e.Kind == "" {
+		e.Kind = KindPuzzle
+	}
+
+	var incomplete bool
+	switch e.Kind {
+	case KindProblem:
+		incomplete = e.Number == 0 || e.Title == ""
+	default: // KindPuzzle
+		incomplete = e.Day == 0 || e.Year == 0 || e.Title == "" || e.URL == ""
+	}
+
+	if incomplete {
 		logger.Error("incomplete info data", slog.Any("data", e.LogValue()))
 		return fmt.Errorf("%w: %w", ErrLoadInfo, ErrInvalidData)
 	}

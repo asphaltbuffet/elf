@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"testing"
 
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -77,5 +78,44 @@ func TestLoad(t *testing.T) {
 		_, err := Load("exercises/2015/01-doesNotExist", "go", "", testFs, logger)
 
 		require.Error(t, err)
+	})
+}
+
+func TestLoadInfo_PerKind(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	t.Run("valid problem info loads", func(t *testing.T) {
+		fs := afero.NewMemMapFs()
+		require.NoError(t, afero.WriteFile(fs, "euler/42/info.json",
+			[]byte(`{"kind":"euler","number":42,"title":"Test","data":{"inputFile":"input.txt"}}`), 0o600))
+
+		ex := &Exercise{Path: "euler/42"}
+		err := ex.loadInfo(fs, logger)
+
+		require.NoError(t, err)
+		assert.Equal(t, KindProblem, ex.Kind)
+		assert.Equal(t, 42, ex.Number)
+	})
+
+	t.Run("problem missing number is rejected", func(t *testing.T) {
+		fs := afero.NewMemMapFs()
+		require.NoError(t, afero.WriteFile(fs, "euler/0/info.json",
+			[]byte(`{"kind":"euler","title":"Test","data":{}}`), 0o600))
+
+		ex := &Exercise{Path: "euler/0"}
+		err := ex.loadInfo(fs, logger)
+
+		require.ErrorIs(t, err, ErrInvalidData)
+	})
+
+	t.Run("puzzle still requires year day url", func(t *testing.T) {
+		fs := afero.NewMemMapFs()
+		require.NoError(t, afero.WriteFile(fs, "exercises/x/info.json",
+			[]byte(`{"kind":"aoc","title":"Test","year":2015,"data":{}}`), 0o600))
+
+		ex := &Exercise{Path: "exercises/x"}
+		err := ex.loadInfo(fs, logger)
+
+		require.ErrorIs(t, err, ErrInvalidData)
 	})
 }
