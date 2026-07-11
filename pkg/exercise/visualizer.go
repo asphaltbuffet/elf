@@ -2,7 +2,6 @@ package exercise
 
 import (
 	"context"
-	"errors"
 	"log/slog"
 
 	"github.com/lmittmann/tint"
@@ -52,40 +51,17 @@ func (e *Exercise) Visualize(
 		cb(e.metaEvent(runner))
 	}
 
-	t := &plannedTask{
-		task: &protocol.Task{
-			TaskID:    tasks.MakeTaskID(tasks.Visualize, protocol.Visualize, 0),
-			Part:      protocol.Visualize,
-			Input:     e.Data.InputData,
-			OutputDir: outdir,
+	plan := []plannedTask{
+		{
+			task: &protocol.Task{
+				TaskID:    tasks.MakeTaskID(tasks.Visualize, protocol.Visualize, 0),
+				Part:      protocol.Visualize,
+				Input:     e.Data.InputData,
+				OutputDir: outdir,
+			},
+			expected: "",
 		},
-		expected: "",
 	}
 
-	taskType, part, sub := tasks.ParseTaskID(t.task.TaskID)
-
-	if cb != nil {
-		cb(tasks.PlannedEvent(t.task.TaskID, taskType, part, sub, ""))
-		cb(tasks.StartedEvent(t.task.TaskID, taskType, part, sub, ""))
-	}
-
-	result, err := runWithTimeout(ctx, runner, t.task, e.taskTimeout)
-	if errors.Is(err, errTaskTimeout) {
-		r := timeoutResult(t.task.TaskID)
-		if cb != nil {
-			cb(tasks.FinishedEvent(r, ""))
-		}
-
-		return []tasks.Result{r}, nil
-	} else if err != nil {
-		logger.ErrorContext(ctx, "running visualize task", tint.Err(err))
-		return nil, err
-	}
-
-	r := buildResult(result, t.expected)
-	if cb != nil {
-		cb(tasks.FinishedEvent(r, ""))
-	}
-
-	return []tasks.Result{r}, nil
+	return e.runTaskList(ctx, runner, plan, cb)
 }
