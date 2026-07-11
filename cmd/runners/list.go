@@ -37,7 +37,10 @@ func runListCmd(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("loading configuration: %w", err)
 	}
 
-	descs := cfg.GetRunners()
+	descs, err := cfg.GetRunners()
+	if err != nil {
+		return fmt.Errorf("reading runner configuration: %w", err)
+	}
 
 	if len(descs) == 0 {
 		cmd.Println("No runners configured.")

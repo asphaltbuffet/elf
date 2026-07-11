@@ -266,10 +266,14 @@ func (c Config) Viper() *viper.Viper {
 }
 
 // GetRunners returns the list of runner descriptors from config.
-func (c Config) GetRunners() []runners.RunnerDescriptor {
+//
+// A missing [[runner]] table is a valid empty state, returning an empty slice
+// and no error. A malformed [[runner]] block returns an actionable decode error
+// rather than silently falling back to "no runners" (see docs/adr/0006).
+func (c Config) GetRunners() ([]runners.RunnerDescriptor, error) {
 	raw := c.viper.Get(string(RunnersKey))
 	if raw == nil {
-		return nil
+		return []runners.RunnerDescriptor{}, nil
 	}
 
 	var descs []runners.RunnerDescriptor
@@ -279,9 +283,13 @@ func (c Config) GetRunners() []runners.RunnerDescriptor {
 		WeaklyTypedInput: true,
 		TagName:          "mapstructure",
 	})
-	if err != nil || decoder.Decode(raw) != nil {
-		return nil
+	if err != nil {
+		return nil, fmt.Errorf("building runner decoder: %w", err)
 	}
 
-	return descs
+	if decErr := decoder.Decode(raw); decErr != nil {
+		return nil, fmt.Errorf("decoding [[runner]] config: %w", decErr)
+	}
+
+	return descs, nil
 }

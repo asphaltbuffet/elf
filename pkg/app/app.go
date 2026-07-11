@@ -28,9 +28,17 @@ type App struct {
 }
 
 // RegisterRunners populates runners.Available from the given config.
-// Must be called before any exercise operation.
-func RegisterRunners(cfg config.Config) {
-	runners.RegisterFromDescriptors(cfg.GetRunners())
+// Must be called before any exercise operation. A malformed [[runner]] block
+// surfaces as an error here rather than being silently dropped (see docs/adr/0006).
+func RegisterRunners(cfg config.Config) error {
+	descs, err := cfg.GetRunners()
+	if err != nil {
+		return err
+	}
+
+	runners.RegisterFromDescriptors(descs)
+
+	return nil
 }
 
 // New constructs an App from a config.Config, extracting FS, Logger, and display values.

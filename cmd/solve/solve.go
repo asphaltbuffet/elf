@@ -67,7 +67,9 @@ func runSolveCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	appPkg.RegisterRunners(cfg)
+	if err = appPkg.RegisterRunners(cfg); err != nil {
+		return err
+	}
 
 	dir, err := filepath.Abs(args[0])
 	if err != nil {
