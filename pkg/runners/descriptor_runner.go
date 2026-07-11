@@ -272,7 +272,7 @@ func (r *descriptorRunner) Cleanup() error {
 		}
 	}
 
-	if r.binaryFile != "" && r.desc.Open.Binary != "" {
+	if r.binaryFile != "" {
 		bErr = os.Remove(r.binaryFile)
 		if errors.Is(bErr, os.ErrNotExist) {
 			bErr = nil
@@ -290,13 +290,25 @@ func (r *descriptorRunner) Cleanup() error {
 	}
 
 	if r.desc.Prepare.WrapperSubdir != "" {
-		dErr := os.Remove(filepath.Join(r.meta.LangDir(), r.desc.Prepare.WrapperSubdir))
-		if dErr != nil && !errors.Is(dErr, os.ErrNotExist) && !errors.Is(dErr, syscall.ENOTEMPTY) {
+		if dErr := removeIfEmpty(filepath.Join(r.meta.LangDir(), r.desc.Prepare.WrapperSubdir)); dErr != nil {
 			return dErr
 		}
 	}
 
 	return r.removeCleanupPaths()
+}
+
+// removeIfEmpty removes dir, tolerating that it is absent (already gone) or still
+// contains files (leftover user content). [os.Remove] on a non-empty directory returns
+// ENOTEMPTY, which is the emptiness test itself — there is no stat pre-check, which
+// avoids both a redundant syscall and a TOCTOU race.
+func removeIfEmpty(dir string) error {
+	err := os.Remove(dir)
+	if errors.Is(err, os.ErrNotExist) || errors.Is(err, syscall.ENOTEMPTY) {
+		return nil
+	}
+
+	return err
 }
 
 // removeCleanupPaths removes the descriptor's declared cleanup_paths (e.g. build-output
