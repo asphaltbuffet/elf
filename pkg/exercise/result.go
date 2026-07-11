@@ -14,7 +14,7 @@ import (
 	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
-type testTask struct {
+type plannedTask struct {
 	task     *protocol.Task
 	expected string
 }

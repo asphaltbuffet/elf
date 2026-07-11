@@ -52,7 +52,7 @@ func (e *Exercise) Visualize(
 		cb(e.metaEvent(runner))
 	}
 
-	t := &testTask{
+	t := &plannedTask{
 		task: &protocol.Task{
 			TaskID:    tasks.MakeTaskID(tasks.Visualize, protocol.Visualize, 0),
 			Part:      protocol.Visualize,

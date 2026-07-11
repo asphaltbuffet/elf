@@ -68,7 +68,7 @@ func (e *Exercise) runTests(
 	runner runners.Runner,
 	cb func(tasks.Event),
 ) ([]tasks.Result, error) {
-	var testTasks []testTask
+	var testTasks []plannedTask
 
 	for _, part := range e.declaredParts() {
 		testTasks = append(testTasks, makeTestTasks(part, e.testCasesFor(part))...)
@@ -129,11 +129,11 @@ func (e *Exercise) testCasesFor(part protocol.Part) []*Test {
 	return e.Data.TestCases.One
 }
 
-func makeTestTasks(p protocol.Part, tests []*Test) []testTask {
-	var testTasks []testTask
+func makeTestTasks(p protocol.Part, tests []*Test) []plannedTask {
+	var testTasks []plannedTask
 
 	for i, t := range tests {
-		testTasks = append(testTasks, testTask{
+		testTasks = append(testTasks, plannedTask{
 			task: &protocol.Task{
 				TaskID:    tasks.MakeTaskID(tasks.Test, p, i),
 				Part:      p,

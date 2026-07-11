@@ -82,7 +82,7 @@ func (e *Exercise) runMainTasks(
 	runner runners.Runner,
 	cb func(tasks.Event),
 ) ([]tasks.Result, error) {
-	var solveTasks []testTask
+	var solveTasks []plannedTask
 
 	for _, part := range e.declaredParts() {
 		solveTasks = append(solveTasks, makeMainTasks(part, e.Data)...)
@@ -133,8 +133,8 @@ func (e *Exercise) runMainTasks(
 	return results, nil
 }
 
-func makeMainTasks(part protocol.Part, data *Data) []testTask {
-	var solveTasks []testTask
+func makeMainTasks(part protocol.Part, data *Data) []plannedTask {
+	var solveTasks []plannedTask
 
 	var expected string
 
@@ -144,7 +144,7 @@ func makeMainTasks(part protocol.Part, data *Data) []testTask {
 		expected = data.Answers.Two
 	}
 
-	solveTasks = append(solveTasks, testTask{
+	solveTasks = append(solveTasks, plannedTask{
 		task: &protocol.Task{
 			TaskID:    tasks.MakeTaskID(tasks.Solve, part),
 			Part:      part,
