@@ -141,7 +141,33 @@ These describe the *action elf took*, not the file's prior state. Template files
 language solution stub) are never replaced under the current policy, so they only ever report Added
 or Skipped.
 
+`encrypt` and `decrypt` report per-file in the same vocabulary. `encrypt` writes each `.age`
+sibling: **Added** when none existed, **Replaced** when refreshing an existing one (the plaintext is
+the source of truth and may have changed since the last encrypt). `decrypt` writes plaintext from an
+`.age`: **Added** on a fresh clone that has only ciphertext, **Skipped** when plaintext already
+exists (elf does not clobber the working copy; `--force` makes it **Replaced**). Neither verb ever
+removes the other side — plaintext and ciphertext coexist.
+
 _Avoid_: status, already-existed, overwritten, created
+
+
+## Solution Set
+
+The files of an [[Exercise]] that reveal its answer: the `info.json` (which carries the expected
+answers) and every language subdirectory (`go/`, `py/`, …, the solution source). It is
+[[Kind]]-agnostic — a [[Puzzle]] and a [[Problem]] both have one — and it deliberately **excludes**
+`input.txt` (already gitignored; not the user's answer) and `README.md` (not sensitive). This is
+the set `encrypt` encrypts (to per-file `.age` siblings) and `decrypt` restores. elf treats the
+`.age` files as **derived artifacts** and never removes the plaintext: the user commits the `.age`
+files and gitignores the plaintext, so a public repository carries the ciphertext without publishing
+the answer — satisfying Project Euler's "do not share solutions" rule (the motivating case, though
+the concept is not Euler-specific). Because plaintext stays authoritative on the working machine, a
+mid-encrypt crash can never lose data; `decrypt` exists to reconstruct plaintext on a fresh clone
+that has only the committed `.age` files. See [ADR-0019](docs/adr/0019-encrypt-leaves-plaintext-in-place.md)
+for the artifact model and [ADR-0020](docs/adr/0020-ssh-keys-as-age-recipients.md) for the SSH-key
+recipient/identity model.
+
+_Avoid_: solution files, secrets, encrypted files, sealed files
 
 
 ## Runner
