@@ -19,14 +19,21 @@
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.flake-utils.follows = "flake-utils";
     };
+    # NUR provides goreleaser-pro (the unfree pro build used in CI); the free
+    # nixpkgs goreleaser would diverge from CI's config parsing/features.
+    nur.url = "github:nix-community/NUR";
   };
 
-  outputs = { self, nixpkgs, flake-utils, gomod2nix }:
+  outputs = { self, nixpkgs, flake-utils, gomod2nix, nur }:
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = import nixpkgs {
           inherit system;
-          overlays = [ gomod2nix.overlays.default ];
+          overlays = [ gomod2nix.overlays.default nur.overlays.default ];
+          # goreleaser-pro is unfree; allow just that package (used in the devShell
+          # to match CI). Scoped predicate rather than a blanket allowUnfree.
+          config.allowUnfreePredicate = pkg:
+            builtins.elem (pkgs.lib.getName pkg) [ "goreleaser-pro" ];
         };
         lib = pkgs.lib;
 
@@ -120,6 +127,7 @@
             gopls
             nixd
             gh
+            pkgs.nur.repos.goreleaser.goreleaser-pro
             gomod2nix.packages.${system}.default
           ];
 
