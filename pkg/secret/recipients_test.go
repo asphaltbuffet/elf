@@ -31,6 +31,7 @@ func TestParseRecipients_Empty(t *testing.T) {
 func TestParseRecipients_OneInvalidFailsAll(t *testing.T) {
 	t.Parallel()
 
-	_, err := secret.ParseRecipients([]string{testPubKey, "not-a-key"})
+	rs, err := secret.ParseRecipients([]string{testPubKey, "not-a-key"})
 	require.Error(t, err)
+	assert.Nil(t, rs)
 }
