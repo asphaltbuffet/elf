@@ -247,6 +247,12 @@ func (c Config) GetEulerDir() string {
 	return c.viper.GetString(string(EulerDirKey))
 }
 
+// GetRecipients returns the SSH public keys configured as age encryption
+// recipients (encrypt.recipients). Empty when unset.
+func (c Config) GetRecipients() []string {
+	return c.viper.GetStringSlice(string(RecipientsKey))
+}
+
 // GetInputFilename returns the configured default puzzle input file name.
 func (c Config) GetInputFilename() string {
 	return c.viper.GetString(string(InputFileKey))

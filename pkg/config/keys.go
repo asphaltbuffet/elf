@@ -22,6 +22,10 @@ const (
 
 	EulerDirKey Key = "euler.dir" // Configuration key for the Project Euler problem directory.
 
+	// Encryption configuration keys.
+
+	RecipientsKey Key = "encrypt.recipients" // Configuration key for the SSH public keys used as age encryption recipients.
+
 	// Runner configuration keys.
 
 	RunnersKey Key = "runner" // Configuration key for the [[runner]] table array.
