@@ -1,5 +1,0 @@
-kind: Fixed
-body: Go runner shares protocol strategy with other runners
-time: 2026-07-10T10:01:42.200846969-04:00
-custom:
-    Issue: '#178'
