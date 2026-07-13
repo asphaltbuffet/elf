@@ -217,10 +217,19 @@ _Avoid_: exercise context, runner context
 ## Runner Token
 
 A placeholder (e.g. `{year}`, `{lang_dir}`, `{wrapper_file}`) substituted by elf into
-descriptor fields at runtime. The fixed vocabulary is: `{exercise_dir}`, `{lang_dir}`,
-`{wrapper_file}` (only valid when `template_path` is set — extension derived from it),
+descriptor fields at runtime. The fixed vocabulary is: `{exercise_dir}`, `{rel_exercise_dir}`,
+`{lang_dir}`, `{wrapper_file}` (only valid when `template_path` is set — extension derived from it),
 `{binary_file}`, `{year}`, `{day}`, `{title}`. User-defined values go in `template_vars`, not
 new tokens.
+
+`{rel_exercise_dir}` is the exercise directory relative to the nearest ancestor `go.mod` (the
+exercise path resolved to absolute, then made relative to the enclosing Go module root). Unlike
+`{exercise_dir}` — which is the CLI-supplied path verbatim, so `elf solve .` yields `.` — it is
+invariant to the working directory and to how the path is spelled on the command line, giving a
+stable segment for a Go import path across both [[Kind]]s (`exercises/2019/12-foo`, `euler/42`). It
+is **Go-specific by design**: only the Go runner needs a module-relative import path (Rust and C#
+pin crate/assembly names instead), so the anchor is `go.mod` rather than a language-neutral
+workspace root.
 
 _Avoid_: template variable, placeholder, interpolation variable
 
