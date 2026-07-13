@@ -416,3 +416,104 @@ func TestDescriptorRunner_Run_PanicInExerciseDoesNotHang(t *testing.T) {
 		require.Fail(t, "Run hung after the exercise subprocess panicked and exited (issue #48 regression)")
 	}
 }
+
+func TestPrepare_ResolvesRelExerciseDirToken(t *testing.T) {
+	root := t.TempDir()
+	writeGoMod(t, root)
+	exDir := filepath.Join(root, "exercises", "2015", "01-foo")
+	require.NoError(t, os.MkdirAll(exDir, 0o755))
+
+	tmplPath := filepath.Join(root, "go.tmpl")
+	require.NoError(t, os.WriteFile(tmplPath, []byte(`import {{ index . "import_path" }}`), 0o600))
+
+	desc := RunnerDescriptor{
+		Key: "go", Name: "Go",
+		Prepare: PrepareSpec{
+			TemplatePath:  tmplPath,
+			WrapperExt:    ".go",
+			WrapperSubdir: "cmd",
+			TemplateVars:  map[string]string{"import_path": "mod/{rel_exercise_dir}/go"},
+		},
+	}
+	meta := ExerciseMeta{Year: 2015, Day: 1, Title: "foo", Dir: exDir, Key: "go"}
+	r := desc.ToCreator()(meta).(*descriptorRunner)
+
+	require.NoError(t, r.Prepare(context.Background()))
+
+	got, err := os.ReadFile(filepath.Join(exDir, "go", "cmd", "runtime-wrapper.go"))
+	require.NoError(t, err)
+	assert.Contains(t, string(got), "import mod/exercises/2015/01-foo/go")
+}
+
+func TestPrepare_RelExerciseDirNoGoMod(t *testing.T) {
+	root := t.TempDir() // no go.mod
+	exDir := filepath.Join(root, "exercises", "2015", "01-foo")
+	require.NoError(t, os.MkdirAll(exDir, 0o755))
+
+	tmplPath := filepath.Join(root, "go.tmpl")
+	require.NoError(t, os.WriteFile(tmplPath, []byte(`import {{ index . "import_path" }}`), 0o600))
+
+	desc := RunnerDescriptor{
+		Key: "go", Name: "Go",
+		Prepare: PrepareSpec{
+			TemplatePath: tmplPath, WrapperExt: ".go", WrapperSubdir: "cmd",
+			TemplateVars: map[string]string{"import_path": "mod/{rel_exercise_dir}/go"},
+		},
+	}
+	meta := ExerciseMeta{Year: 2015, Day: 1, Title: "foo", Dir: exDir, Key: "go"}
+	r := desc.ToCreator()(meta).(*descriptorRunner)
+
+	err := r.Prepare(context.Background())
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no go.mod found")
+}
+
+func TestPrepare_NoRelDirReference_SkipsResolution(t *testing.T) {
+	// No go.mod anywhere, but the descriptor never references the token, so
+	// Prepare must NOT walk for go.mod and must NOT fail (non-Go runner case).
+	root := t.TempDir()
+	exDir := filepath.Join(root, "exercises", "2015", "01-foo")
+	require.NoError(t, os.MkdirAll(exDir, 0o755))
+
+	tmplPath := filepath.Join(root, "py.tmpl")
+	require.NoError(t, os.WriteFile(tmplPath, []byte(`print("hi {{ index . "x" }}")`), 0o600))
+
+	desc := RunnerDescriptor{
+		Key: "py", Name: "Python",
+		Prepare: PrepareSpec{
+			TemplatePath: tmplPath, WrapperExt: ".py",
+			TemplateVars: map[string]string{"x": "{title}"},
+		},
+	}
+	meta := ExerciseMeta{Year: 2015, Day: 1, Title: "foo", Dir: exDir, Key: "py"}
+	r := desc.ToCreator()(meta).(*descriptorRunner)
+
+	assert.NoError(t, r.Prepare(context.Background()))
+}
+
+func TestPrepare_RelExerciseDirInBuildCommand(t *testing.T) {
+	root := t.TempDir()
+	writeGoMod(t, root)
+	exDir := filepath.Join(root, "exercises", "2015", "01-foo")
+	require.NoError(t, os.MkdirAll(exDir, 0o755))
+
+	outFile := filepath.Join(root, "out.txt")
+	desc := RunnerDescriptor{
+		Key: "go", Name: "Go",
+		Prepare: PrepareSpec{
+			// No template; the token appears only in a build command arg.
+			BuildCommands: [][]string{
+				{"sh", "-c", "printf '%s' '{rel_exercise_dir}' > " + outFile},
+			},
+		},
+	}
+	meta := ExerciseMeta{Year: 2015, Day: 1, Title: "foo", Dir: exDir, Key: "go"}
+	r := desc.ToCreator()(meta).(*descriptorRunner)
+
+	require.NoError(t, r.Prepare(context.Background()))
+
+	got, err := os.ReadFile(outFile)
+	require.NoError(t, err)
+	assert.Equal(t, filepath.Join("exercises", "2015", "01-foo"), string(got))
+}
