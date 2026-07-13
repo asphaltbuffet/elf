@@ -66,6 +66,8 @@ func (r *descriptorRunner) descriptorReferencesRelDir() bool {
 		}
 	}
 
+	// A read failure here is intentionally ignored: writeWrapper reads the same
+	// template and returns its error, so the failure still surfaces loudly.
 	if r.desc.Prepare.TemplatePath != "" {
 		if b, err := os.ReadFile(r.desc.Prepare.TemplatePath); err == nil &&
 			strings.Contains(string(b), relExerciseDirToken) {

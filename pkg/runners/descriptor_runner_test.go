@@ -491,3 +491,29 @@ func TestPrepare_NoRelDirReference_SkipsResolution(t *testing.T) {
 
 	assert.NoError(t, r.Prepare(context.Background()))
 }
+
+func TestPrepare_RelExerciseDirInBuildCommand(t *testing.T) {
+	root := t.TempDir()
+	writeGoMod(t, root)
+	exDir := filepath.Join(root, "exercises", "2015", "01-foo")
+	require.NoError(t, os.MkdirAll(exDir, 0o755))
+
+	outFile := filepath.Join(root, "out.txt")
+	desc := RunnerDescriptor{
+		Key: "go", Name: "Go",
+		Prepare: PrepareSpec{
+			// No template; the token appears only in a build command arg.
+			BuildCommands: [][]string{
+				{"sh", "-c", "printf '%s' '{rel_exercise_dir}' > " + outFile},
+			},
+		},
+	}
+	meta := ExerciseMeta{Year: 2015, Day: 1, Title: "foo", Dir: exDir, Key: "go"}
+	r := desc.ToCreator()(meta).(*descriptorRunner)
+
+	require.NoError(t, r.Prepare(context.Background()))
+
+	got, err := os.ReadFile(outFile)
+	require.NoError(t, err)
+	assert.Equal(t, filepath.Join("exercises", "2015", "01-foo"), string(got))
+}
