@@ -1,5 +1,0 @@
-kind: Deprecated
-body: Moved `download` functionality to `add` command
-time: 2026-07-10T09:58:09.24035477-04:00
-custom:
-    Issue: ""
