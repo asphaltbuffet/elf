@@ -96,7 +96,9 @@ func runEulerCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	appPkg.RegisterRunners(cfg)
+	if err = appPkg.RegisterRunners(cfg); err != nil {
+		return err
+	}
 
 	report, path, err := appPkg.New(cfg).AddProblem(number, language, title)
 	if err != nil {
@@ -123,7 +125,9 @@ func runAoCCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	appPkg.RegisterRunners(cfg)
+	if err = appPkg.RegisterRunners(cfg); err != nil {
+		return err
+	}
 
 	forced := &exercise.Overwrites{Input: forceInput}
 

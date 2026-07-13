@@ -14,7 +14,7 @@ import (
 	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
 
-type testTask struct {
+type plannedTask struct {
 	task     *protocol.Task
 	expected string
 }
@@ -142,4 +142,61 @@ func runWithTimeout(
 	}
 
 	return result, err
+}
+
+// runTaskList runs an ordered list of tasks against a prepared, open runner,
+// emitting the Planned/Started/Finished event stream a renderer consumes. It
+// owns the timeout-and-restart policy: a task that exceeds e.taskTimeout yields
+// a timeoutResult, the runner is restarted, and the loop continues with the
+// next task. Any other run error aborts the list. This is the single loop
+// shared by Solve (main tasks), Test, and Visualize.
+func (e *Exercise) runTaskList(
+	ctx context.Context,
+	runner runners.Runner,
+	plan []plannedTask,
+	cb func(tasks.Event),
+) ([]tasks.Result, error) {
+	// Announce the full task list up front so a renderer can show pending rows.
+	if cb != nil {
+		for _, t := range plan {
+			tt, part, sub := tasks.ParseTaskID(t.task.TaskID)
+			cb(tasks.PlannedEvent(t.task.TaskID, tt, part, sub, ""))
+		}
+	}
+
+	results := make([]tasks.Result, 0, len(plan))
+
+	for _, t := range plan {
+		if cb != nil {
+			tt, part, sub := tasks.ParseTaskID(t.task.TaskID)
+			cb(tasks.StartedEvent(t.task.TaskID, tt, part, sub, ""))
+		}
+
+		result, err := runWithTimeout(ctx, runner, t.task, e.taskTimeout)
+		if errors.Is(err, errTaskTimeout) {
+			r := timeoutResult(t.task.TaskID)
+			if cb != nil {
+				cb(tasks.FinishedEvent(r, ""))
+			}
+
+			results = append(results, r)
+
+			if restartErr := restartRunner(ctx, runner); restartErr != nil {
+				return nil, restartErr
+			}
+
+			continue
+		} else if err != nil {
+			return nil, err
+		}
+
+		r := buildResult(result, t.expected)
+		if cb != nil {
+			cb(tasks.FinishedEvent(r, ""))
+		}
+
+		results = append(results, r)
+	}
+
+	return results, nil
 }

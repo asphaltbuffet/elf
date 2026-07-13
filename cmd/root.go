@@ -11,7 +11,9 @@ import (
 	"github.com/asphaltbuffet/elf/cmd/analyze"
 	"github.com/asphaltbuffet/elf/cmd/benchmark"
 	"github.com/asphaltbuffet/elf/cmd/config"
+	"github.com/asphaltbuffet/elf/cmd/decrypt"
 	"github.com/asphaltbuffet/elf/cmd/download"
+	"github.com/asphaltbuffet/elf/cmd/encrypt"
 	"github.com/asphaltbuffet/elf/cmd/man"
 	runnerspkg "github.com/asphaltbuffet/elf/cmd/runners"
 	"github.com/asphaltbuffet/elf/cmd/solve"
@@ -50,7 +52,9 @@ func GetRootCommand() *cobra.Command {
 		rootCmd.AddCommand(analyze.GetAnalyzeCmd())
 		rootCmd.AddCommand(benchmark.GetBenchmarkCmd())
 		rootCmd.AddCommand(config.GetConfigCmd())
+		rootCmd.AddCommand(decrypt.GetDecryptCmd())
 		rootCmd.AddCommand(download.GetDownloadCmd())
+		rootCmd.AddCommand(encrypt.GetEncryptCmd())
 		rootCmd.AddCommand(man.NewManCmd())
 		rootCmd.AddCommand(runnerspkg.GetRunnersCmd())
 		rootCmd.AddCommand(solve.GetSolveCmd())

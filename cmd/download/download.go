@@ -65,7 +65,9 @@ func runDownloadCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	appPkg.RegisterRunners(cfg)
+	if err = appPkg.RegisterRunners(cfg); err != nil {
+		return err
+	}
 
 	forced := &exercise.Overwrites{
 		Input: forceInput,

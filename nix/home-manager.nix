@@ -27,25 +27,31 @@
     // lib.optionalAttrs (cfg.settings.euler.dir != null) {
       euler = {dir = cfg.settings.euler.dir;};
     }
+    // lib.optionalAttrs (cfg.settings.encrypt.recipients != []) {
+      encrypt = {recipients = cfg.settings.encrypt.recipients;};
+    }
     // lib.optionalAttrs (cfg.settings.runners != []) {
-      runner = map (r:
-        {inherit (r) key name;}
-        // lib.optionalAttrs (r.prepare.template_path != null || r.prepare.template_vars != {} || r.prepare.build_commands != []) {
-          prepare =
-            {}
-            // lib.optionalAttrs (r.prepare.template_path != null) {template_path = r.prepare.template_path;}
-            // lib.optionalAttrs (r.prepare.template_vars != {}) {template_vars = r.prepare.template_vars;}
-            // lib.optionalAttrs (r.prepare.build_commands != []) {build_commands = r.prepare.build_commands;};
-        }
-        // lib.optionalAttrs (r.open.interpreter != null || r.open.args != [] || r.open.env != [] || r.open.binary != null) {
-          open =
-            {}
-            // lib.optionalAttrs (r.open.interpreter != null) {interpreter = r.open.interpreter;}
-            // lib.optionalAttrs (r.open.args != []) {args = r.open.args;}
-            // lib.optionalAttrs (r.open.env != []) {env = r.open.env;}
-            // lib.optionalAttrs (r.open.binary != null) {binary = r.open.binary;};
-        }
-      ) cfg.settings.runners;
+      runner =
+        map (
+          r:
+            {inherit (r) key name;}
+            // lib.optionalAttrs (r.prepare.template_path != null || r.prepare.template_vars != {} || r.prepare.build_commands != []) {
+              prepare =
+                {}
+                // lib.optionalAttrs (r.prepare.template_path != null) {template_path = r.prepare.template_path;}
+                // lib.optionalAttrs (r.prepare.template_vars != {}) {template_vars = r.prepare.template_vars;}
+                // lib.optionalAttrs (r.prepare.build_commands != []) {build_commands = r.prepare.build_commands;};
+            }
+            // lib.optionalAttrs (r.open.interpreter != null || r.open.args != [] || r.open.env != [] || r.open.binary != null) {
+              open =
+                {}
+                // lib.optionalAttrs (r.open.interpreter != null) {interpreter = r.open.interpreter;}
+                // lib.optionalAttrs (r.open.args != []) {args = r.open.args;}
+                // lib.optionalAttrs (r.open.env != []) {env = r.open.env;}
+                // lib.optionalAttrs (r.open.binary != null) {binary = r.open.binary;};
+            }
+        )
+        cfg.settings.runners;
     };
 in {
   options.programs.elf = {
@@ -122,6 +128,15 @@ in {
           type = lib.types.nullOr lib.types.str;
           default = "euler";
           description = "Directory for Project Euler problems (sibling of the AoC exercise directory).";
+        };
+      };
+
+      encrypt = {
+        recipients = lib.mkOption {
+          type = lib.types.listOf lib.types.str;
+          default = [];
+          description = "SSH public keys used as age encryption recipients (encrypt.recipients).";
+          example = ["ssh-ed25519 AAAA... you@host"];
         };
       };
 

@@ -219,3 +219,15 @@ func TestDefaultConfig(t *testing.T) {
 		assert.NotNil(t, got.GetFs(), "default fs should not be nil")
 	}
 }
+
+func TestConfig_GetRecipients(t *testing.T) {
+	t.Parallel()
+
+	cfg, err := NewConfig(WithFs(afero.NewMemMapFs()))
+	require.NoError(t, err)
+	cfg.Viper().Set(RecipientsKey.String(), []string{"ssh-ed25519 AAAA... a@b"})
+
+	got := cfg.GetRecipients()
+	require.Len(t, got, 1)
+	assert.Equal(t, "ssh-ed25519 AAAA... a@b", got[0])
+}

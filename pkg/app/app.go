@@ -6,6 +6,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/spf13/afero"
@@ -14,8 +16,13 @@ import (
 	"github.com/asphaltbuffet/elf/pkg/config"
 	"github.com/asphaltbuffet/elf/pkg/exercise"
 	"github.com/asphaltbuffet/elf/pkg/runners"
+	"github.com/asphaltbuffet/elf/pkg/secret"
 	"github.com/asphaltbuffet/elf/pkg/tasks"
 )
+
+// defaultIdentityRelPath is the conventional on-disk SSH private key used for
+// decryption when --identity is not given.
+const defaultIdentityRelPath = ".ssh/id_ed25519"
 
 // App holds shared infrastructure used across CLI commands and TUI screens.
 type App struct {
@@ -28,9 +35,17 @@ type App struct {
 }
 
 // RegisterRunners populates runners.Available from the given config.
-// Must be called before any exercise operation.
-func RegisterRunners(cfg config.Config) {
-	runners.RegisterFromDescriptors(cfg.GetRunners())
+// Must be called before any exercise operation. A malformed [[runner]] block
+// surfaces as an error here rather than being silently dropped (see docs/adr/0006).
+func RegisterRunners(cfg config.Config) error {
+	descs, err := cfg.GetRunners()
+	if err != nil {
+		return err
+	}
+
+	runners.RegisterFromDescriptors(descs)
+
+	return nil
 }
 
 // New constructs an App from a config.Config, extracting FS, Logger, and display values.
@@ -218,4 +233,58 @@ func (a *App) Analyze(dir, out string) (string, error) {
 	}
 
 	return az.Output, nil
+}
+
+// languageKeys returns the configured Runner Descriptor keys — the exercise
+// subdirectory names that hold solutions.
+func (a *App) languageKeys() ([]string, error) {
+	descs, err := a.cfg.GetRunners()
+	if err != nil {
+		return nil, fmt.Errorf("reading runners: %w", err)
+	}
+
+	keys := make([]string, 0, len(descs))
+	for _, d := range descs {
+		keys = append(keys, d.Key)
+	}
+
+	return keys, nil
+}
+
+// Encrypt seals the Solution Set of the exercise at exerciseDir to per-file
+// .age ciphertext, using the SSH public keys configured as recipients. The
+// App-level entry point for `elf encrypt`.
+func (a *App) Encrypt(exerciseDir string) (secret.Report, error) {
+	recipients, err := secret.ParseRecipients(a.cfg.GetRecipients())
+	if err != nil {
+		return nil, err
+	}
+
+	keys, err := a.languageKeys()
+	if err != nil {
+		return nil, err
+	}
+
+	return secret.Encrypt(a.FS, recipients, exerciseDir, keys)
+}
+
+// Decrypt restores the Solution Set plaintext of the exercise at exerciseDir
+// from its .age files. identityPath defaults to ~/.ssh/id_ed25519 when empty.
+// The App-level entry point for `elf decrypt`.
+func (a *App) Decrypt(exerciseDir, identityPath string, force bool) (secret.Report, error) {
+	if identityPath == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return nil, fmt.Errorf("resolving home directory for default identity: %w", err)
+		}
+
+		identityPath = filepath.Join(home, defaultIdentityRelPath)
+	}
+
+	identity, err := secret.LoadIdentity(a.FS, identityPath)
+	if err != nil {
+		return nil, err
+	}
+
+	return secret.Decrypt(a.FS, identity, exerciseDir, force)
 }

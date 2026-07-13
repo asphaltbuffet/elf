@@ -68,55 +68,13 @@ func (e *Exercise) runTests(
 	runner runners.Runner,
 	cb func(tasks.Event),
 ) ([]tasks.Result, error) {
-	var testTasks []testTask
+	var plan []plannedTask
 
 	for _, part := range e.declaredParts() {
-		testTasks = append(testTasks, makeTestTasks(part, e.testCasesFor(part))...)
+		plan = append(plan, makeTestTasks(part, e.testCasesFor(part))...)
 	}
 
-	// Announce the full task list up front so a renderer can show pending rows.
-	if cb != nil {
-		for _, t := range testTasks {
-			tt, part, sub := tasks.ParseTaskID(t.task.TaskID)
-			cb(tasks.PlannedEvent(t.task.TaskID, tt, part, sub, ""))
-		}
-	}
-
-	results := make([]tasks.Result, 0, len(testTasks))
-
-	for _, t := range testTasks {
-		if cb != nil {
-			tt, part, sub := tasks.ParseTaskID(t.task.TaskID)
-			cb(tasks.StartedEvent(t.task.TaskID, tt, part, sub, ""))
-		}
-
-		result, err := runWithTimeout(ctx, runner, t.task, e.taskTimeout)
-		if errors.Is(err, errTaskTimeout) {
-			r := timeoutResult(t.task.TaskID)
-			if cb != nil {
-				cb(tasks.FinishedEvent(r, ""))
-			}
-
-			results = append(results, r)
-
-			if restartErr := restartRunner(ctx, runner); restartErr != nil {
-				return nil, restartErr
-			}
-
-			continue
-		} else if err != nil {
-			return nil, err
-		}
-
-		r := buildResult(result, t.expected)
-		if cb != nil {
-			cb(tasks.FinishedEvent(r, ""))
-		}
-
-		results = append(results, r)
-	}
-
-	return results, nil
+	return e.runTaskList(ctx, runner, plan, cb)
 }
 
 // testCasesFor returns the test cases for the given part. declaredParts only
@@ -129,11 +87,11 @@ func (e *Exercise) testCasesFor(part protocol.Part) []*Test {
 	return e.Data.TestCases.One
 }
 
-func makeTestTasks(p protocol.Part, tests []*Test) []testTask {
-	var testTasks []testTask
+func makeTestTasks(p protocol.Part, tests []*Test) []plannedTask {
+	var testTasks []plannedTask
 
 	for i, t := range tests {
-		testTasks = append(testTasks, testTask{
+		testTasks = append(testTasks, plannedTask{
 			task: &protocol.Task{
 				TaskID:    tasks.MakeTaskID(tasks.Test, p, i),
 				Part:      p,

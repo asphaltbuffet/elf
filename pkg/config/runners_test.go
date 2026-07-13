@@ -47,7 +47,8 @@ binary = "{binary_file}"
 	cfg, err := NewConfig(WithFs(fs), WithFile("elf.toml"))
 	require.NoError(t, err)
 
-	runners := cfg.GetRunners()
+	runners, err := cfg.GetRunners()
+	require.NoError(t, err)
 	require.Len(t, runners, 2)
 
 	assert.Equal(t, "py", runners[0].Key)
@@ -64,5 +65,31 @@ binary = "{binary_file}"
 func TestGetRunners_Empty(t *testing.T) {
 	cfg, err := NewConfig()
 	require.NoError(t, err)
-	assert.Empty(t, cfg.GetRunners())
+
+	descs, err := cfg.GetRunners()
+	require.NoError(t, err, "absent [[runner]] table is a valid empty state")
+	assert.Empty(t, descs)
+}
+
+func TestGetRunners_MalformedBlock(t *testing.T) {
+	// prepare expects a table; a scalar is a structural mismatch that trips Decode
+	// even under WeaklyTypedInput, where a mere scalar-type typo would silently coerce.
+	tomlContent := `
+[[runner]]
+key = "go"
+prepare = "oops"
+`
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+
+	fs := afero.NewMemMapFs()
+	require.NoError(t, afero.WriteFile(fs, filepath.Join(cwd, "elf.toml"), []byte(tomlContent), 0o644))
+
+	cfg, err := NewConfig(WithFs(fs), WithFile("elf.toml"))
+	require.NoError(t, err)
+
+	descs, err := cfg.GetRunners()
+	require.Error(t, err, "malformed [[runner]] block must not be silently dropped")
+	assert.Nil(t, descs, "no descriptors returned on decode failure")
+	assert.Contains(t, err.Error(), "decoding", "error names the decode phase")
 }
