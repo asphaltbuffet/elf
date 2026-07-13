@@ -56,10 +56,10 @@ func (r *descriptorRunner) writeWrapper(langDir, ext, subdir string) error {
 
 	vars := make(map[string]string, len(r.desc.Prepare.TemplateVars))
 	for k, v := range r.desc.Prepare.TemplateVars {
-		vars[k] = substituteTokens(v, r.meta, ext, subdir)
+		vars[k] = substituteTokens(v, r.meta, ext, subdir, "")
 	}
 
-	substitutedContent := substituteTokens(string(templateBytes), r.meta, ext, subdir)
+	substitutedContent := substituteTokens(string(templateBytes), r.meta, ext, subdir, "")
 
 	tpl, parseErr := template.New("").Parse(substitutedContent)
 	if parseErr != nil {
@@ -113,7 +113,7 @@ func (r *descriptorRunner) Prepare(ctx context.Context) error {
 			continue
 		}
 
-		substituted := substituteSlice(cmdArgs, r.meta, ext, subdir)
+		substituted := substituteSlice(cmdArgs, r.meta, ext, subdir, "")
 		//nolint:gosec // build commands come from user config, not untrusted external input
 		cmd := exec.CommandContext(ctx, substituted[0], substituted[1:]...)
 		cmd.Dir = langDir
@@ -139,7 +139,7 @@ func (r *descriptorRunner) Open(ctx context.Context) error {
 	var cmd *exec.Cmd
 
 	if r.desc.Open.Binary != "" {
-		binaryPath := substituteTokens(r.desc.Open.Binary, r.meta, ext, subdir)
+		binaryPath := substituteTokens(r.desc.Open.Binary, r.meta, ext, subdir, "")
 		absPath, absErr := filepath.Abs(binaryPath)
 		if absErr != nil {
 			return fmt.Errorf("resolving binary path: %w", absErr)
@@ -147,13 +147,13 @@ func (r *descriptorRunner) Open(ctx context.Context) error {
 
 		cmd = exec.CommandContext(ctx, absPath)
 	} else {
-		args := substituteSlice(r.desc.Open.Args, r.meta, ext, subdir)
+		args := substituteSlice(r.desc.Open.Args, r.meta, ext, subdir, "")
 		//nolint:gosec // interpreter and args come from user config
 		cmd = exec.CommandContext(ctx, r.desc.Open.Interpreter, args...)
 	}
 
 	cmd.Dir = r.meta.LangDir()
-	cmd.Env = append(os.Environ(), substituteSlice(r.desc.Open.Env, r.meta, ext, subdir)...)
+	cmd.Env = append(os.Environ(), substituteSlice(r.desc.Open.Env, r.meta, ext, subdir, "")...)
 
 	// Put the subprocess in its own process group so we can signal the entire
 	// tree on timeout. Wrapper runners (e.g. bash) fork children — a $(...) or
@@ -322,7 +322,7 @@ func (r *descriptorRunner) removeCleanupPaths() error {
 			continue
 		}
 
-		resolved := substituteTokens(p, r.meta, r.wrapperExt(), r.desc.Prepare.WrapperSubdir)
+		resolved := substituteTokens(p, r.meta, r.wrapperExt(), r.desc.Prepare.WrapperSubdir, "")
 		// Relative cleanup paths are resolved against the lang dir.
 		if !filepath.IsAbs(resolved) {
 			resolved = filepath.Join(r.meta.LangDir(), resolved)

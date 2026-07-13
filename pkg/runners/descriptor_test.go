@@ -61,10 +61,18 @@ func TestSubstituteTokens(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := substituteTokens(tt.input, meta, tt.wrapperExt, "")
+			got := substituteTokens(tt.input, meta, tt.wrapperExt, "", "")
 			assert.Equal(t, tt.want, got)
 		})
 	}
+}
+
+func TestSubstituteTokens_RelExerciseDir(t *testing.T) {
+	meta := ExerciseMeta{Year: 2015, Day: 1, Title: "foo", Dir: "exercises/2015/01-foo", Key: "go"}
+
+	got := substituteTokens("mod/{rel_exercise_dir}/go", meta, ".go", "", "exercises/2015/01-foo")
+
+	assert.Equal(t, "mod/exercises/2015/01-foo/go", got)
 }
 
 func TestRunnerDescriptor_ToCreator(t *testing.T) {

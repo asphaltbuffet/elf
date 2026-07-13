@@ -47,7 +47,10 @@ func (d RunnerDescriptor) ToCreator() RunnerCreator {
 // substituteTokens replaces built-in token placeholders in s with values derived from meta.
 // wrapperExt is the file extension for {wrapper_file} (e.g. ".py"); empty string is valid.
 // wrapperSubdir, when non-empty, places {wrapper_file} and {binary_file} in a subdirectory of lang_dir.
-func substituteTokens(s string, meta ExerciseMeta, wrapperExt, wrapperSubdir string) string {
+// relExerciseDir is the precomputed {rel_exercise_dir} value (exercise dir relative to the nearest
+// go.mod; see ADR-0021). It is resolved by the caller (Prepare) so this function stays pure; callers
+// with no need for it pass "".
+func substituteTokens(s string, meta ExerciseMeta, wrapperExt, wrapperSubdir, relExerciseDir string) string {
 	langDir := meta.LangDir()
 	wrapperDir := langDir
 	if wrapperSubdir != "" {
@@ -58,6 +61,7 @@ func substituteTokens(s string, meta ExerciseMeta, wrapperExt, wrapperSubdir str
 
 	replacer := strings.NewReplacer(
 		"{exercise_dir}", meta.Dir,
+		"{rel_exercise_dir}", relExerciseDir,
 		"{dir_name}", filepath.Base(meta.Dir),
 		"{lang_dir}", langDir,
 		"{wrapper_file}", wrapperFile,
@@ -71,10 +75,10 @@ func substituteTokens(s string, meta ExerciseMeta, wrapperExt, wrapperSubdir str
 }
 
 // substituteSlice applies substituteTokens to every element of a string slice.
-func substituteSlice(ss []string, meta ExerciseMeta, wrapperExt, wrapperSubdir string) []string {
+func substituteSlice(ss []string, meta ExerciseMeta, wrapperExt, wrapperSubdir, relExerciseDir string) []string {
 	out := make([]string, len(ss))
 	for i, s := range ss {
-		out[i] = substituteTokens(s, meta, wrapperExt, wrapperSubdir)
+		out[i] = substituteTokens(s, meta, wrapperExt, wrapperSubdir, relExerciseDir)
 	}
 
 	return out
