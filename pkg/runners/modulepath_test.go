@@ -61,3 +61,18 @@ func TestModuleRelDir_NoGoMod(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no go.mod found")
 }
+
+func TestModuleRelDir_RelativeAndDotInput(t *testing.T) {
+	root := t.TempDir()
+	writeGoMod(t, root)
+	exDir := filepath.Join(root, "exercises", "2015", "01-foo")
+	require.NoError(t, os.MkdirAll(exDir, 0o755))
+
+	// chdir into the exercise dir and resolve ".", mimicking `elf solve .`
+	t.Chdir(exDir)
+
+	got, err := moduleRelDir(".")
+
+	require.NoError(t, err)
+	assert.Equal(t, filepath.Join("exercises", "2015", "01-foo"), got)
+}

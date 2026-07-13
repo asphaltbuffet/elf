@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"text/template"
 
@@ -30,6 +31,8 @@ type descriptorRunner struct {
 	wrapperFile string // absolute path to written wrapper; empty if no template
 	binaryFile  string // absolute path to compiled binary; empty if not compiled
 
+	relExerciseDir string // precomputed {rel_exercise_dir} value; empty until Prepare resolves it
+
 	// waitErr receives the result of the single cmd.Wait() call, owned by the
 	// reaper goroutine started in Open. exited is closed once the process has
 	// been reaped (ProcessState populated), letting Run detect a crashed
@@ -44,6 +47,35 @@ func (r *descriptorRunner) wrapperExt() string {
 	return r.desc.Prepare.WrapperExt
 }
 
+const relExerciseDirToken = "{rel_exercise_dir}" //nolint:gosec // template token, not a credential
+
+// descriptorReferencesRelDir reports whether any Prepare-time substitutable field
+// references {rel_exercise_dir}, so Prepare only walks for go.mod when needed.
+func (r *descriptorRunner) descriptorReferencesRelDir() bool {
+	for _, v := range r.desc.Prepare.TemplateVars {
+		if strings.Contains(v, relExerciseDirToken) {
+			return true
+		}
+	}
+
+	for _, cmd := range r.desc.Prepare.BuildCommands {
+		for _, arg := range cmd {
+			if strings.Contains(arg, relExerciseDirToken) {
+				return true
+			}
+		}
+	}
+
+	if r.desc.Prepare.TemplatePath != "" {
+		if b, err := os.ReadFile(r.desc.Prepare.TemplatePath); err == nil &&
+			strings.Contains(string(b), relExerciseDirToken) {
+			return true
+		}
+	}
+
+	return false
+}
+
 func (r *descriptorRunner) writeWrapper(langDir, ext, subdir string) error {
 	if r.desc.Prepare.TemplatePath == "" {
 		return nil
@@ -56,10 +88,10 @@ func (r *descriptorRunner) writeWrapper(langDir, ext, subdir string) error {
 
 	vars := make(map[string]string, len(r.desc.Prepare.TemplateVars))
 	for k, v := range r.desc.Prepare.TemplateVars {
-		vars[k] = substituteTokens(v, r.meta, ext, subdir, "")
+		vars[k] = substituteTokens(v, r.meta, ext, subdir, r.relExerciseDir)
 	}
 
-	substitutedContent := substituteTokens(string(templateBytes), r.meta, ext, subdir, "")
+	substitutedContent := substituteTokens(string(templateBytes), r.meta, ext, subdir, r.relExerciseDir)
 
 	tpl, parseErr := template.New("").Parse(substitutedContent)
 	if parseErr != nil {
@@ -96,6 +128,15 @@ func (r *descriptorRunner) Prepare(ctx context.Context) error {
 	ext := r.wrapperExt()
 	subdir := r.desc.Prepare.WrapperSubdir
 
+	if r.descriptorReferencesRelDir() {
+		rel, relErr := moduleRelDir(r.meta.Dir)
+		if relErr != nil {
+			return fmt.Errorf("resolving {rel_exercise_dir}: %w", relErr)
+		}
+
+		r.relExerciseDir = rel
+	}
+
 	if err := r.writeWrapper(langDir, ext, subdir); err != nil {
 		return err
 	}
@@ -113,7 +154,7 @@ func (r *descriptorRunner) Prepare(ctx context.Context) error {
 			continue
 		}
 
-		substituted := substituteSlice(cmdArgs, r.meta, ext, subdir, "")
+		substituted := substituteSlice(cmdArgs, r.meta, ext, subdir, r.relExerciseDir)
 		//nolint:gosec // build commands come from user config, not untrusted external input
 		cmd := exec.CommandContext(ctx, substituted[0], substituted[1:]...)
 		cmd.Dir = langDir
