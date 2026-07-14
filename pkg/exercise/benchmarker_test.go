@@ -541,6 +541,8 @@ func TestRunBenchmark(t *testing.T) {
 func TestBenchmarkData_String_Euler(t *testing.T) {
 	bd := BenchmarkData{
 		Date:          time.Date(2026, 7, 13, 0, 0, 0, 0, time.UTC),
+		Year:          2015,
+		Day:           1,
 		Number:        42,
 		Title:         "Answer",
 		Runs:          10,
