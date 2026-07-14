@@ -163,6 +163,24 @@ func TestPlainMetaEventSetsHeaderAndLanguage(t *testing.T) {
 	assert.NotContains(t, out, "(rs)", "section label leaked the lang key 'rs'")
 }
 
+func TestPlainEulerHeaderUsesNumber(t *testing.T) {
+	var buf bytes.Buffer
+	p := NewPlain(&buf, Header{})
+
+	// A Project Euler problem carries a bare Number (no Year/Day); the header
+	// should read "#21: Amicable Numbers".
+	p.Handle(tasks.MetaEvent(tasks.Meta{Number: 21, Title: "Amicable Numbers", Language: "Go"}))
+	p.Handle(tasks.FinishedEvent(tasks.Result{
+		ID: "Test.1.0", Type: tasks.Test, Part: protocol.PartOne, SubPart: 0,
+		Status: tasks.StatusPassed, Duration: 0.000190984,
+	}, ""))
+	require.NoError(t, p.Close())
+
+	out := buf.String()
+	assert.Contains(t, out, "#21: Amicable Numbers", "Euler header should render '#N: Title'")
+	assert.NotContains(t, out, "Day", "Euler header must not use the AoC 'Day' format")
+}
+
 func TestPlainUniformDurationUnitAndAlignment(t *testing.T) {
 	var buf bytes.Buffer
 	p := NewPlain(&buf, Header{})

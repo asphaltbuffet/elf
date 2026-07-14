@@ -21,6 +21,7 @@ const (
 type Meta struct {
 	Year     int
 	Day      int
+	Number   int // Project Euler problem number; non-zero identifies a Euler problem (Year/Day are zero)
 	Title    string
 	Language string // human-readable runner name (e.g. "Rust"), not the lookup key ("rs")
 }

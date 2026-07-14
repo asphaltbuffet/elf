@@ -26,6 +26,7 @@ func (e *Exercise) metaEvent(runner runners.Runner) tasks.Event {
 	return tasks.MetaEvent(tasks.Meta{
 		Year:     e.Year,
 		Day:      e.Day,
+		Number:   e.Number,
 		Title:    e.Title,
 		Language: runner.String(),
 	})

@@ -192,12 +192,11 @@ func (p *Plain) statusColumnWidth() int {
 // printHeader renders the AoC title box. When Year is zero (no exercise
 // metadata) the box is omitted.
 func (p *Plain) printHeader() {
-	if p.header.Year == 0 {
+	if !p.header.hasMeta() {
 		return
 	}
 
-	title := fmt.Sprintf("%d Day %d: %s", p.header.Year, p.header.Day, p.header.Title)
-	fmt.Fprintln(p.w, HeaderStyle(title).String())
+	fmt.Fprintln(p.w, HeaderStyle(p.header.title()).String())
 }
 
 // printResult writes one settled output line for r using the run-wide duration
