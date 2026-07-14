@@ -310,16 +310,22 @@ Renders run-time graphs from persisted benchmark data. One operation with two sc
 from the shape of the target directory — no mode flag:
 
 - **Exercise scope** — the target *is* an Exercise (has `info.json`). Compares language against
-  language for that one puzzle, across both Parts. Rendered as a **2×N grid of per-language
-  consistency facets**: rows are Parts (Part One, Part Two), columns are languages, and each cell
-  is an independently auto-scaled box plot of *consistency* (each sample as a percentage of that
-  language's own median). It deliberately does **not** compare speed — that lives in the year graph
-  — because the cross-language speed gap and each language's own spread cannot share one axis. A
-  missing (language, part) is a blank-but-present cell so the grid stays aligned. See *Comparison
-  vocabulary*.
+  language for that one exercise, across its **declared Parts**. Rendered as an **R×N grid of
+  per-language consistency facets**: rows are the Parts present in the data, columns are languages,
+  and each cell is an independently auto-scaled box plot of *consistency* (each sample as a
+  percentage of that language's own median). It deliberately does **not** compare speed — that
+  lives in the year graph — because the cross-language speed gap and each language's own spread
+  cannot share one axis. The row set is **data-present-driven**: a Part row exists only if some
+  implementation has data for it, so a single-Part [[Problem]] renders a 1×N grid (no empty Part
+  Two row). Within the rows that exist, a missing (language, part) is a blank-but-present cell so
+  the grid stays aligned. See *Comparison vocabulary*.
 - **Year scope** — the target *contains* Exercise subdirectories (is a year). Compares day against
   day across the year, with languages overlaid. Rendered as a line graph of running time vs. day,
-  one line per language.
+  one line per language. Year scope is an **AoC-only** view: it proceeds only when the target holds
+  at least one child and *every* child is a [[Puzzle]]. A Euler tree (children are Problems), a
+  mixed tree, or an empty tree is refused — Euler Problems are a sparse, heterogeneous set with no
+  meaningful cross-problem season to plot (unlike a curated AoC year). Euler is analyzable only at
+  exercise scope, one Problem at a time.
 
 In both scopes, **color always encodes language**, and a given language maps to the same color in
 every graph (derived from the language key, not from its position in the data). The exercise box
