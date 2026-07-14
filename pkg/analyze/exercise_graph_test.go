@@ -68,6 +68,16 @@ func Test_buildConsistencyFacets_missingPartTwo(t *testing.T) {
 	assert.NotNil(t, grid[1][1], "Python Part Two present")
 }
 
+func Test_buildConsistencyFacets_problemHasOneRow(t *testing.T) {
+	data := makeBenchmarkDataProblem(42)
+
+	grid, err := buildConsistencyFacets(data)
+	require.NoError(t, err)
+
+	// Single declared part → exactly one row (no blank Part Two row).
+	assert.Len(t, grid, 1, "a Problem should render a 1-row facet grid")
+}
+
 func Test_generateBoxPlot(t *testing.T) {
 	t.Run("writes a png for a single exercise", func(t *testing.T) {
 		out := filepath.Join(t.TempDir(), "run-times.png")
