@@ -139,10 +139,6 @@ func (a *App) Benchmark(
 		return nil, err
 	}
 
-	if ex.Kind == exercise.KindProblem {
-		return nil, fmt.Errorf("benchmark: %w", exercise.ErrUnsupportedAnalysis)
-	}
-
 	bmk := exercise.NewBenchmarker(ex)
 
 	return bmk.Benchmark(ctx, a.FS, a.Logger, cb, iterations)
