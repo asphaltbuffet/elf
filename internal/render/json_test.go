@@ -43,6 +43,29 @@ func TestJSON_SolveSummary(t *testing.T) {
 	assert.Equal(t, "1797", s.Results[1].Output)
 }
 
+func TestJSON_EulerSummaryUsesNumber(t *testing.T) {
+	var buf bytes.Buffer
+	r := NewJSON(&buf, Header{})
+
+	// A Project Euler problem carries a bare Number (no Year/Day).
+	r.Handle(tasks.MetaEvent(tasks.Meta{Number: 21, Title: "Amicable Numbers", Language: "Go"}))
+	r.Handle(tasks.Event{Kind: tasks.EventFinished, Type: tasks.Solve, Language: "Go",
+		Result: &tasks.Result{Part: 1, Status: tasks.StatusPassed, Output: "31626", Duration: 0.0021}})
+	require.NoError(t, r.Close())
+
+	s := decodeSummary(t, buf.Bytes())
+	assert.Equal(t, 21, s.Number)
+	assert.Equal(t, "Amicable Numbers", s.Title)
+	assert.Zero(t, s.Year, "Euler summary must not carry a Year")
+	assert.Zero(t, s.Day, "Euler summary must not carry a Day")
+
+	raw := buf.String()
+	assert.Contains(t, raw, `"number": 21`)
+	assert.Contains(t, raw, `"title": "Amicable Numbers"`)
+	assert.NotContains(t, raw, `"year"`)
+	assert.NotContains(t, raw, `"day"`)
+}
+
 func TestJSON_OmitsHeaderWhenNoMetadata(t *testing.T) {
 	var buf bytes.Buffer
 	r := NewJSON(&buf, Header{}) // Year == 0
