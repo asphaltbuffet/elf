@@ -140,7 +140,7 @@ func (a *App) Benchmark(
 	}
 
 	if ex.Kind == exercise.KindProblem {
-		return nil, fmt.Errorf("benchmark: %w", exercise.ErrEulerUnsupported)
+		return nil, fmt.Errorf("benchmark: %w", exercise.ErrUnsupportedAnalysis)
 	}
 
 	bmk := exercise.NewBenchmarker(ex)
@@ -220,7 +220,7 @@ func (a *App) Analyze(dir, out string) (string, error) {
 	// without info.json (e.g. a year directory) falls through to the normal
 	// analyzer unchanged.
 	if kind, ok := exercise.KindAt(a.FS, a.Logger, dir); ok && kind == exercise.KindProblem {
-		return "", fmt.Errorf("analyze: %w", exercise.ErrEulerUnsupported)
+		return "", fmt.Errorf("analyze: %w", exercise.ErrUnsupportedAnalysis)
 	}
 
 	az, err := analyze.NewAnalyzer(a.Logger, analyze.WithDirectory(dir), analyze.WithOutput(out))

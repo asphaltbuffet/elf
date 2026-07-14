@@ -3,6 +3,7 @@ package exercise
 import (
 	"io"
 	"log/slog"
+	"path/filepath"
 	"testing"
 
 	"github.com/spf13/afero"
@@ -141,6 +142,45 @@ func TestKindAt(t *testing.T) {
 
 		require.False(t, ok)
 		assert.Empty(t, kind)
+	})
+}
+
+func TestYearScopeEligible(t *testing.T) {
+	writeInfo := func(t *testing.T, fs afero.Fs, dir, kind string) {
+		t.Helper()
+		body := `{"kind":"` + kind + `","year":2015,"day":1,"title":"x","url":"http://x"}`
+		if kind == "euler" {
+			body = `{"kind":"euler","number":1,"title":"x"}`
+		}
+		require.NoError(t, afero.WriteFile(fs, filepath.Join(dir, "info.json"), []byte(body), 0o600))
+	}
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	t.Run("all puzzles → eligible", func(t *testing.T) {
+		fs := afero.NewMemMapFs()
+		writeInfo(t, fs, "2015/01-a", "aoc")
+		writeInfo(t, fs, "2015/02-b", "aoc")
+		assert.True(t, YearScopeEligible(fs, logger, "2015"))
+	})
+
+	t.Run("all problems → ineligible", func(t *testing.T) {
+		fs := afero.NewMemMapFs()
+		writeInfo(t, fs, "euler/1", "euler")
+		writeInfo(t, fs, "euler/2", "euler")
+		assert.False(t, YearScopeEligible(fs, logger, "euler"))
+	})
+
+	t.Run("mixed → ineligible", func(t *testing.T) {
+		fs := afero.NewMemMapFs()
+		writeInfo(t, fs, "mix/01-a", "aoc")
+		writeInfo(t, fs, "mix/2", "euler")
+		assert.False(t, YearScopeEligible(fs, logger, "mix"))
+	})
+
+	t.Run("empty → ineligible", func(t *testing.T) {
+		fs := afero.NewMemMapFs()
+		require.NoError(t, fs.MkdirAll("empty", 0o755))
+		assert.False(t, YearScopeEligible(fs, logger, "empty"))
 	})
 }
 

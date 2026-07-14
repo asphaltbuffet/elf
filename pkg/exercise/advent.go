@@ -26,10 +26,10 @@ var (
 	ErrNoImplementations = errors.New("no implementations found")
 	ErrLoadInfo          = errors.New("load info")
 
-	// ErrEulerUnsupported marks an operation not yet implemented for Project
-	// Euler Problems. Benchmark and analyze remain two-part-shaped; see
-	// ADR-0017.
-	ErrEulerUnsupported = errors.New("not yet supported for Project Euler problems")
+	// ErrUnsupportedAnalysis marks an analysis target that elf will not graph.
+	// The specific reason is carried in the wrapped message (e.g. cross-problem
+	// Euler analysis). A general sentinel avoids a taxonomy of one-off errors.
+	ErrUnsupportedAnalysis = errors.New("unsupported analysis target")
 )
 
 // errNoRunner builds the user-facing error for an unregistered language, wrapping
@@ -99,6 +99,38 @@ func KindAt(fs afero.Fs, logger *slog.Logger, dir string) (Kind, bool) {
 	}
 
 	return probe.Kind, true
+}
+
+// YearScopeEligible reports whether dir is a valid AoC year-scope analyze
+// target: it must contain at least one immediate child directory holding an
+// info.json, and every such child must be a Puzzle. A tree whose children are
+// Problems (a Euler tree), a mixed tree, or an empty tree is not eligible —
+// Euler is analyzable only one Problem at a time (ADR-0022, R3).
+func YearScopeEligible(fs afero.Fs, logger *slog.Logger, dir string) bool {
+	entries, err := afero.ReadDir(fs, dir)
+	if err != nil {
+		return false
+	}
+
+	sawPuzzle := false
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+
+		kind, ok := KindAt(fs, logger, filepath.Join(dir, e.Name()))
+		if !ok {
+			continue // not an exercise child; ignore
+		}
+
+		if kind != KindPuzzle {
+			return false // any Problem child disqualifies the whole tree
+		}
+
+		sawPuzzle = true
+	}
+
+	return sawPuzzle
 }
 
 func (e *Exercise) loadInfo(fs afero.Fs, logger *slog.Logger) error {

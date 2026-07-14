@@ -77,7 +77,7 @@ func TestApp_Solve_ErrEmptyLanguage(t *testing.T) {
 
 // TestApp_Benchmark_RejectsEuler verifies that Benchmark refuses to run
 // against a Project Euler Problem, since benchmark remains structurally
-// two-part-shaped (see exercise.ErrEulerUnsupported).
+// two-part-shaped (see exercise.ErrUnsupportedAnalysis).
 func TestApp_Benchmark_RejectsEuler(t *testing.T) {
 	restore := runners.ResetRegistry(map[string]runners.RunnerCreator{
 		"go": func(_ runners.ExerciseMeta) runners.Runner { return nil },
@@ -94,12 +94,12 @@ func TestApp_Benchmark_RejectsEuler(t *testing.T) {
 
 	_, err = a.Benchmark(context.Background(), path, "go", nil, 1)
 
-	require.ErrorIs(t, err, exercise.ErrEulerUnsupported)
+	require.ErrorIs(t, err, exercise.ErrUnsupportedAnalysis)
 }
 
 // TestApp_Analyze_RejectsEuler verifies that Analyze refuses to run against a
 // Project Euler Problem, since the analyze grid renders a Part Two column
-// (see exercise.ErrEulerUnsupported).
+// (see exercise.ErrUnsupportedAnalysis).
 func TestApp_Analyze_RejectsEuler(t *testing.T) {
 	cfg, err := config.NewConfig(config.WithFs(afero.NewMemMapFs()))
 	require.NoError(t, err)
@@ -111,5 +111,5 @@ func TestApp_Analyze_RejectsEuler(t *testing.T) {
 
 	_, err = a.Analyze(path, "")
 
-	require.ErrorIs(t, err, exercise.ErrEulerUnsupported)
+	require.ErrorIs(t, err, exercise.ErrUnsupportedAnalysis)
 }
