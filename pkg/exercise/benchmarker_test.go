@@ -567,3 +567,70 @@ func TestBenchmarkData_String_AoC(t *testing.T) {
 	assert.Contains(t, got, "AOC 2015/01")
 	assert.NotContains(t, got, "Euler")
 }
+
+// A Project Euler Problem declares only Part One (declaredParts). The
+// benchmarker must not plan or run a phantom Part Two for it.
+func TestBenchmark_ProblemHasNoPartTwo(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	teardownSubTest := setupSubTest(t)
+	defer teardownSubTest(t)
+
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	mockRunner := mocks.NewMockRunner(t)
+	mockRunner.EXPECT().String().Return("MOCK").Maybe()
+	mockRunner.EXPECT().Prepare(mock.Anything).Return(nil)
+	mockRunner.EXPECT().Open(mock.Anything).Return(nil)
+	mockRunner.EXPECT().Run(mock.Anything, mock.Anything).Return(&protocol.Result{
+		TaskID:   "benchmark.1.0",
+		Ok:       true,
+		Output:   "42",
+		Duration: 0.001,
+	}, nil).Times(1) // only Part One for 1 iteration
+	mockRunner.EXPECT().Close(mock.Anything).Return(nil).Maybe()
+	mockRunner.EXPECT().Cleanup().Return(nil).Maybe()
+
+	restore := runners.ResetRegistry(map[string]runners.RunnerCreator{
+		"go": func(_ runners.ExerciseMeta) runners.Runner { return mockRunner },
+	})
+	t.Cleanup(restore)
+
+	b := &Benchmarker{
+		Exercise: &Exercise{
+			ID:       "euler-1",
+			Kind:     KindProblem,
+			Number:   1,
+			Title:    "Fake Problem",
+			Language: "go",
+			Data:     &Data{},
+			// Reuses the single-implementation (go-only) fixture; Kind:
+			// KindProblem is what makes declaredParts() return only Part One.
+			Path: "exercises/2017/03-fakeGoDay",
+		},
+		exerciseBaseDir: "",
+	}
+
+	var planned []tasks.Event
+
+	cb := func(e tasks.Event) {
+		if e.Kind == tasks.EventPlanned {
+			planned = append(planned, e)
+		}
+	}
+
+	results, err := b.Benchmark(context.Background(), testFs, logger, cb, 1)
+	require.NoError(t, err)
+	require.NotEmpty(t, planned, "expected at least one Planned event")
+
+	for _, e := range planned {
+		assert.Equal(t, protocol.PartOne, e.Part, "problem must only plan Part One")
+	}
+
+	require.NotEmpty(t, results)
+
+	for _, r := range results {
+		assert.Equal(t, protocol.PartOne, r.Part, "problem must only produce Part One results")
+	}
+}
