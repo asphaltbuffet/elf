@@ -1,5 +1,13 @@
 # Project Euler problems as a second Exercise Kind under a unified `add` verb
 
+> **Status: Partially superseded.** The core decision — Euler as a second Exercise Kind, the
+> unified `add` verb, and the declared part-set — stands. Two later ADRs override specifics: the
+> solutions-directory layout (originally derived from the AoC base dir) is superseded by
+> [ADR 0018](0018-euler-directory-as-independent-config-key.md), and the "`euler/` behaves like a
+> year for Analysis" consequence is reversed by
+> [ADR 0022](0022-euler-analyze-exercise-scope-only.md) (Euler is exercise-scope only). Both are
+> also flagged inline below.
+
 elf was built for one challenge source (Advent of Code): an [[Exercise]]'s identity is year + day,
 it has a source URL and a per-user input, and it always has two parts. Supporting Project Euler —
 problems identified by a bare number, with no URL, usually no input, and a single answer — required

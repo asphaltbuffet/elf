@@ -24,6 +24,7 @@ type plannedTask struct {
 // (e.g. "Rust") rather than the lookup key (e.g. "rs").
 func (e *Exercise) metaEvent(runner runners.Runner) tasks.Event {
 	return tasks.MetaEvent(tasks.Meta{
+		Kind:     string(e.Kind),
 		Year:     e.Year,
 		Day:      e.Day,
 		Number:   e.Number,

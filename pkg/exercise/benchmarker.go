@@ -61,7 +61,11 @@ func (b *Benchmarker) Benchmark(
 	if cb != nil {
 		// Benchmark spans multiple implementations, so there is no single runner
 		// name; the header carries the exercise identity only.
-		cb(tasks.MetaEvent(tasks.Meta{Year: b.Year, Day: b.Day, Number: b.Number, Title: b.Title}))
+		cb(
+			tasks.MetaEvent(
+				tasks.Meta{Kind: string(b.Kind), Year: b.Year, Day: b.Day, Number: b.Number, Title: b.Title},
+			),
+		)
 	}
 
 	for _, impl := range impls {

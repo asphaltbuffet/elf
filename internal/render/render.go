@@ -18,6 +18,7 @@ type Renderer interface {
 
 // Header carries the static chrome a renderer draws above the task rows.
 type Header struct {
+	Kind     string
 	Year     int
 	Day      int
 	Number   int

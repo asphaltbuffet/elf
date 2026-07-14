@@ -20,10 +20,13 @@ type jsonResult struct {
 	Iterations int     `json:"iterations,omitempty"`
 }
 
-// jsonSummary is the single object emitted per run. Identity fields are omitted
-// when zero: an Advent of Code puzzle carries Year/Day, a Project Euler problem
-// carries Number instead. Title is present for either.
+// jsonSummary is the single object emitted per run. Kind names the challenge
+// family ("aoc"/"euler") so consumers branch on it rather than sniffing which
+// identity fields are present. Identity fields are omitted when zero: an Advent
+// of Code puzzle carries Year/Day, a Project Euler problem carries Number
+// instead. Title is present for either.
 type jsonSummary struct {
+	Kind    string       `json:"kind,omitempty"`
 	Year    int          `json:"year,omitempty"`
 	Day     int          `json:"day,omitempty"`
 	Number  int          `json:"number,omitempty"`
@@ -77,6 +80,7 @@ func (j *JSON) Handle(e tasks.Event) {
 func (j *JSON) Close() error {
 	s := jsonSummary{Results: []jsonResult{}}
 	if j.header.hasMeta() {
+		s.Kind = j.header.Kind
 		s.Year = j.header.Year
 		s.Day = j.header.Day
 		s.Number = j.header.Number

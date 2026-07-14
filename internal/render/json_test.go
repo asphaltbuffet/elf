@@ -20,8 +20,9 @@ func decodeSummary(t *testing.T, b []byte) jsonSummary {
 
 func TestJSON_SolveSummary(t *testing.T) {
 	var buf bytes.Buffer
-	r := NewJSON(&buf, Header{Year: 2015, Day: 1, Title: "Not Quite Lisp"})
+	r := NewJSON(&buf, Header{})
 
+	r.Handle(tasks.MetaEvent(tasks.Meta{Kind: "aoc", Year: 2015, Day: 1, Title: "Not Quite Lisp", Language: "Go"}))
 	r.Handle(tasks.Event{Kind: tasks.EventFinished, Type: tasks.Solve, Language: "Go",
 		Result: &tasks.Result{Part: 1, Status: tasks.StatusPassed, Output: "280", Duration: 0.0021}})
 	r.Handle(tasks.Event{Kind: tasks.EventFinished, Type: tasks.Solve, Language: "Go",
@@ -29,6 +30,7 @@ func TestJSON_SolveSummary(t *testing.T) {
 	require.NoError(t, r.Close())
 
 	s := decodeSummary(t, buf.Bytes())
+	assert.Equal(t, "aoc", s.Kind)
 	assert.Equal(t, 2015, s.Year)
 	assert.Equal(t, 1, s.Day)
 	assert.Equal(t, "Not Quite Lisp", s.Title)
@@ -48,18 +50,20 @@ func TestJSON_EulerSummaryUsesNumber(t *testing.T) {
 	r := NewJSON(&buf, Header{})
 
 	// A Project Euler problem carries a bare Number (no Year/Day).
-	r.Handle(tasks.MetaEvent(tasks.Meta{Number: 21, Title: "Amicable Numbers", Language: "Go"}))
+	r.Handle(tasks.MetaEvent(tasks.Meta{Kind: "euler", Number: 21, Title: "Amicable Numbers", Language: "Go"}))
 	r.Handle(tasks.Event{Kind: tasks.EventFinished, Type: tasks.Solve, Language: "Go",
 		Result: &tasks.Result{Part: 1, Status: tasks.StatusPassed, Output: "31626", Duration: 0.0021}})
 	require.NoError(t, r.Close())
 
 	s := decodeSummary(t, buf.Bytes())
+	assert.Equal(t, "euler", s.Kind)
 	assert.Equal(t, 21, s.Number)
 	assert.Equal(t, "Amicable Numbers", s.Title)
 	assert.Zero(t, s.Year, "Euler summary must not carry a Year")
 	assert.Zero(t, s.Day, "Euler summary must not carry a Day")
 
 	raw := buf.String()
+	assert.Contains(t, raw, `"kind": "euler"`)
 	assert.Contains(t, raw, `"number": 21`)
 	assert.Contains(t, raw, `"title": "Amicable Numbers"`)
 	assert.NotContains(t, raw, `"year"`)
