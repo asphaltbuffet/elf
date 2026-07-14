@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"log/slog"
+	"path/filepath"
 	"testing"
 
 	"github.com/spf13/afero"
@@ -113,10 +114,11 @@ func TestApp_Benchmark_Euler(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// TestApp_Analyze_RejectsEuler verifies that Analyze refuses to run against a
-// Project Euler Problem, since the analyze grid renders a Part Two column
-// (see exercise.ErrUnsupportedAnalysis).
-func TestApp_Analyze_RejectsEuler(t *testing.T) {
+// TestApp_Analyze_SingleProblem_NotRefused verifies that analyzing a single
+// Euler Problem directory is no longer refused by the guard. (It may still
+// error later for lack of benchmark.json — we assert only that it is not the
+// unsupported-target refusal.) See ADR-0022.
+func TestApp_Analyze_SingleProblem_NotRefused(t *testing.T) {
 	cfg, err := config.NewConfig(config.WithFs(afero.NewMemMapFs()))
 	require.NoError(t, err)
 
@@ -126,6 +128,29 @@ func TestApp_Analyze_RejectsEuler(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = a.Analyze(path, "")
+
+	require.NotErrorIs(t, err, exercise.ErrUnsupportedAnalysis)
+}
+
+// TestApp_Analyze_EulerTree_Refused verifies that analyzing the containing
+// euler/ tree (a directory of Problems) is refused: cross-problem analysis is
+// not supported. See ADR-0022.
+func TestApp_Analyze_EulerTree_Refused(t *testing.T) {
+	cfg, err := config.NewConfig(config.WithFs(afero.NewMemMapFs()))
+	require.NoError(t, err)
+
+	a := app.New(cfg)
+
+	// Scaffold two Problems under the configured euler dir, then point analyze
+	// at their parent directory.
+	_, p1, err := a.AddProblem(1, "go", "One")
+	require.NoError(t, err)
+	_, _, err = a.AddProblem(2, "go", "Two")
+	require.NoError(t, err)
+
+	eulerTree := filepath.Dir(p1) // parent of euler/1 → euler/
+
+	_, err = a.Analyze(eulerTree, "")
 
 	require.ErrorIs(t, err, exercise.ErrUnsupportedAnalysis)
 }
