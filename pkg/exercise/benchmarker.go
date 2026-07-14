@@ -112,6 +112,7 @@ func (b *Benchmarker) Benchmark(
 	benchmarkData = append(benchmarkData, BenchmarkData{
 		Date:            time.Now().UTC(),
 		Day:             b.Day,
+		Number:          b.Number,
 		Title:           b.Title,
 		Year:            b.Year,
 		Runs:            iterations,

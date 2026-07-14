@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"testing"
+	"time"
 
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
@@ -535,4 +536,34 @@ func TestRunBenchmark(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestBenchmarkData_String_Euler(t *testing.T) {
+	bd := BenchmarkData{
+		Date:          time.Date(2026, 7, 13, 0, 0, 0, 0, time.UTC),
+		Number:        42,
+		Title:         "Answer",
+		Runs:          10,
+		Normalization: 1.0,
+	}
+
+	got := bd.String()
+
+	assert.Contains(t, got, "Euler #42")
+	assert.NotContains(t, got, "AOC")
+}
+
+func TestBenchmarkData_String_AoC(t *testing.T) {
+	bd := BenchmarkData{
+		Date:  time.Date(2026, 7, 13, 0, 0, 0, 0, time.UTC),
+		Year:  2015,
+		Day:   1,
+		Title: "Not Quite Lisp",
+		Runs:  10,
+	}
+
+	got := bd.String()
+
+	assert.Contains(t, got, "AOC 2015/01")
+	assert.NotContains(t, got, "Euler")
 }
