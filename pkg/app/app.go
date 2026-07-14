@@ -139,10 +139,6 @@ func (a *App) Benchmark(
 		return nil, err
 	}
 
-	if ex.Kind == exercise.KindProblem {
-		return nil, fmt.Errorf("benchmark: %w", exercise.ErrEulerUnsupported)
-	}
-
 	bmk := exercise.NewBenchmarker(ex)
 
 	return bmk.Benchmark(ctx, a.FS, a.Logger, cb, iterations)
@@ -215,12 +211,16 @@ func (a *App) AddProblem(number int, lang, title string) (exercise.Report, strin
 // out (or a default location when out is empty). It is the App-level entry point for the `analyze`
 // command: it builds an analyze.Analyzer and runs it.
 func (a *App) Analyze(dir, out string) (string, error) {
-	// Euler analyze is deferred; refuse an explicit Problem target rather than
-	// rendering a misleading Part Two column. A non-Problem or a directory
-	// without info.json (e.g. a year directory) falls through to the normal
-	// analyzer unchanged.
-	if kind, ok := exercise.KindAt(a.FS, a.Logger, dir); ok && kind == exercise.KindProblem {
-		return "", fmt.Errorf("analyze: %w", exercise.ErrEulerUnsupported)
+	// A single exercise (Puzzle or Problem) analyzes at exercise scope; the
+	// facet grid renders only the parts present, so a single-part Problem is
+	// fine. A non-exercise target is year scope: only an all-Puzzle AoC year is
+	// eligible. A Euler tree, a mixed tree, or an empty tree is refused —
+	// cross-problem analysis is unsupported (ADR-0022).
+	if _, isExercise := exercise.KindAt(a.FS, a.Logger, dir); !isExercise {
+		if !exercise.YearScopeEligible(a.FS, a.Logger, dir) {
+			return "", fmt.Errorf("analyze: cross-problem analysis is unsupported; "+
+				"analyze a single problem directory: %w", exercise.ErrUnsupportedAnalysis)
+		}
 	}
 
 	az, err := analyze.NewAnalyzer(a.Logger, analyze.WithDirectory(dir), analyze.WithOutput(out))

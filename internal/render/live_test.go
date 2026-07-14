@@ -50,6 +50,20 @@ func TestLiveMetaEventSetsHeaderAndLanguage(t *testing.T) {
 	assert.Contains(t, out, "Testing (Rust)", "live section label should use pretty name 'Rust'")
 }
 
+func TestLiveEulerHeaderUsesNumber(t *testing.T) {
+	m := NewLive(Header{})
+	mi, _ := m.Update(eventMsg{tasks.MetaEvent(tasks.Meta{
+		Number: 21, Title: "Amicable Numbers", Language: "Go",
+	})})
+	m = mi.(*Live)
+	mi, _ = m.Update(eventMsg{tasks.PlannedEvent("Test.1.0", tasks.Test, protocol.PartOne, 0, "")})
+	m = mi.(*Live)
+
+	out := m.View().Content
+	assert.Contains(t, out, "#21: Amicable Numbers", "live Euler header should render '#N: Title'")
+	assert.NotContains(t, out, "Day", "Euler header must not use the AoC 'Day' format")
+}
+
 // Benchmark iterations collapse into one progress bar per (runner, Part): the
 // bar advances as each iteration finishes rather than each iteration being its
 // own row (ADR-0011).

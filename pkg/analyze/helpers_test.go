@@ -96,3 +96,17 @@ func makeBenchmarkDataNilPartOne(year int, days ...int) []*exercise.BenchmarkDat
 
 	return data
 }
+
+// makeBenchmarkDataProblem builds single-part (Euler Problem) benchmark data:
+// every implementation has PartOne and no PartTwo.
+func makeBenchmarkDataProblem(number int) []*exercise.BenchmarkData {
+	bd := makeBenchmarkData(0, number)[0] // reuse the day-based fixture shape
+	bd.Year = 0
+	bd.Day = 0
+	bd.Number = number
+	for _, impl := range bd.Implementations {
+		impl.PartTwo = nil
+	}
+
+	return []*exercise.BenchmarkData{bd}
+}

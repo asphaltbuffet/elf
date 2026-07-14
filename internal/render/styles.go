@@ -85,22 +85,11 @@ func TimeStyle() lipgloss.Style {
 // headerStyle returns a bordered, centred header box containing s — the
 // AoC year/title banner displayed above solution output.
 func headerStyle(s string) lipgloss.Style {
-	border := lipgloss.Border{
-		Top:         "─",
-		Bottom:      "─",
-		Left:        "─",
-		Right:       "─",
-		TopLeft:     "─",
-		TopRight:    "─",
-		BottomLeft:  "─",
-		BottomRight: "─",
-	}
-
 	return lipgloss.NewStyle().
 		Width(HeaderWidth).
 		Bold(true).
 		Align(lipgloss.Center).
-		BorderStyle(border).
+		BorderStyle(lipgloss.RoundedBorder()).
 		Foreground(lipgloss.Color("5")).
 		SetString(s)
 }

@@ -1,8 +1,10 @@
 package config
 
 import (
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/spf13/afero"
@@ -230,4 +232,64 @@ func TestConfig_GetRecipients(t *testing.T) {
 	got := cfg.GetRecipients()
 	require.Len(t, got, 1)
 	assert.Equal(t, "ssh-ed25519 AAAA... a@b", got[0])
+}
+
+func TestNewConfig_WritesLogToFile(t *testing.T) {
+	// Point the log dir at a writable temp location and assert a logged line
+	// lands in the file, not on the console.
+	stateDir := t.TempDir()
+	t.Setenv("XDG_STATE_HOME", stateDir)
+
+	cfg, err := NewConfig(WithFs(afero.NewMemMapFs()))
+	require.NoError(t, err)
+
+	cfg.GetLogger().Info("hello-from-test")
+
+	logPath := filepath.Join(stateDir, "elf", "elf.log")
+	data, readErr := os.ReadFile(logPath)
+	require.NoError(t, readErr)
+	assert.Contains(t, string(data), "hello-from-test")
+}
+
+func TestNewConfig_NoConsoleOutput(t *testing.T) {
+	// The core regression guard: constructing config and logging an ERROR must
+	// produce nothing on stdout or stderr.
+	stateDir := t.TempDir()
+	t.Setenv("XDG_STATE_HOME", stateDir)
+
+	outR, outW, _ := os.Pipe()
+	errR, errW, _ := os.Pipe()
+	origOut, origErr := os.Stdout, os.Stderr
+	os.Stdout, os.Stderr = outW, errW                             //nolint:reassign // test needs to intercept console output
+	t.Cleanup(func() { os.Stdout, os.Stderr = origOut, origErr }) //nolint:reassign // restore console output
+
+	cfg, err := NewConfig(WithFs(afero.NewMemMapFs()))
+	require.NoError(t, err)
+	cfg.GetLogger().Error("should-not-appear-on-console")
+
+	_ = outW.Close()
+	_ = errW.Close()
+	os.Stdout, os.Stderr = origOut, origErr //nolint:reassign // restore console output
+
+	var outBuf, errBuf strings.Builder
+	_, _ = io.Copy(&outBuf, outR)
+	_, _ = io.Copy(&errBuf, errR)
+
+	assert.Empty(t, outBuf.String(), "nothing should be written to stdout")
+	assert.Empty(t, errBuf.String(), "nothing should be written to stderr")
+}
+
+func TestNewConfig_LogOpenFailureIsSilent(t *testing.T) {
+	// If the log dir cannot be created, NewConfig still succeeds and logging is
+	// a no-op — the command must never break.
+	// Point XDG_STATE_HOME at a path whose parent is a FILE, so MkdirAll fails.
+	blocker := filepath.Join(t.TempDir(), "not-a-dir")
+	require.NoError(t, os.WriteFile(blocker, []byte("x"), 0o600))
+	t.Setenv("XDG_STATE_HOME", blocker) // MkdirAll(blocker/elf) fails: parent is a file
+
+	cfg, err := NewConfig(WithFs(afero.NewMemMapFs()))
+	require.NoError(t, err)
+
+	// Logger is usable (writes go to io.Discard); this must not panic or error.
+	cfg.GetLogger().Info("discarded")
 }

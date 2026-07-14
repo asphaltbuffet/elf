@@ -226,10 +226,10 @@ func (m *Live) View() tea.View {
 	// (cheap at AoC scale).
 	statusWidth := m.statusColumnWidth()
 
-	// Header box — omitted when Year is zero (no exercise metadata available).
-	if m.header.Year != 0 {
-		title := fmt.Sprintf("%d Day %d: %s", m.header.Year, m.header.Day, m.header.Title)
-		sb.WriteString(HeaderStyle(title).String())
+	// Header box — omitted when no exercise metadata is available (both AoC's
+	// Year and Euler's Number are zero).
+	if m.header.hasMeta() {
+		sb.WriteString(HeaderStyle(m.header.title()).String())
 		sb.WriteByte('\n')
 	}
 

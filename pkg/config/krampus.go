@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -51,14 +52,11 @@ func NewConfig(options ...func(*Config)) (Config, error) {
 	}
 	cfg.viper.SetFs(cfg.fs)
 
-	// set up logger
-	w := os.Stderr
-	cfg.logger = slog.New(
-		tint.NewTextHandler(w, &tint.Options{
-			Level:      slog.LevelWarn,
-			TimeFormat: time.StampMilli,
-		}),
-	)
+	// set up logger — diagnostic sink only, never the user's console. Logs go
+	// to a per-user file; if that can't be opened we discard silently so a
+	// logging problem never breaks the user's command (see file-only-logging
+	// design). User-facing errors travel through returned errors, not slog.
+	cfg.logger = newFileLogger()
 	slog.SetDefault(cfg.logger)
 
 	// set up viper
@@ -111,6 +109,35 @@ func NewConfig(options ...func(*Config)) (Config, error) {
 	}
 
 	return cfg, nil
+}
+
+// newFileLogger builds the diagnostic logger. It writes plain-text INFO+ logs
+// to {userStateDir()}/elf/elf.log on the real OS filesystem. Any failure to
+// resolve, create, or open that path yields a silent [io.Discard] logger so
+// logging never affects the user's command or console.
+func newFileLogger() *slog.Logger {
+	opts := &slog.HandlerOptions{Level: slog.LevelInfo}
+
+	base, err := userStateDir()
+	if err != nil {
+		return slog.New(slog.NewTextHandler(io.Discard, opts))
+	}
+
+	dir := filepath.Join(base, "elf")
+	if mkErr := os.MkdirAll(dir, 0o750); mkErr != nil {
+		return slog.New(slog.NewTextHandler(io.Discard, opts))
+	}
+
+	f, openErr := os.OpenFile( //nolint:gosec // path derived from OS state dir, not user input
+		filepath.Join(dir, "elf.log"),
+		os.O_CREATE|os.O_WRONLY|os.O_APPEND,
+		0o644,
+	)
+	if openErr != nil {
+		return slog.New(slog.NewTextHandler(io.Discard, opts))
+	}
+
+	return slog.New(slog.NewTextHandler(f, opts))
 }
 
 // WithFile sets the configuration file and type.

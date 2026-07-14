@@ -44,22 +44,35 @@ func generateBoxPlot(benchData []*exercise.BenchmarkData, outfile string) error 
 	return saveGridPNG(grid, outfile, font.Length(w), font.Length(h), plotDPI)
 }
 
-// buildConsistencyFacets builds the 2×N facet grid: rows are Parts (Part One,
-// Part Two), columns are languages (sorted). Each cell is an independently
+// buildConsistencyFacets builds the R×N facet grid: rows are the Parts present
+// in the data (Part One always; Part Two only when some implementation has Part
+// Two data), columns are languages (sorted). Each cell is an independently
 // auto-scaled box plot of medianPercents(samples) for that (language, part); a
-// missing (language, part) is a nil cell so columns stay aligned.
+// missing (language, part) within an existing row is a nil cell so columns stay
+// aligned. A single-part Problem renders a 1×N grid — no empty Part Two row.
 func buildConsistencyFacets(benchData []*exercise.BenchmarkData) ([][]*plot.Plot, error) {
-	const numParts = 2
-
 	if len(benchData) == 0 {
 		return nil, errors.New("no benchmark data to graph")
 	}
 
 	samples, langs := collectBoxSamples(benchData)
-	partNames := []string{"Part One", "Part Two"}
 
-	grid := make([][]*plot.Plot, numParts)
-	for part := range numParts {
+	// Determine which parts are present. Part index 0 (Part One) is always a
+	// row; part index 1 (Part Two) only if some language has samples for it.
+	partNames := []string{"Part One"}
+	hasPartTwo := false
+	for _, lang := range langs {
+		if len(samples[lang][1]) > 0 {
+			hasPartTwo = true
+			break
+		}
+	}
+	if hasPartTwo {
+		partNames = append(partNames, "Part Two")
+	}
+
+	grid := make([][]*plot.Plot, len(partNames))
+	for part := range partNames {
 		grid[part] = make([]*plot.Plot, len(langs))
 
 		for col, lang := range langs {

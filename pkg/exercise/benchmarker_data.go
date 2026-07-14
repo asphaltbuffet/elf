@@ -17,6 +17,7 @@ type BenchmarkData struct {
 	Title           string                `json:"title"`
 	Year            int                   `json:"year,omitempty"`
 	Day             int                   `json:"day"`
+	Number          int                   `json:"number,omitempty"`
 	Runs            int                   `json:"numRuns"`
 	Normalization   float64               `json:"normalization,omitempty"`
 	Implementations []*ImplementationData `json:"implementations"`
@@ -41,8 +42,13 @@ type PartData struct {
 var ErrRunnerStart = errors.New("runner start error")
 
 func (b *BenchmarkData) String() string {
-	return fmt.Sprintf("BenchmarkData{Date: %s, AOC %d/%02d, Runs: %3d, Normalization: %.6f, Implementations: %s}",
-		b.Date.Local().Format(time.DateOnly), b.Year, b.Day, b.Runs, b.Normalization, b.Implementations)
+	id := fmt.Sprintf("AOC %d/%02d", b.Year, b.Day)
+	if b.Number != 0 {
+		id = fmt.Sprintf("Euler #%d", b.Number)
+	}
+
+	return fmt.Sprintf("BenchmarkData{Date: %s, %s, Runs: %3d, Normalization: %.6f, Implementations: %s}",
+		b.Date.Local().Format(time.DateOnly), id, b.Runs, b.Normalization, b.Implementations)
 }
 
 func (i *ImplementationData) String() string {

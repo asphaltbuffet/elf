@@ -61,7 +61,11 @@ func (b *Benchmarker) Benchmark(
 	if cb != nil {
 		// Benchmark spans multiple implementations, so there is no single runner
 		// name; the header carries the exercise identity only.
-		cb(tasks.MetaEvent(tasks.Meta{Year: b.Year, Day: b.Day, Title: b.Title}))
+		cb(
+			tasks.MetaEvent(
+				tasks.Meta{Kind: string(b.Kind), Year: b.Year, Day: b.Day, Number: b.Number, Title: b.Title},
+			),
+		)
 	}
 
 	for _, impl := range impls {
@@ -83,7 +87,7 @@ func (b *Benchmarker) Benchmark(
 
 		// Plan this impl's tasks now that its display name is known, so each
 		// progress bar is labelled with the human-readable runner name.
-		emitPlannedForImpl(cb, runner.String(), iterations)
+		emitPlannedForImpl(cb, b.declaredParts(), runner.String(), iterations)
 
 		var implData *ImplementationData
 
@@ -112,6 +116,7 @@ func (b *Benchmarker) Benchmark(
 	benchmarkData = append(benchmarkData, BenchmarkData{
 		Date:            time.Now().UTC(),
 		Day:             b.Day,
+		Number:          b.Number,
 		Title:           b.Title,
 		Year:            b.Year,
 		Runs:            iterations,
@@ -157,27 +162,22 @@ func (b *Benchmarker) runBenchmark(
 	cb func(tasks.Event),
 	iterations int,
 ) ([]tasks.Result, *ImplementationData, error) {
-	const numParts int = 2
+	parts := b.declaredParts()
 
 	var (
 		benchmarkTasks []*protocol.Task
-		metricsResults = make(map[protocol.Part][]float64, numParts*iterations)
-		results        = make([]tasks.Result, 0, numParts*iterations)
+		metricsResults = make(map[protocol.Part][]float64, len(parts)*iterations)
+		results        = make([]tasks.Result, 0, len(parts)*iterations)
 	)
 
 	for i := range iterations {
-		benchmarkTasks = append(
-			benchmarkTasks,
-			&protocol.Task{
-				TaskID: tasks.MakeTaskID(tasks.Benchmark, protocol.PartOne, i),
-				Part:   protocol.PartOne,
-				Input:  b.Data.InputData,
-			},
-			&protocol.Task{
-				TaskID: tasks.MakeTaskID(tasks.Benchmark, protocol.PartTwo, i),
-				Part:   protocol.PartTwo,
+		for _, part := range parts {
+			benchmarkTasks = append(benchmarkTasks, &protocol.Task{
+				TaskID: tasks.MakeTaskID(tasks.Benchmark, part, i),
+				Part:   part,
 				Input:  b.Data.InputData,
 			})
+		}
 	}
 
 	defer func() {
@@ -220,24 +220,23 @@ func (b *Benchmarker) runBenchmark(
 
 // emitPlannedForImpl announces every iteration's tasks for a single
 // implementation, tagging each event with the runner's display name so a
-// renderer can group them into one progress bar per (runner, Part). Emitted
-// per-impl (not as an up-front batch) because the display name only exists once
-// the runner is constructed; ADR-0010 events are incremental, so a bar appears
-// when its first Planned arrives.
-func emitPlannedForImpl(cb func(tasks.Event), lang string, iterations int) {
+// renderer can group them into one progress bar per (runner, Part). It iterates
+// the exercise's declared parts, so a single-part Problem never announces a
+// phantom Part Two. Emitted per-impl (not as an up-front batch) because the
+// display name only exists once the runner is constructed; ADR-0010 events are
+// incremental, so a bar appears when its first Planned arrives.
+func emitPlannedForImpl(cb func(tasks.Event), parts []protocol.Part, lang string, iterations int) {
 	if cb == nil {
 		return
 	}
 
 	for i := range iterations {
-		cb(tasks.PlannedEvent(
-			tasks.MakeTaskID(tasks.Benchmark, protocol.PartOne, i),
-			tasks.Benchmark, protocol.PartOne, i, lang,
-		))
-		cb(tasks.PlannedEvent(
-			tasks.MakeTaskID(tasks.Benchmark, protocol.PartTwo, i),
-			tasks.Benchmark, protocol.PartTwo, i, lang,
-		))
+		for _, part := range parts {
+			cb(tasks.PlannedEvent(
+				tasks.MakeTaskID(tasks.Benchmark, part, i),
+				tasks.Benchmark, part, i, lang,
+			))
+		}
 	}
 }
 

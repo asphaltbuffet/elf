@@ -19,8 +19,10 @@ const (
 // exercise identity for the header box and the runner's human-readable name for
 // section labels. It is resolved by the domain after the exercise is loaded.
 type Meta struct {
+	Kind     string // challenge family, e.g. "aoc" or "euler"; empty when metadata is unresolved
 	Year     int
 	Day      int
+	Number   int // Project Euler problem number; non-zero identifies a Euler problem (Year/Day are zero)
 	Title    string
 	Language string // human-readable runner name (e.g. "Rust"), not the lookup key ("rs")
 }
