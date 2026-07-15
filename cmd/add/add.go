@@ -116,9 +116,14 @@ func printTitleWarning(w io.Writer, placeholdered bool) {
 		return
 	}
 
+	// placeholderTitleEcho mirrors pkg/exercise's placeholderTitle for display
+	// only; it is not imported to avoid exporting a domain constant across the
+	// package boundary just for a warning string.
+	const placeholderTitleEcho = "Untitled"
+
 	_, _ = fmt.Fprintf(w,
 		"warning: could not fetch title from projecteuler.net; wrote %q — edit info.json to fix\n",
-		"Untitled")
+		placeholderTitleEcho)
 }
 
 func runAoCCmd(cmd *cobra.Command, args []string) error {

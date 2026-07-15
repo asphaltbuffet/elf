@@ -1,0 +1,5 @@
+kind: Removed
+body: '`--title` flag no longer needed for euler problems'
+time: 2026-07-14T23:36:40.082899741-04:00
+custom:
+    Issue: ""
