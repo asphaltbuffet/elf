@@ -55,7 +55,10 @@ func Test_extractProblemTitle(t *testing.T) {
 
 func newTestProblemFetcher(baseURL string) *problemFetcher {
 	return &problemFetcher{
-		rClient: resty.New().SetBaseURL(baseURL).SetHeader("User-Agent", userAgent),
+		rClient: resty.New().
+			SetBaseURL(baseURL).
+			SetHeader("User-Agent", userAgent).
+			SetRedirectPolicy(resty.NoRedirectPolicy()),
 	}
 }
 
@@ -88,6 +91,21 @@ func Test_problemFetcher_fetchTitle(t *testing.T) {
 
 		require.Error(t, err)
 		assert.ErrorIs(t, err, ErrInvalidData)
+	})
+
+	t.Run("redirect (bad number) is ErrInvalidData, not transient", func(t *testing.T) {
+		t.Parallel()
+
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, "/archives", http.StatusFound)
+		}))
+		defer srv.Close()
+
+		title, err := newTestProblemFetcher(srv.URL).fetchTitle(99999)
+
+		require.ErrorIs(t, err, ErrInvalidData)
+		require.NotErrorIs(t, err, ErrHTTPResponse) // must be distinguishable from transient
+		assert.Empty(t, title)
 	})
 
 	t.Run("non-200 is a transient HTTP response error", func(t *testing.T) {

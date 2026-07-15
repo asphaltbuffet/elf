@@ -20,11 +20,15 @@ per-user input, and an AoC exercise is useless without its input. Euler is diffe
 is fully solvable from its number alone; the title is cosmetic metadata. So the [[Problem Title
 Fetcher]] distinguishes two failure modes:
 
-- **Fetch succeeded but the page has no problem title** → the problem number does not exist (a
-  typo, or a number beyond the archive). This is a **hard error**: nothing is scaffolded, so a
-  mistyped number never leaves an orphaned directory behind. projecteuler.net does not return a
-  clean 404 for a bad number — it serves a 200 with no problem heading — so "no title found in a
-  successfully fetched page" is the *only* reliable signal that the number is invalid.
+- **The site redirects the request** → the problem number does not exist (a typo, or a number
+  beyond the archive). This is a **hard error**: nothing is scaffolded, so a mistyped number never
+  leaves an orphaned directory behind. projecteuler.net does not return a clean 404 for a bad
+  number — it serves a 200 *after redirecting* `/problem={number}` to `/archives`, and that archive
+  page itself has a problem-shaped `<h2>` ("Problem Archives"), so "no title found" cannot be used
+  as the signal. The [[Problem Title Fetcher]] instead disables auto-redirect on its client; a
+  redirect attempt (surfaced by resty as `ErrAutoRedirectDisabled`) is the *only* reliable signal
+  that the number is invalid. A missing `<h2>` on an otherwise-200, non-redirected page is kept as
+  a secondary guard, but is not the primary detection mechanism.
 - **The site could not be reached** (network down, timeout, non-200) → a **transient** failure. The
   Adder logs a warning, substitutes the placeholder title `"Untitled"`, and scaffolds anyway. The
   command surfaces the placeholder to the user so they can correct `info.json` later. Being offline

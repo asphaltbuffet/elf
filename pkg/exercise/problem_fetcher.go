@@ -73,20 +73,31 @@ type problemFetcher struct {
 // and identifies elf via the shared User-Agent, per site etiquette.
 func newProblemFetcher() *problemFetcher {
 	return &problemFetcher{
-		rClient: resty.New().SetBaseURL(eulerBaseURL).SetHeader("User-Agent", userAgent),
+		rClient: resty.New().
+			SetBaseURL(eulerBaseURL).
+			SetHeader("User-Agent", userAgent).
+			SetRedirectPolicy(resty.NoRedirectPolicy()),
 	}
 }
 
-// fetchTitle GETs the problem page and returns its title. A transport error or a
-// non-200 response is a transient failure (wrapped ErrHTTPRequest/ErrHTTPResponse)
-// that callers may degrade past with a placeholder. A 200 whose body has no <h2>
-// means the number does not exist and is returned as an ErrInvalidData-wrapped
-// error, which callers treat as a hard, non-degradable failure.
+// fetchTitle GETs the problem page and returns its title. projecteuler.net
+// redirects out-of-range problem numbers to /archives (a page that itself has
+// an <h2>, so a redirect is the only reliable bad-number signal); the client
+// disables auto-redirect so an attempted redirect surfaces as
+// resty.ErrAutoRedirectDisabled, which is reported as an ErrInvalidData-wrapped
+// hard failure. A genuine transport error or a non-redirect non-200 response is
+// a transient failure (wrapped ErrHTTPRequest/ErrHTTPResponse) that callers may
+// degrade past with a placeholder. A 200 whose body has no <h2> is a secondary
+// bad-number guard, also reported as ErrInvalidData.
 func (f *problemFetcher) fetchTitle(number int) (string, error) {
 	resp, err := f.rClient.R().
 		SetPathParam("number", strconv.Itoa(number)).
 		Get("/problem={number}")
 	if err != nil {
+		if errors.Is(err, resty.ErrAutoRedirectDisabled) {
+			return "", fmt.Errorf("%w: problem %d does not exist (redirected)", ErrInvalidData, number)
+		}
+
 		return "", errors.Join(ErrHTTPRequest, err)
 	}
 
