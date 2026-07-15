@@ -3,6 +3,7 @@ package add
 
 import (
 	"fmt"
+	"io"
 	"strconv"
 
 	"github.com/spf13/cobra"
@@ -102,13 +103,22 @@ func runEulerCmd(cmd *cobra.Command, args []string) error {
 	_, _ = fmt.Fprintln(out, path)
 	exercise.RenderReport(out, report)
 
-	if placeholdered {
-		_, _ = fmt.Fprintf(out,
-			"warning: could not fetch title from projecteuler.net; wrote %q — edit info.json to fix\n",
-			"Untitled")
-	}
+	printTitleWarning(out, placeholdered)
 
 	return nil
+}
+
+// printTitleWarning writes a warning to w when the title fetch failed and
+// AddProblem fell back to a placeholder title ("Untitled" in info.json). It is
+// a no-op when placeholdered is false.
+func printTitleWarning(w io.Writer, placeholdered bool) {
+	if !placeholdered {
+		return
+	}
+
+	_, _ = fmt.Fprintf(w,
+		"warning: could not fetch title from projecteuler.net; wrote %q — edit info.json to fix\n",
+		"Untitled")
 }
 
 func runAoCCmd(cmd *cobra.Command, args []string) error {
