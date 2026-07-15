@@ -3,6 +3,8 @@ package exercise
 import (
 	"io"
 	"log/slog"
+	"net/http"
+	"net/http/httptest"
 	"path/filepath"
 	"testing"
 
@@ -59,6 +61,11 @@ func TestNewProblemFromSource(t *testing.T) {
 }
 
 func TestProblemAdder_Add(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`<html><body><h2>Test Problem</h2></body></html>`))
+	}))
+	defer srv.Close()
+
 	fs := afero.NewMemMapFs()
 	cfg, err := config.NewConfig(config.WithFs(fs))
 	require.NoError(t, err)
@@ -66,7 +73,7 @@ func TestProblemAdder_Add(t *testing.T) {
 	adder, err := NewProblemAdder(cfg,
 		WithProblemNumber(42),
 		WithProblemLanguage("go"),
-		WithProblemTitle("Test Problem"),
+		WithProblemFetcher(newTestProblemFetcher(srv.URL)),
 	)
 	require.NoError(t, err)
 
@@ -82,6 +89,82 @@ func TestProblemAdder_Add(t *testing.T) {
 	assert.Equal(t, 42, ex.Number)
 }
 
+func TestProblemAdder_Add_fetchesTitle(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`<html><body><h2>Coded Triangle Numbers</h2></body></html>`))
+	}))
+	defer srv.Close()
+
+	cfg, err := config.NewConfig(config.WithFs(afero.NewMemMapFs()))
+	require.NoError(t, err)
+
+	p, err := NewProblemAdder(cfg,
+		WithProblemNumber(42), WithProblemLanguage("go"),
+		WithProblemFetcher(newTestProblemFetcher(srv.URL)))
+	require.NoError(t, err)
+
+	require.NoError(t, p.Add())
+	assert.False(t, p.TitlePlaceholdered())
+
+	ex := &Exercise{Path: p.FilePath()}
+	require.NoError(t, ex.loadInfo(cfg.GetFs(), cfg.GetLogger()))
+	assert.Equal(t, "Coded Triangle Numbers", ex.Title)
+}
+
+func TestProblemAdder_Add_placeholderOnTransientFailure(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	defer srv.Close()
+
+	cfg, err := config.NewConfig(config.WithFs(afero.NewMemMapFs()))
+	require.NoError(t, err)
+
+	p, err := NewProblemAdder(cfg,
+		WithProblemNumber(42), WithProblemLanguage("go"),
+		WithProblemFetcher(newTestProblemFetcher(srv.URL)))
+	require.NoError(t, err)
+
+	require.NoError(t, p.Add()) // degrades, does not fail
+	assert.True(t, p.TitlePlaceholdered())
+
+	ex := &Exercise{Path: p.FilePath()}
+	require.NoError(t, ex.loadInfo(cfg.GetFs(), cfg.GetLogger()))
+	assert.Equal(t, placeholderTitle, ex.Title)
+}
+
+func TestProblemAdder_Add_badNumberHardFails(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`<html><body><p>no problem here</p></body></html>`))
+	}))
+	defer srv.Close()
+
+	cfg, err := config.NewConfig(config.WithFs(afero.NewMemMapFs()))
+	require.NoError(t, err)
+
+	p, err := NewProblemAdder(cfg,
+		WithProblemNumber(99999), WithProblemLanguage("go"),
+		WithProblemFetcher(newTestProblemFetcher(srv.URL)))
+	require.NoError(t, err)
+
+	err = p.Add()
+	require.Error(t, err)
+	require.ErrorIs(t, err, ErrInvalidData)
+
+	// nothing scaffolded: the exercise dir must not exist. Add() returns before
+	// setting p.path, so check the directory it would have used.
+	wantPath := filepath.Join(cfg.GetEulerDir(), "99999")
+	ok, statErr := afero.DirExists(cfg.GetFs(), wantPath)
+	require.NoError(t, statErr)
+	assert.False(t, ok)
+}
+
 func TestNewProblemAdder_ValidationErrors(t *testing.T) {
 	tests := []struct {
 		name         string
@@ -93,7 +176,6 @@ func TestNewProblemAdder_ValidationErrors(t *testing.T) {
 			name: "empty language",
 			opts: []func(*ProblemAdder){
 				WithProblemNumber(42),
-				WithProblemTitle("Test Problem"),
 			},
 			wantErr:      ErrEmptyLanguage,
 			emptyCfgLang: true,
@@ -103,7 +185,6 @@ func TestNewProblemAdder_ValidationErrors(t *testing.T) {
 			opts: []func(*ProblemAdder){
 				WithProblemLanguage("go"),
 				WithProblemNumber(0),
-				WithProblemTitle("Test Problem"),
 			},
 			wantErr: ErrInvalidData,
 		},
@@ -112,15 +193,6 @@ func TestNewProblemAdder_ValidationErrors(t *testing.T) {
 			opts: []func(*ProblemAdder){
 				WithProblemLanguage("go"),
 				WithProblemNumber(-1),
-				WithProblemTitle("Test Problem"),
-			},
-			wantErr: ErrInvalidData,
-		},
-		{
-			name: "empty title",
-			opts: []func(*ProblemAdder){
-				WithProblemLanguage("go"),
-				WithProblemNumber(42),
 			},
 			wantErr: ErrInvalidData,
 		},

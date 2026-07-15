@@ -59,8 +59,6 @@ func extractProblemTitle(page []byte) (string, error) {
 }
 
 // eulerBaseURL is the Project Euler site root; problem requests are relative to it.
-//
-//nolint:unused // wired into ProblemAdder in a follow-up task
 const eulerBaseURL = "https://projecteuler.net"
 
 // problemFetcher fetches a Project Euler problem's title from projecteuler.net.
@@ -73,8 +71,6 @@ type problemFetcher struct {
 
 // newProblemFetcher builds a problemFetcher whose client targets projecteuler.net
 // and identifies elf via the shared User-Agent, per site etiquette.
-//
-//nolint:unused // wired into ProblemAdder in a follow-up task
 func newProblemFetcher() *problemFetcher {
 	return &problemFetcher{
 		rClient: resty.New().SetBaseURL(eulerBaseURL).SetHeader("User-Agent", userAgent),
