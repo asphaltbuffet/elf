@@ -24,7 +24,6 @@ const (
 var (
 	addCmd     *cobra.Command
 	language   string
-	title      string
 	forceInput bool
 
 	// makeConfig is the sanctioned config seam (not a domain seam); tests stub it.
@@ -69,12 +68,6 @@ func eulerCmd() *cobra.Command {
 		RunE:  runEulerCmd,
 	}
 	c.Flags().StringVarP(&language, "lang", "l", "", "solution language")
-	c.Flags().StringVarP(&title, "title", "t", "", "problem title")
-
-	// A Project Euler problem's title is user-supplied and mandatory (there is no
-	// page to scrape it from). Mark it required so cobra surfaces a clean error
-	// rather than the domain rejecting an empty title deep in NewProblemAdder.
-	_ = c.MarkFlagRequired("title")
 
 	return c
 }
@@ -100,7 +93,7 @@ func runEulerCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	report, path, err := appPkg.New(cfg).AddProblem(number, language, title)
+	report, path, placeholdered, err := appPkg.New(cfg).AddProblem(number, language)
 	if err != nil {
 		return err
 	}
@@ -108,6 +101,12 @@ func runEulerCmd(cmd *cobra.Command, args []string) error {
 	out := cmd.OutOrStdout()
 	_, _ = fmt.Fprintln(out, path)
 	exercise.RenderReport(out, report)
+
+	if placeholdered {
+		_, _ = fmt.Fprintf(out,
+			"warning: could not fetch title from projecteuler.net; wrote %q — edit info.json to fix\n",
+			"Untitled")
+	}
 
 	return nil
 }

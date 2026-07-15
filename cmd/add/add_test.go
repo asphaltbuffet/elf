@@ -24,3 +24,12 @@ func TestEuler_RejectsNonNumericArg(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not a number")
 }
+
+func Test_eulerCmd_hasNoTitleFlag(t *testing.T) {
+	addCmd = nil // reset package-level singleton
+	t.Cleanup(func() { addCmd = nil })
+
+	c := eulerCmd()
+
+	assert.Nil(t, c.Flags().Lookup("title"), "euler command must not expose a --title flag")
+}

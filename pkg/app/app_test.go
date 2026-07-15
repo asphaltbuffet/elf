@@ -2,9 +2,11 @@ package app_test
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log/slog"
 	"path/filepath"
+	"strconv"
 	"testing"
 
 	"github.com/spf13/afero"
@@ -28,6 +30,25 @@ func testApp(t *testing.T) *app.App {
 		FS:     afero.NewMemMapFs(),
 		Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
+}
+
+// writeProblemDir scaffolds the minimal on-disk shape of a Project Euler
+// Problem that Benchmark/Analyze read, directly on fs — no network. info.json
+// declares Kind "euler" (exercise.KindProblem) with a non-zero Number and
+// non-empty Title (both required by Exercise.loadInfo's completeness check),
+// and a non-null "data" object (Exercise.readInput dereferences e.Data
+// unconditionally). A go/ subdirectory is included so
+// Exercise.GetImplementations (used by Benchmark) finds a registered
+// language. Returns the problem dir.
+func writeProblemDir(t *testing.T, fs afero.Fs, eulerDir string, number int) string {
+	t.Helper()
+
+	dir := filepath.Join(eulerDir, strconv.Itoa(number))
+	info := fmt.Sprintf(`{"kind":"euler","number":%d,"title":"Test","data":{}}`, number)
+	require.NoError(t, afero.WriteFile(fs, filepath.Join(dir, "info.json"), []byte(info), 0o644))
+	require.NoError(t, fs.MkdirAll(filepath.Join(dir, "go"), 0o755))
+
+	return dir
 }
 
 // TestApp_Solve_ErrNoExercise verifies that Solve returns an error when the
@@ -106,8 +127,7 @@ func TestApp_Benchmark_Euler(t *testing.T) {
 
 	a := app.New(cfg)
 
-	_, path, err := a.AddProblem(1, "go", "Test")
-	require.NoError(t, err)
+	path := writeProblemDir(t, cfg.GetFs(), cfg.GetEulerDir(), 1)
 
 	_, err = a.Benchmark(context.Background(), path, "go", nil, 1)
 
@@ -124,8 +144,7 @@ func TestApp_Analyze_SingleProblem_NotRefused(t *testing.T) {
 
 	a := app.New(cfg)
 
-	_, path, err := a.AddProblem(1, "go", "Test")
-	require.NoError(t, err)
+	path := writeProblemDir(t, cfg.GetFs(), cfg.GetEulerDir(), 1)
 
 	_, err = a.Analyze(path, "")
 
@@ -143,10 +162,8 @@ func TestApp_Analyze_EulerTree_Refused(t *testing.T) {
 
 	// Scaffold two Problems under the configured euler dir, then point analyze
 	// at their parent directory.
-	_, p1, err := a.AddProblem(1, "go", "One")
-	require.NoError(t, err)
-	_, _, err = a.AddProblem(2, "go", "Two")
-	require.NoError(t, err)
+	p1 := writeProblemDir(t, cfg.GetFs(), cfg.GetEulerDir(), 1)
+	writeProblemDir(t, cfg.GetFs(), cfg.GetEulerDir(), 2)
 
 	eulerTree := filepath.Dir(p1) // parent of euler/1 → euler/
 
