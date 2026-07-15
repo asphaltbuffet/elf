@@ -1,8 +1,11 @@
 package exercise
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
+	"github.com/go-resty/resty/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -48,4 +51,56 @@ func Test_extractProblemTitle(t *testing.T) {
 			assert.Equal(t, tt.want, got)
 		})
 	}
+}
+
+func newTestProblemFetcher(baseURL string) *problemFetcher {
+	return &problemFetcher{
+		rClient: resty.New().SetBaseURL(baseURL).SetHeader("User-Agent", userAgent),
+	}
+}
+
+func Test_problemFetcher_fetchTitle(t *testing.T) {
+	t.Parallel()
+
+	t.Run("returns title on 200 with h2", func(t *testing.T) {
+		t.Parallel()
+
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = w.Write([]byte(`<html><body><h2>Coded Triangle Numbers</h2></body></html>`))
+		}))
+		defer srv.Close()
+
+		got, err := newTestProblemFetcher(srv.URL).fetchTitle(42)
+
+		require.NoError(t, err)
+		assert.Equal(t, "Coded Triangle Numbers", got)
+	})
+
+	t.Run("bad number (200, no h2) is ErrInvalidData", func(t *testing.T) {
+		t.Parallel()
+
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = w.Write([]byte(`<html><body><p>archive</p></body></html>`))
+		}))
+		defer srv.Close()
+
+		_, err := newTestProblemFetcher(srv.URL).fetchTitle(99999)
+
+		require.Error(t, err)
+		assert.ErrorIs(t, err, ErrInvalidData)
+	})
+
+	t.Run("non-200 is a transient HTTP response error", func(t *testing.T) {
+		t.Parallel()
+
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+		}))
+		defer srv.Close()
+
+		_, err := newTestProblemFetcher(srv.URL).fetchTitle(42)
+
+		require.ErrorIs(t, err, ErrHTTPResponse)
+		assert.NotErrorIs(t, err, ErrInvalidData) // must be distinguishable from bad-number
+	})
 }

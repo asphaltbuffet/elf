@@ -2,9 +2,13 @@ package exercise
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+	"net/http"
+	"strconv"
 	"strings"
 
+	"github.com/go-resty/resty/v2"
 	"golang.org/x/net/html"
 )
 
@@ -52,4 +56,47 @@ func extractProblemTitle(page []byte) (string, error) {
 	}
 
 	return strings.TrimSpace(text), nil
+}
+
+// eulerBaseURL is the Project Euler site root; problem requests are relative to it.
+//
+//nolint:unused // wired into ProblemAdder in a follow-up task
+const eulerBaseURL = "https://projecteuler.net"
+
+// problemFetcher fetches a Project Euler problem's title from projecteuler.net.
+// Unlike the AoC pageFetcher it needs no token and does no on-disk caching:
+// `add euler` is a one-shot-per-problem operation. It owns the projecteuler.net
+// URL shape and nothing about the exercise directory.
+type problemFetcher struct {
+	rClient *resty.Client
+}
+
+// newProblemFetcher builds a problemFetcher whose client targets projecteuler.net
+// and identifies elf via the shared User-Agent, per site etiquette.
+//
+//nolint:unused // wired into ProblemAdder in a follow-up task
+func newProblemFetcher() *problemFetcher {
+	return &problemFetcher{
+		rClient: resty.New().SetBaseURL(eulerBaseURL).SetHeader("User-Agent", userAgent),
+	}
+}
+
+// fetchTitle GETs the problem page and returns its title. A transport error or a
+// non-200 response is a transient failure (wrapped ErrHTTPRequest/ErrHTTPResponse)
+// that callers may degrade past with a placeholder. A 200 whose body has no <h2>
+// means the number does not exist and is returned as an ErrInvalidData-wrapped
+// error, which callers treat as a hard, non-degradable failure.
+func (f *problemFetcher) fetchTitle(number int) (string, error) {
+	resp, err := f.rClient.R().
+		SetPathParam("number", strconv.Itoa(number)).
+		Get("/problem={number}")
+	if err != nil {
+		return "", errors.Join(ErrHTTPRequest, err)
+	}
+
+	if resp.StatusCode() != http.StatusOK {
+		return "", fmt.Errorf("%w: %s: %s", ErrHTTPResponse, resp.Request.Method, resp.Status())
+	}
+
+	return extractProblemTitle(resp.Body())
 }
