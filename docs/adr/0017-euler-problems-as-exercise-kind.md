@@ -6,7 +6,9 @@
 > [ADR 0018](0018-euler-directory-as-independent-config-key.md), and the "`euler/` behaves like a
 > year for Analysis" consequence is reversed by
 > [ADR 0022](0022-euler-analyze-exercise-scope-only.md) (Euler is exercise-scope only). Both are
-> also flagged inline below.
+> also flagged inline below. A third,
+> [ADR 0023](0023-euler-title-fetched-from-projecteuler.md), overrides "a number **and title** the
+> user supplies": the title is now fetched from projecteuler.net and the `--title` flag is removed.
 
 elf was built for one challenge source (Advent of Code): an [[Exercise]]'s identity is year + day,
 it has a source URL and a per-user input, and it always has two parts. Supporting Project Euler —

@@ -56,9 +56,23 @@ _Avoid_: downloader, fetcher, getter
 
 **Problem Adder**:
 The Euler-kind counterpart to the **Exercise Adder**: builds a **Problem** **Exercise** in memory
-from a number and title the user supplies (no network) and lays it out via the same **Exercise
-Scaffold**.
-_Avoid_: downloader, euler fetcher, problem creator
+from a problem number, obtains its **Problem Title** via the **Problem Title Fetcher**, and lays it
+out via the same **Exercise Scaffold**. The title is derived, not user-supplied.
+_Avoid_: downloader, problem creator
+
+**Problem Title Fetcher**:
+The component that fetches a **Problem**'s title from projecteuler.net, given a problem number. It
+parses the title from the problem page's heading; it does not cache and requires no token. A
+successful fetch with no title present means the number does not exist (a hard error); a failure to
+reach the site degrades to a placeholder title so scaffolding can still proceed. Distinct from the
+**Page Fetcher**, which is Advent-of-Code-only.
+_Avoid_: euler downloader, problem loader, page fetcher (that is the AoC one)
+
+**Problem Title**:
+The human-readable name of a **Problem** (e.g. "Coded Triangle Numbers"), derived from
+projecteuler.net rather than supplied by the user. When the site is unreachable, a placeholder
+("Untitled") stands in and is flagged to the user for later correction.
+_Avoid_: name, label, description
 
 **Page Fetcher**:
 The component that fetches Advent of Code puzzle-page HTML and puzzle input, with on-disk caching.
