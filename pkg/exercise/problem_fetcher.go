@@ -18,43 +18,26 @@ import (
 // <h2> yields an ErrInvalidData error, which fetchTitle treats as a secondary
 // bad-number guard — the primary signal is a redirect (see fetchTitle), since
 // projecteuler.net redirects an out-of-range number to /archives rather than
-// serving a heading-less page. This is deliberately separate from the AoC title
-// extractor (extractTitle) so drift in either site's markup touches only its
-// own path.
+// serving a heading-less page. It shares the generic getH2NodeFromHTML walk with
+// the AoC extractor (extractTitle) but keeps its own interpretation — euler's
+// <h2> is the bare title, so site-specific markup drift touches only this line.
 func extractProblemTitle(page []byte) (string, error) {
 	doc, err := html.Parse(bytes.NewReader(page))
 	if err != nil {
 		return "", fmt.Errorf("parsing problem page: %w", err)
 	}
 
-	var (
-		text    string
-		found   bool
-		crawler func(*html.Node)
-	)
-
-	crawler = func(node *html.Node) {
-		if found {
-			return
-		}
-
-		if node.Type == html.ElementNode && node.Data == "h2" {
-			if node.FirstChild != nil && node.FirstChild.Type == html.TextNode {
-				text = node.FirstChild.Data
-			}
-			found = true
-			return
-		}
-
-		for c := node.FirstChild; c != nil; c = c.NextSibling {
-			crawler(c)
-		}
+	// Reuse the shared <h2> walk; euler differs from AoC only in interpretation —
+	// its <h2> holds the bare title, so we take the text directly instead of
+	// stripping AoC's "--- Day N: ... ---" decoration.
+	h2, err := getH2NodeFromHTML(doc)
+	if err != nil {
+		return "", err
 	}
 
-	crawler(doc)
-
-	if !found {
-		return "", fmt.Errorf("%w: no problem title found", ErrInvalidData)
+	var text string
+	if h2.FirstChild != nil && h2.FirstChild.Type == html.TextNode {
+		text = h2.FirstChild.Data
 	}
 
 	return strings.TrimSpace(text), nil

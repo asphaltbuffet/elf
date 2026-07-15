@@ -143,8 +143,8 @@ func (p *ProblemAdder) Add() error {
 	case err == nil:
 		p.title = title
 	case errors.Is(err, ErrInvalidData):
-		// A fetched page with no title means the number does not exist: hard-fail
-		// so a typo'd number leaves nothing scaffolded behind.
+		// A redirect (or, as a secondary guard, a heading-less page) means the
+		// number does not exist: hard-fail so a typo'd number scaffolds nothing.
 		p.logger.Error("problem not found", slog.Int("number", p.number), tint.Err(err))
 		return fmt.Errorf("problem %d not found: %w", p.number, err)
 	default:
