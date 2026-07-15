@@ -1,0 +1,111 @@
+package exercise
+
+import (
+	"bytes"
+	"errors"
+	"fmt"
+	"net/http"
+	"strconv"
+	"strings"
+
+	"github.com/go-resty/resty/v2"
+	"golang.org/x/net/html"
+)
+
+// extractProblemTitle returns the trimmed text of the first <h2> in a
+// projecteuler.net problem page, which is the problem title. Project Euler
+// problem pages contain exactly one <h2> and it holds the title. A page with no
+// <h2> yields an ErrInvalidData error, which fetchTitle treats as a secondary
+// bad-number guard — the primary signal is a redirect (see fetchTitle), since
+// projecteuler.net redirects an out-of-range number to /archives rather than
+// serving a heading-less page. This is deliberately separate from the AoC title
+// extractor (extractTitle) so drift in either site's markup touches only its
+// own path.
+func extractProblemTitle(page []byte) (string, error) {
+	doc, err := html.Parse(bytes.NewReader(page))
+	if err != nil {
+		return "", fmt.Errorf("parsing problem page: %w", err)
+	}
+
+	var (
+		text    string
+		found   bool
+		crawler func(*html.Node)
+	)
+
+	crawler = func(node *html.Node) {
+		if found {
+			return
+		}
+
+		if node.Type == html.ElementNode && node.Data == "h2" {
+			if node.FirstChild != nil && node.FirstChild.Type == html.TextNode {
+				text = node.FirstChild.Data
+			}
+			found = true
+			return
+		}
+
+		for c := node.FirstChild; c != nil; c = c.NextSibling {
+			crawler(c)
+		}
+	}
+
+	crawler(doc)
+
+	if !found {
+		return "", fmt.Errorf("%w: no problem title found", ErrInvalidData)
+	}
+
+	return strings.TrimSpace(text), nil
+}
+
+// eulerBaseURL is the Project Euler site root; problem requests are relative to it.
+const eulerBaseURL = "https://projecteuler.net"
+
+// problemFetcher fetches a Project Euler problem's title from projecteuler.net.
+// Unlike the AoC pageFetcher it needs no token and does no on-disk caching:
+// `add euler` is a one-shot-per-problem operation. It owns the projecteuler.net
+// URL shape and nothing about the exercise directory.
+type problemFetcher struct {
+	rClient *resty.Client
+}
+
+// newProblemFetcher builds a problemFetcher whose client targets projecteuler.net
+// and identifies elf via the shared User-Agent, per site etiquette.
+func newProblemFetcher() *problemFetcher {
+	return &problemFetcher{
+		rClient: resty.New().
+			SetBaseURL(eulerBaseURL).
+			SetHeader("User-Agent", userAgent).
+			SetRedirectPolicy(resty.NoRedirectPolicy()),
+	}
+}
+
+// fetchTitle GETs the problem page and returns its title. projecteuler.net
+// redirects out-of-range problem numbers to /archives (a page that itself has
+// an <h2>, so a redirect is the only reliable bad-number signal); the client
+// disables auto-redirect so an attempted redirect surfaces as
+// resty.ErrAutoRedirectDisabled, which is reported as an ErrInvalidData-wrapped
+// hard failure. A genuine transport error or a non-redirect non-200 response is
+// a transient failure (wrapped ErrHTTPRequest/ErrHTTPResponse) that callers may
+// degrade past with a placeholder. A 200 whose body has no <h2> is a secondary
+// bad-number guard, also reported as ErrInvalidData.
+func (f *problemFetcher) fetchTitle(number int) (string, error) {
+	resp, err := f.rClient.R().
+		SetPathParam("number", strconv.Itoa(number)).
+		Get("/problem={number}")
+	if err != nil {
+		if errors.Is(err, resty.ErrAutoRedirectDisabled) {
+			return "", fmt.Errorf("%w: problem %d does not exist (redirected)", ErrInvalidData, number)
+		}
+
+		return "", errors.Join(ErrHTTPRequest, err)
+	}
+
+	if resp.StatusCode() != http.StatusOK {
+		return "", fmt.Errorf("%w: %s: %s", ErrHTTPResponse, resp.Request.Method, resp.Status())
+	}
+
+	return extractProblemTitle(resp.Body())
+}

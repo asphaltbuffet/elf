@@ -1,6 +1,7 @@
 package exercise
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"path/filepath"
@@ -11,6 +12,11 @@ import (
 	"github.com/asphaltbuffet/elf/pkg/config"
 	"github.com/asphaltbuffet/elf/pkg/protocol"
 )
+
+// placeholderTitle stands in for a Problem's title when projecteuler.net is
+// unreachable, so an offline `add euler` still scaffolds a solvable exercise.
+// It is deliberately distinct from any real title so a human can grep for it.
+const placeholderTitle = "Untitled"
 
 // declaredParts returns the Parts this Exercise actually has, by Kind. A Project
 // Euler Problem has a single answer, so it declares only Part One; an AoC Puzzle
@@ -71,9 +77,11 @@ type ProblemAdder struct {
 	title           string
 	number          int
 	logger          *slog.Logger
+	fetcher         *problemFetcher
 
-	path   string
-	report Report
+	path               string
+	report             Report
+	titlePlaceholdered bool
 }
 
 // WithProblemNumber sets the Project Euler problem number.
@@ -90,9 +98,11 @@ func WithProblemLanguage(lang string) func(*ProblemAdder) {
 	}
 }
 
-// WithProblemTitle sets the human-readable problem title.
-func WithProblemTitle(title string) func(*ProblemAdder) {
-	return func(p *ProblemAdder) { p.title = title }
+// WithProblemFetcher overrides the title fetcher. Its parameter is the
+// unexported *problemFetcher, so this is effectively a test-only seam for
+// injecting an httptest-backed client.
+func WithProblemFetcher(f *problemFetcher) func(*ProblemAdder) {
+	return func(p *ProblemAdder) { p.fetcher = f }
 }
 
 // NewProblemAdder builds a ProblemAdder from config and options, then validates.
@@ -109,6 +119,8 @@ func NewProblemAdder(cfg config.Config, opts ...func(*ProblemAdder)) (*ProblemAd
 		},
 	}
 
+	p.fetcher = newProblemFetcher()
+
 	for _, opt := range opts {
 		opt(p)
 	}
@@ -119,15 +131,31 @@ func NewProblemAdder(cfg config.Config, opts ...func(*ProblemAdder)) (*ProblemAd
 	if p.number <= 0 {
 		return nil, fmt.Errorf("problem number must be positive: %w", ErrInvalidData)
 	}
-	if p.title == "" {
-		return nil, fmt.Errorf("problem title is required: %w", ErrInvalidData)
-	}
 
 	return p, nil
 }
 
-// Add assembles the Problem in memory and lays it out on disk.
+// Add resolves the Problem's title from projecteuler.net, then assembles the
+// Problem in memory and lays it out on disk.
 func (p *ProblemAdder) Add() error {
+	title, err := p.fetcher.fetchTitle(p.number)
+	switch {
+	case err == nil:
+		p.title = title
+	case errors.Is(err, ErrInvalidData):
+		// A fetched page with no title means the number does not exist: hard-fail
+		// so a typo'd number leaves nothing scaffolded behind.
+		p.logger.Error("problem not found", slog.Int("number", p.number), tint.Err(err))
+		return fmt.Errorf("problem %d not found: %w", p.number, err)
+	default:
+		// The site was unreachable: degrade to a placeholder so an offline add
+		// still produces a solvable exercise. The command surfaces the warning.
+		p.logger.Warn("title fetch failed; using placeholder",
+			slog.Int("number", p.number), slog.String("placeholder", placeholderTitle), tint.Err(err))
+		p.title = placeholderTitle
+		p.titlePlaceholdered = true
+	}
+
 	ex := newProblemFromSource(problemSource{
 		baseDir:  p.exerciseBaseDir,
 		language: p.language,
@@ -152,3 +180,7 @@ func (p *ProblemAdder) FilePath() string { return p.path }
 
 // Report returns the scaffold report after Add.
 func (p *ProblemAdder) Report() Report { return p.report }
+
+// TitlePlaceholdered reports whether the title fell back to placeholderTitle
+// because projecteuler.net was unreachable. The command uses it to warn the user.
+func (p *ProblemAdder) TitlePlaceholdered() bool { return p.titlePlaceholdered }

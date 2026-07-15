@@ -3,6 +3,7 @@ package add
 
 import (
 	"fmt"
+	"io"
 	"strconv"
 
 	"github.com/spf13/cobra"
@@ -24,7 +25,6 @@ const (
 var (
 	addCmd     *cobra.Command
 	language   string
-	title      string
 	forceInput bool
 
 	// makeConfig is the sanctioned config seam (not a domain seam); tests stub it.
@@ -69,12 +69,6 @@ func eulerCmd() *cobra.Command {
 		RunE:  runEulerCmd,
 	}
 	c.Flags().StringVarP(&language, "lang", "l", "", "solution language")
-	c.Flags().StringVarP(&title, "title", "t", "", "problem title")
-
-	// A Project Euler problem's title is user-supplied and mandatory (there is no
-	// page to scrape it from). Mark it required so cobra surfaces a clean error
-	// rather than the domain rejecting an empty title deep in NewProblemAdder.
-	_ = c.MarkFlagRequired("title")
 
 	return c
 }
@@ -100,7 +94,7 @@ func runEulerCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	report, path, err := appPkg.New(cfg).AddProblem(number, language, title)
+	report, path, placeholdered, err := appPkg.New(cfg).AddProblem(number, language)
 	if err != nil {
 		return err
 	}
@@ -109,7 +103,27 @@ func runEulerCmd(cmd *cobra.Command, args []string) error {
 	_, _ = fmt.Fprintln(out, path)
 	exercise.RenderReport(out, report)
 
+	printTitleWarning(out, placeholdered)
+
 	return nil
+}
+
+// printTitleWarning writes a warning to w when the title fetch failed and
+// AddProblem fell back to a placeholder title ("Untitled" in info.json). It is
+// a no-op when placeholdered is false.
+func printTitleWarning(w io.Writer, placeholdered bool) {
+	if !placeholdered {
+		return
+	}
+
+	// placeholderTitleEcho mirrors pkg/exercise's placeholderTitle for display
+	// only; it is not imported to avoid exporting a domain constant across the
+	// package boundary just for a warning string.
+	const placeholderTitleEcho = "Untitled"
+
+	_, _ = fmt.Fprintf(w,
+		"warning: could not fetch title from projecteuler.net; wrote %q — edit info.json to fix\n",
+		placeholderTitleEcho)
 }
 
 func runAoCCmd(cmd *cobra.Command, args []string) error {
