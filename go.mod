@@ -63,7 +63,7 @@ require (
 	github.com/jarcoal/httpmock v1.4.1
 	github.com/lmittmann/tint v1.2.0
 	github.com/mattn/go-runewidth v0.0.24 // indirect
-	github.com/montanaflynn/stats v0.11.0
+	github.com/montanaflynn/stats v0.12.2
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
